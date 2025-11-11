@@ -5,3 +5,5 @@ out
 .DS_Store
 .eslintcache
 *.log*
+agent_plans/
+.tanstack
