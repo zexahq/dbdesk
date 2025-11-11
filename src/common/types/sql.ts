@@ -23,6 +23,20 @@ export interface ColumnInfo {
 }
 
 /**
+ * Interface for table constraint metadata
+ */
+export interface ConstraintInfo {
+  name: string
+  type: string
+  columns: string[]
+  foreignTable?: {
+    schema: string
+    name: string
+  }
+  foreignColumns?: string[]
+}
+
+/**
  * Interface for index metadata
  */
 export interface IndexInfo {
@@ -36,8 +50,9 @@ export interface IndexInfo {
  */
 export interface TableInfo {
   name: string
+  schema: string
   columns: ColumnInfo[]
-  primaryKey?: string[]
+  constraints?: ConstraintInfo[]
   indexes?: IndexInfo[]
 }
 

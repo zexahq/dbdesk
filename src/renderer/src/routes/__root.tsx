@@ -1,24 +1,15 @@
-import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
+import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { ThemeToggle } from '../components/theme-toggle'
+import { TopBar } from '../components/topbar'
 
 const RootLayout = () => (
-  <>
-    <div className="p-2 flex gap-2 items-center justify-between">
-      <div className="flex gap-2">
-        <Link to="/" className="[&.active]:font-bold">
-          Home
-        </Link>{' '}
-        <Link to="/about" className="[&.active]:font-bold">
-          About
-        </Link>
-      </div>
-      <ThemeToggle />
+  <div className="h-screen overflow-hidden">
+    <TopBar />
+    <div className="h-[calc(100vh-32px)] overflow-hidden">
+      <Outlet />
     </div>
-    <hr />
-    <Outlet />
-    <TanStackRouterDevtools />
-  </>
+    <TanStackRouterDevtools position="bottom-right" />
+  </div>
 )
 
 export const Route = createRootRoute({ component: RootLayout })
