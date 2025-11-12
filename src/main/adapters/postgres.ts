@@ -3,6 +3,8 @@ import type { QueryResult, SQLAdapter, SQLConnectionOptions, TableInfo } from '@
 import { Pool, type QueryResult as PgQueryResult } from 'pg'
 
 import type { QueryResultRow } from '@common/types/adapter'
+import type { TableDataOptions, TableDataResult } from '@common/types/sql'
+import { QUERIES, buildTableDataQuery, buildTableCountQuery } from '../lib/postgers/queries'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -31,7 +33,7 @@ export class PostgresAdapter implements SQLAdapter {
     try {
       const client = await pool.connect()
       try {
-        await client.query('SELECT 1')
+        await client.query(QUERIES.TEST_CONNECTION)
       } finally {
         client.release()
       }
@@ -66,14 +68,7 @@ export class PostgresAdapter implements SQLAdapter {
   public async listSchemas(): Promise<string[]> {
     const pool = this.ensurePool()
 
-    const result = await pool.query<{ schema_name: string }>(
-      `
-      SELECT schema_name
-      FROM information_schema.schemata
-      WHERE schema_name NOT IN ('pg_catalog', 'information_schema')
-      ORDER BY schema_name
-    `
-    )
+    const result = await pool.query<{ schema_name: string }>(QUERIES.LIST_SCHEMAS)
 
     return result.rows.map((row) => row.schema_name)
   }
@@ -81,15 +76,7 @@ export class PostgresAdapter implements SQLAdapter {
   public async listTables(schema: string): Promise<string[]> {
     const pool = this.ensurePool()
 
-    const result = await pool.query<{ table_name: string }>(
-      `
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = $1
-      ORDER BY table_name
-    `,
-      [schema]
-    )
+    const result = await pool.query<{ table_name: string }>(QUERIES.LIST_TABLES, [schema])
 
     return result.rows.map((row) => row.table_name)
   }
@@ -109,6 +96,31 @@ export class PostgresAdapter implements SQLAdapter {
       columns,
       constraints: constraints.length > 0 ? constraints : undefined,
       indexes: indexes && indexes.length > 0 ? indexes : undefined
+    }
+  }
+
+  public async fetchTableData(options: TableDataOptions): Promise<TableDataResult> {
+    const pool = this.ensurePool()
+    const start = performance.now()
+
+    // Build and execute the data query
+    const { query, params } = buildTableDataQuery(options)
+    const dataResult = await pool.query<QueryResultRow>(query, params)
+
+    // Build and execute the count query
+    const { query: countQuery, params: countParams } = buildTableCountQuery(options)
+    const countResult = await pool.query<{ total: number }>(countQuery, countParams)
+
+    const executionTime = performance.now() - start
+    const columns = dataResult.fields.map((field) => field.name)
+    const totalCount = countResult.rows[0]?.total ?? 0
+
+    return {
+      rows: dataResult.rows,
+      columns,
+      totalCount,
+      rowCount: dataResult.rows.length,
+      executionTime
     }
   }
 
@@ -140,20 +152,7 @@ export class PostgresAdapter implements SQLAdapter {
       data_type: string
       is_nullable: 'YES' | 'NO'
       column_default: unknown
-    }>(
-      `
-      SELECT
-        column_name,
-        data_type,
-        is_nullable,
-        column_default
-      FROM information_schema.columns
-      WHERE table_schema = $1
-        AND table_name = $2
-      ORDER BY ordinal_position
-    `,
-      [schema, table]
-    )
+    }>(QUERIES.LIST_COLUMNS, [schema, table])
 
     return result.rows.map((row) => ({
       name: row.column_name,
@@ -171,31 +170,7 @@ export class PostgresAdapter implements SQLAdapter {
       foreign_table_schema: string | null
       foreign_table_name: string | null
       foreign_columns: string[] | null
-    }>(
-      `
-      SELECT
-        tc.constraint_name,
-        tc.constraint_type,
-        array_agg(kcu.column_name ORDER BY kcu.ordinal_position) FILTER (WHERE kcu.column_name IS NOT NULL) AS columns,
-        ccu.table_schema AS foreign_table_schema,
-        ccu.table_name AS foreign_table_name,
-        array_agg(ccu.column_name) FILTER (WHERE ccu.column_name IS NOT NULL) AS foreign_columns
-      FROM information_schema.table_constraints tc
-      LEFT JOIN information_schema.key_column_usage kcu
-        ON tc.constraint_name = kcu.constraint_name
-        AND tc.table_schema = kcu.table_schema
-        AND tc.table_name = kcu.table_name
-      LEFT JOIN information_schema.constraint_column_usage ccu
-        ON tc.constraint_name = ccu.constraint_name
-        AND tc.table_schema = ccu.table_schema
-      WHERE tc.table_schema = $1
-        AND tc.table_name = $2
-      GROUP BY
-        tc.constraint_name, tc.constraint_type, ccu.table_schema, ccu.table_name
-      ORDER BY tc.constraint_name
-    `,
-      [schema, table]
-    )
+    }>(QUERIES.LIST_CONSTRAINTS, [schema, table])
 
     return result.rows.map((row) => ({
       name: row.constraint_name,
@@ -218,25 +193,7 @@ export class PostgresAdapter implements SQLAdapter {
       index_name: string
       column_names: string[]
       is_unique: boolean
-    }>(
-      `
-      SELECT
-        idx.relname AS index_name,
-        array_agg(att.attname ORDER BY ord.ordinality) AS column_names,
-        i.indisunique AS is_unique
-      FROM pg_class AS tbl
-      JOIN pg_namespace AS ns ON ns.oid = tbl.relnamespace
-      JOIN pg_index AS i ON i.indrelid = tbl.oid
-      JOIN pg_class AS idx ON idx.oid = i.indexrelid
-      JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS ord(attnum, ordinality) ON true
-      JOIN pg_attribute AS att ON att.attrelid = tbl.oid AND att.attnum = ord.attnum
-      WHERE ns.nspname = $1
-        AND tbl.relname = $2
-      GROUP BY idx.relname, i.indisunique
-      ORDER BY idx.relname
-    `,
-      [schema, table]
-    )
+    }>(QUERIES.LIST_INDEXES, [schema, table])
 
     return result.rows.map((row) => ({
       name: row.index_name,
