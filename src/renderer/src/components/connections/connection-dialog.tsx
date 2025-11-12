@@ -5,7 +5,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle
-} from '../../../components/ui/dialog'
+} from '../ui/dialog'
 import { QuickConnect } from './quick-connect'
 import { ConnectionForm } from './connection-form'
 import { Separator } from '@renderer/components/ui/separator'

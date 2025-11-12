@@ -103,10 +103,6 @@ export class PostgresAdapter implements SQLAdapter {
       this.queryIndexes(pool, schema, table)
     ])
 
-    console.log('columns', columns)
-    console.log('constraints', constraints)
-    console.log('indexes', indexes)
-
     return {
       name: table,
       schema,

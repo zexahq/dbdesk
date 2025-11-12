@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ConnectionList } from '../app/components/connections/connection-list'
+import { ConnectionList } from '../components/connections/connection-list'
 
 export const Route = createFileRoute('/')({
   component: Index
