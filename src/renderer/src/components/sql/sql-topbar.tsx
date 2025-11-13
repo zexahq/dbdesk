@@ -18,34 +18,36 @@ export function SqlTopbar({
   return (
     <div className="border-b">
       <div className="flex items-center justify-between gap-2 p-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="cursor-pointer"
-          onClick={() => onSidebarOpenChange(!isSidebarOpen)}
-        >
-          {isSidebarOpen ? (
-            <PanelLeftClose className="size-4" />
-          ) : (
-            <PanelLeftOpen className="size-4" />
-          )}
-          <span className="sr-only">Toggle sidebar</span>
-        </Button>
-        <ToggleGroup
-          type="single"
-          aria-label="Toggle view"
-          defaultValue={view}
-          onValueChange={onViewChange}
-        >
-          <ToggleGroupItem value="tables" aria-label="Toggle tables view">
-            <Table className="size-4" />
-            <span className="sr-only">Tables</span>
-          </ToggleGroupItem>
-          <ToggleGroupItem value="structure" aria-label="Toggle structure view">
-            <Layers className="size-4" />
-            <span className="sr-only">Layers</span>
-          </ToggleGroupItem>
-        </ToggleGroup>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="cursor-pointer"
+            onClick={() => onSidebarOpenChange(!isSidebarOpen)}
+          >
+            {isSidebarOpen ? (
+              <PanelLeftClose className="size-4" />
+            ) : (
+              <PanelLeftOpen className="size-4" />
+            )}
+            <span className="sr-only">Toggle sidebar</span>
+          </Button>
+          <ToggleGroup
+            type="single"
+            aria-label="Toggle view"
+            defaultValue={view}
+            onValueChange={onViewChange}
+          >
+            <ToggleGroupItem value="tables" aria-label="Toggle tables view">
+              <Table className="size-4" />
+              <span className="sr-only">Tables</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="structure" aria-label="Toggle structure view">
+              <Layers className="size-4" />
+              <span className="sr-only">Layers</span>
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
         <Button variant="ghost" size="icon" className="cursor-pointer">
           <RefreshCcw className="size-4 cursor-pointer" />
         </Button>

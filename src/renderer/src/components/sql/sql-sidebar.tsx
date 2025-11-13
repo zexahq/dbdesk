@@ -26,6 +26,7 @@ import type { SQLConnectionProfile } from '@common/types'
 type DbSidebarProps = {
   profile: SQLConnectionProfile
   selectedSchema: string | null
+  selectedTable: string | null
   onSchemaSelect: (schema: string) => void
   onTableSelect: (table: string) => void
 }
@@ -33,6 +34,7 @@ type DbSidebarProps = {
 export function DbSidebar({
   profile,
   selectedSchema,
+  selectedTable,
   onSchemaSelect,
   onTableSelect
 }: DbSidebarProps) {
@@ -106,9 +108,10 @@ export function DbSidebar({
                   <SidebarMenuItem key={table}>
                     <SidebarMenuButton
                       onClick={() => {
-                        onTableSelect?.(table)
+                        onTableSelect(table)
                       }}
                       className="cursor-pointer"
+                      isActive={selectedTable === table ? true : false}
                     >
                       <Table2Icon className="size-4" />
                       <span>{table}</span>

@@ -34,6 +34,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
           <DbSidebar
             profile={profile}
             selectedSchema={selectedSchema}
+            selectedTable={selectedTable}
             onSchemaSelect={setSelectedSchema}
             onTableSelect={setSelectedTable}
           />
