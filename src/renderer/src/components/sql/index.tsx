@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -8,6 +8,7 @@ import { DbSidebar } from './sql-sidebar'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import type { SQLConnectionProfile } from '@common/types'
 import { SqlTopbar } from './sql-topbar'
+import { SqlBottombar } from './sql-bottombar'
 import { SqlTable } from './table'
 import { SqlStructure } from './sql-structure'
 import { cn } from '@renderer/lib/utils'
@@ -22,12 +23,22 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [view, setView] = useState<'tables' | 'structure'>('tables')
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [limit, setLimit] = useState(50)
+  const [offset, setOffset] = useState(0)
+
+  // Reset offset when table changes
+  useEffect(() => {
+    setOffset(0)
+  }, [selectedTable])
 
   const {
     data: tableData,
     isLoading: isLoadingTableData,
     error
-  } = useTableData(profile.id, selectedSchema || undefined, selectedTable || undefined)
+  } = useTableData(profile.id, selectedSchema || undefined, selectedTable || undefined, {
+    limit,
+    offset
+  })
 
   return (
     <SidebarProvider className="h-full">
@@ -54,7 +65,6 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
               onViewChange={setView}
               isSidebarOpen={isSidebarOpen}
               onSidebarOpenChange={setIsSidebarOpen}
-              tableData={tableData}
             />
             <div className="flex-1 overflow-hidden">
               {view === 'tables' && (
@@ -68,6 +78,13 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
                 />
               )}
             </div>
+            <SqlBottombar
+              tableData={tableData}
+              limit={limit}
+              offset={offset}
+              onLimitChange={setLimit}
+              onOffsetChange={setOffset}
+            />
           </SidebarInset>
         </ResizablePanel>
       </ResizablePanelGroup>

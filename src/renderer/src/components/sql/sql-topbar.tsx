@@ -1,22 +1,19 @@
 import { Layers, Table, RefreshCcw, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@renderer/components/ui/toggle-group'
-import { TableDataResult } from '@renderer/api/client'
 
 interface SqlTopbarProps {
   view: 'tables' | 'structure'
   onViewChange: (view: 'tables' | 'structure') => void
   isSidebarOpen: boolean
   onSidebarOpenChange: (open: boolean) => void
-  tableData?: TableDataResult
 }
 
 export function SqlTopbar({
   view,
   onViewChange,
   isSidebarOpen,
-  onSidebarOpenChange,
-  tableData
+  onSidebarOpenChange
 }: SqlTopbarProps) {
   return (
     <div className="border-b">
@@ -51,21 +48,7 @@ export function SqlTopbar({
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
-        {tableData && (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{tableData.rowCount} rows</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{tableData.totalCount} rows</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {tableData.executionTime.toFixed(2)} ms
-              </span>
-            </div>
-          </div>
-        )}
+
         <Button variant="ghost" size="icon" className="cursor-pointer">
           <RefreshCcw className="size-4 cursor-pointer" />
         </Button>
