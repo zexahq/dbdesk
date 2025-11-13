@@ -1,12 +1,28 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
-import type { TableInfo } from '@common/types'
+import type { TableDataOptions, TableDataResult, TableInfo } from '@common/types'
 
 const keys = {
   schemas: (connectionId: string) => ['schemas', connectionId] as const,
   tables: (connectionId: string, schema: string) => ['tables', connectionId, schema] as const,
   tableInfo: (connectionId: string, schema: string, table: string) =>
-    ['table-introspection', connectionId, schema, table] as const
+    ['table-introspection', connectionId, schema, table] as const,
+  tableData: (
+    connectionId: string,
+    schema: string,
+    table: string,
+    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'>
+  ) =>
+    [
+      'table-data',
+      connectionId,
+      schema,
+      table,
+      options.limit ?? 50,
+      options.offset ?? 0,
+      options.sortColumn ?? null,
+      options.sortOrder ?? null
+    ] as const
 }
 
 export function useSchemas(connectionId?: string) {
@@ -37,5 +53,31 @@ export function useTableIntrospection(connectionId?: string, schema?: string, ta
     queryFn: () =>
       dbdeskClient.introspectTable(connectionId as string, schema as string, table as string),
     enabled
+  })
+}
+
+export function useTableData(
+  connectionId?: string,
+  schema?: string,
+  table?: string,
+  options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'> = {
+    limit: 50,
+    offset: 0
+  }
+) {
+  const enabled = Boolean(connectionId && schema && table)
+  return useQuery<TableDataResult>({
+    queryKey: enabled
+      ? keys.tableData(connectionId as string, schema as string, table as string, options)
+      : ['table-data', 'disabled'],
+    queryFn: () =>
+      dbdeskClient.fetchTableData(
+        connectionId as string,
+        schema as string,
+        table as string,
+        options
+      ),
+    enabled,
+    placeholderData: keepPreviousData
   })
 }

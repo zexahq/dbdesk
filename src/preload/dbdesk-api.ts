@@ -4,6 +4,8 @@ import type {
   DatabaseType,
   DBConnectionOptions,
   QueryResult,
+  TableDataOptions,
+  TableDataResult,
   TableInfo
 } from '@common/types'
 
@@ -151,6 +153,53 @@ export const dbdeskAPI = {
       schema: schema.trim(),
       table: table.trim()
     })
+  },
+
+  /**
+   * Fetch data from a table with pagination
+   */
+  async fetchTableData(
+    connectionId: string,
+    schema: string,
+    table: string,
+    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'> = {
+      limit: 50,
+      offset: 0
+    }
+  ): Promise<TableDataResult> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!schema || typeof schema !== 'string' || schema.trim() === '') {
+      throw new Error('Schema name is required')
+    }
+    if (!table || typeof table !== 'string' || table.trim() === '') {
+      throw new Error('Table name is required')
+    }
+
+    const payload: Record<string, unknown> = {
+      connectionId: connectionId.trim(),
+      schema: schema.trim(),
+      table: table.trim()
+    }
+
+    if (options.limit !== undefined) {
+      payload.limit = options.limit
+    }
+
+    if (options.offset !== undefined) {
+      payload.offset = options.offset
+    }
+
+    if (options.sortColumn) {
+      payload.sortColumn = options.sortColumn
+    }
+
+    if (options.sortOrder) {
+      payload.sortOrder = options.sortOrder
+    }
+
+    return ipcRenderer.invoke('table:data', payload)
   }
 }
 

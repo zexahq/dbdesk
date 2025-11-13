@@ -2,7 +2,7 @@ import { performance } from 'node:perf_hooks'
 import type { QueryResult, SQLAdapter, SQLConnectionOptions, TableInfo } from '@common/types'
 import { Pool, type QueryResult as PgQueryResult } from 'pg'
 
-import type { QueryResultRow } from '@common/types/adapter'
+import type { QueryResultRow } from 'pg'
 import type { TableDataOptions, TableDataResult } from '@common/types/sql'
 import { QUERIES, buildTableDataQuery, buildTableCountQuery } from '../lib/postgers/queries'
 

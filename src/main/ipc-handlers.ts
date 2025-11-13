@@ -5,6 +5,8 @@ import type {
   DatabaseType,
   QueryResult,
   SQLAdapter,
+  TableDataOptions,
+  TableDataResult,
   TableInfo
 } from '@common/types'
 import { connectionManager } from './connectionManager'
@@ -14,7 +16,8 @@ import {
   validateConnectionIdentifier,
   validateCreateConnectionInput,
   validateQueryInput,
-  validateSchemaInput
+  validateSchemaInput,
+  validateTableDataInput
 } from './utils/validation'
 import { ConnectionError, QueryError, ValidationError, sanitizeError } from './utils/errors'
 
@@ -178,5 +181,27 @@ export const registerIpcHandlers = (): void => {
     const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
 
     return adapter.introspectTable(schema, table)
+  })
+
+  safeHandle('table:data', async (payload): Promise<TableDataResult> => {
+    const { connectionId, schema, table, limit, offset, sortColumn, sortOrder } =
+      validateTableDataInput(payload)
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    const options: TableDataOptions = {
+      schema,
+      table,
+      limit,
+      offset
+    }
+
+    if (sortColumn) {
+      options.sortColumn = sortColumn
+      if (sortOrder) {
+        options.sortOrder = sortOrder
+      }
+    }
+
+    return adapter.fetchTableData(options)
   })
 }

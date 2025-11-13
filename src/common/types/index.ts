@@ -4,7 +4,8 @@
  */
 
 // Base adapter types
-export type { QueryResultRow, QueryResult, BaseAdapter, DBAdapter } from './adapter'
+export type { QueryResultRow } from 'pg'
+export type { QueryResult, BaseAdapter, DBAdapter } from './adapter'
 
 // SQL types
 export type { SQLConnectionOptions, ColumnInfo, IndexInfo, TableInfo, SQLAdapter } from './sql'
@@ -30,3 +31,5 @@ export type {
   RedisConnectionProfile,
   ConnectionProfile
 } from './connection'
+
+export type { TableDataOptions, TableDataResult } from './sql'

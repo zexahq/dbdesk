@@ -1,4 +1,5 @@
 import type { BaseAdapter } from './adapter'
+import type { QueryResultRow } from 'pg'
 
 /**
  * SQL database connection options (PostgreSQL, MySQL)
@@ -115,7 +116,7 @@ export interface TableDataOptions {
  * Result of fetching table data
  */
 export interface TableDataResult {
-  rows: unknown[]
+  rows: QueryResultRow[]
   columns: string[]
   totalCount: number
   rowCount: number
@@ -140,4 +141,9 @@ export interface SQLAdapter extends BaseAdapter {
    * Get detailed information about a table structure
    */
   introspectTable(schema: string, table: string): Promise<TableInfo>
+
+  /**
+   * Fetch data from a table with optional pagination and filtering
+   */
+  fetchTableData(options: TableDataOptions): Promise<TableDataResult>
 }

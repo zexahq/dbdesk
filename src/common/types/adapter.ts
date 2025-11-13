@@ -1,11 +1,7 @@
 import type { SQLAdapter } from './sql'
 import type { MongoDBAdapter } from './mongodb'
 import type { RedisAdapter } from './redis'
-
-/**
- * Generic type for query result rows
- */
-export type QueryResultRow = Record<string, unknown>
+import type { QueryResultRow } from 'pg'
 
 /**
  * Interface for query execution results

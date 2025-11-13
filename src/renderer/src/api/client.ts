@@ -3,6 +3,8 @@ import type {
   DatabaseType,
   DBConnectionOptions,
   QueryResult,
+  TableDataOptions,
+  TableDataResult,
   TableInfo
 } from '@common/types'
 
@@ -62,6 +64,15 @@ export const dbdeskClient = {
 
   async introspectTable(connectionId: string, schema: string, table: string): Promise<TableInfo> {
     return getDbdesk().introspectTable(connectionId, schema, table)
+  },
+
+  async fetchTableData(
+    connectionId: string,
+    schema: string,
+    table: string,
+    options?: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'>
+  ): Promise<TableDataResult> {
+    return getDbdesk().fetchTableData(connectionId, schema, table, options)
   }
 }
 
@@ -70,5 +81,7 @@ export type {
   DatabaseType,
   DBConnectionOptions,
   QueryResult,
+  TableDataOptions,
+  TableDataResult,
   TableInfo
 } from '@common/types'

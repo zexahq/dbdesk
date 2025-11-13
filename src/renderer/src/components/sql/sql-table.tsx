@@ -1,4 +1,4 @@
-import { useTableIntrospection } from '@renderer/api/queries/schema'
+import { useTableData } from '@renderer/api/queries/schema'
 
 interface SqlTableProps {
   connectionId: string
@@ -8,16 +8,18 @@ interface SqlTableProps {
 
 export const SqlTable = ({ connectionId, schema, table }: SqlTableProps) => {
   const {
-    data: tableInfo,
-    isLoading: isLoadingTableInfo,
+    data: tableData,
+    isLoading: isLoadingTableData,
     error
-  } = useTableIntrospection(connectionId, schema, table)
+  } = useTableData(connectionId, schema, table)
 
-  if (isLoadingTableInfo) {
-    return <div>Loading table info...</div>
+  console.log(tableData)
+
+  if (isLoadingTableData) {
+    return <div>Loading table data...</div>
   }
 
-  if (!tableInfo || error) {
+  if (!tableData || error) {
     return <div>Table not found</div>
   }
 

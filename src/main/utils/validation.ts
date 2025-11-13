@@ -2,7 +2,8 @@ import type {
   ConnectionProfile,
   DBConnectionOptions,
   DatabaseType,
-  SQLConnectionOptions
+  SQLConnectionOptions,
+  TableDataOptions
 } from '@common/types'
 import { ValidationError } from './errors'
 
@@ -29,6 +30,9 @@ export type SchemaIntrospectInput = SchemaInput & {
 export type ConnectionIdentifierInput = {
   connectionId: string
 }
+
+export type TableDataInput = SchemaIntrospectInput &
+  Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'>
 
 export const validateCreateConnectionInput = (input: unknown): CreateConnectionInput => {
   if (!isObject(input)) {
@@ -132,6 +136,52 @@ export const validateConnectionIdentifier = (input: unknown): ConnectionIdentifi
   return { connectionId }
 }
 
+export const validateTableDataInput = (input: unknown): TableDataInput => {
+  if (!isObject(input)) {
+    throw new ValidationError('Invalid table data payload: expected object')
+  }
+
+  const { connectionId, schema, table } = validateSchemaInput(input, {
+    requireSchema: true,
+    requireTable: true
+  }) as SchemaIntrospectInput
+
+  const limit = toOptionalInteger(input.limit, 'limit', { min: 1, defaultValue: 50 })
+  const offset = toOptionalInteger(input.offset, 'offset', { min: 0, defaultValue: 0 })
+
+  let sortColumn: string | undefined
+  if (typeof input.sortColumn === 'string') {
+    const column = input.sortColumn.trim()
+    if (column) {
+      sortColumn = column
+    }
+  } else if (input.sortColumn !== undefined) {
+    throw new ValidationError('Invalid value for "sortColumn": expected string')
+  }
+
+  let sortOrder: 'ASC' | 'DESC' | undefined
+  if (typeof input.sortOrder === 'string') {
+    const order = input.sortOrder.toUpperCase()
+    if (order === 'ASC' || order === 'DESC') {
+      sortOrder = order
+    } else {
+      throw new ValidationError('Invalid value for "sortOrder": expected "ASC" or "DESC"')
+    }
+  } else if (input.sortOrder !== undefined) {
+    throw new ValidationError('Invalid value for "sortOrder": expected string')
+  }
+
+  return {
+    connectionId,
+    schema,
+    table,
+    limit,
+    offset,
+    sortColumn,
+    sortOrder
+  }
+}
+
 const isObject = (value: unknown): value is Record<string, any> =>
   typeof value === 'object' && value !== null
 
@@ -160,4 +210,35 @@ const toPort = (value: unknown): number => {
   }
 
   return portValue
+}
+
+const toOptionalInteger = (
+  value: unknown,
+  field: string,
+  { min, max, defaultValue }: { min: number; max?: number; defaultValue: number }
+): number => {
+  if (value === undefined || value === null) {
+    return defaultValue
+  }
+
+  const intValue =
+    typeof value === 'string'
+      ? Number.parseInt(value, 10)
+      : typeof value === 'number'
+        ? Math.trunc(value)
+        : NaN
+
+  if (!Number.isInteger(intValue)) {
+    throw new ValidationError(`Invalid value for "${field}": expected integer`)
+  }
+
+  if (intValue < min) {
+    throw new ValidationError(`Invalid value for "${field}": expected integer >= ${min}`)
+  }
+
+  if (typeof max === 'number' && intValue > max) {
+    throw new ValidationError(`Invalid value for "${field}": expected integer <= ${max}`)
+  }
+
+  return intValue
 }
