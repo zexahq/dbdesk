@@ -8,7 +8,7 @@ import { DbSidebar } from './sql-sidebar'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import type { SQLConnectionProfile } from '@common/types'
 import { SqlTopbar } from './sql-topbar'
-import { SqlTable } from './sql-table'
+import { SqlTable } from './table'
 import { SqlStructure } from './sql-structure'
 import { cn } from '@renderer/lib/utils'
 
@@ -41,27 +41,29 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
         </ResizablePanel>
         <ResizableHandle withHandle className={cn(!isSidebarOpen && 'hidden')} />
         <ResizablePanel>
-          <SidebarInset className="h-full overflow-auto">
+          <SidebarInset className="flex h-full flex-col overflow-hidden">
             <SqlTopbar
               view={view}
               onViewChange={setView}
               isSidebarOpen={isSidebarOpen}
               onSidebarOpenChange={setIsSidebarOpen}
             />
-            {view === 'tables' && (
-              <SqlTable
-                connectionId={profile.id}
-                schema={selectedSchema || ''}
-                table={selectedTable || ''}
-              />
-            )}
-            {view === 'structure' && (
-              <SqlStructure
-                connectionId={profile.id}
-                schema={selectedSchema || ''}
-                table={selectedTable || ''}
-              />
-            )}
+            <div className="flex-1 overflow-hidden">
+              {view === 'tables' && (
+                <SqlTable
+                  connectionId={profile.id}
+                  schema={selectedSchema || ''}
+                  table={selectedTable || ''}
+                />
+              )}
+              {view === 'structure' && (
+                <SqlStructure
+                  connectionId={profile.id}
+                  schema={selectedSchema || ''}
+                  table={selectedTable || ''}
+                />
+              )}
+            </div>
           </SidebarInset>
         </ResizablePanel>
       </ResizablePanelGroup>
