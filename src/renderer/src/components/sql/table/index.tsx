@@ -1,22 +1,16 @@
-import { useTableData } from '@renderer/api/queries/schema'
+import { TableDataResult } from '@renderer/api/client'
 import { getColumns } from './columns'
 import { DataTable } from './data-table'
 import { normalizeRow } from '@renderer/lib/utils'
 
 interface SqlTableProps {
-  connectionId: string
-  schema: string
-  table: string
+  isLoading: boolean
+  error: Error | null
+  tableData?: TableDataResult
 }
 
-export const SqlTable = ({ connectionId, schema, table }: SqlTableProps) => {
-  const {
-    data: tableData,
-    isLoading: isLoadingTableData,
-    error
-  } = useTableData(connectionId, schema, table)
-
-  if (isLoadingTableData) {
+export const SqlTable = ({ isLoading, error, tableData }: SqlTableProps) => {
+  if (isLoading) {
     return <div>Loading table data...</div>
   }
 
@@ -38,8 +32,10 @@ export const SqlTable = ({ connectionId, schema, table }: SqlTableProps) => {
   })
 
   return (
-    <div className="flex h-full flex-col">
-      <DataTable columns={columns} data={rows} />
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex-1 overflow-hidden min-h-0">
+        <DataTable columns={columns} data={rows} />
+      </div>
     </div>
   )
 }

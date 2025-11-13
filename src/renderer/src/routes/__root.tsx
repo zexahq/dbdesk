@@ -1,11 +1,11 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { TopBar } from '../components/topbar'
+import { MainSidebar } from '@renderer/components/main-sidebar'
 
 const RootLayout = () => (
-  <div className="h-screen overflow-hidden">
-    <TopBar />
-    <div className="h-[calc(100vh-32px)] overflow-hidden">
+  <div className="h-screen overflow-hidden flex">
+    <MainSidebar />
+    <div className="h-full overflow-hidden flex-1">
       <Outlet />
     </div>
     <TanStackRouterDevtools position="bottom-right" />

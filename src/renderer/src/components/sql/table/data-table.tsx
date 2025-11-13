@@ -39,64 +39,73 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
     onColumnSizingChange: setColumnSizing
   })
 
+  const rowModel = table.getRowModel()
+  const rows = rowModel.rows
+  const hasRows = rows.length > 0
+
   return (
-    <div className="overflow-auto">
-      <Table className="border-collapse table-fixed" style={{ width: table.getTotalSize() }}>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                return (
-                  <TableHead
-                    key={header.id}
-                    className="relative border-border border-x first:border-l last:border-r bg-muted text-muted-foreground truncate"
-                    style={{
-                      width: header.getSize(),
-                      maxWidth: header.getSize()
-                    }}
-                    title={
-                      header.isPlaceholder ? undefined : String(header.column.columnDef.header)
-                    }
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                    <ColumnResizer header={header} />
-                  </TableHead>
-                )
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody className="overflow-y-scroll">
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className="border-border border-x first:border-l last:border-r truncate"
-                    style={{
-                      width: cell.column.getSize(),
-                      minWidth: cell.column.columnDef.minSize,
-                      maxWidth: cell.column.getSize()
-                    }}
-                    title={String(cell.getValue() ?? '')}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="relative flex-1 min-h-0">
+        <div className="h-full overflow-auto">
+          <Table className="border-collapse table-fixed" style={{ width: table.getTotalSize() }}>
+            <TableHeader className="sticky top-0">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead
+                        key={header.id}
+                        className="relative border-border border-x first:border-l last:border-r bg-muted text-muted-foreground truncate"
+                        style={{
+                          width: header.getSize(),
+                          maxWidth: header.getSize()
+                        }}
+                        title={
+                          header.isPlaceholder ? undefined : String(header.column.columnDef.header)
+                        }
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                        <ColumnResizer header={header} />
+                      </TableHead>
+                    )
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody className="[&_tr:last-child]:border-b">
+              {hasRows
+                ? rows.map((row) => (
+                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className="border-border border-x first:border-l last:border-r truncate"
+                          style={{
+                            width: cell.column.getSize(),
+                            minWidth: cell.column.columnDef.minSize,
+                            maxWidth: cell.column.getSize()
+                          }}
+                          title={String(cell.getValue() ?? '')}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                : null}
+            </TableBody>
+          </Table>
+        </div>
+        {!hasRows ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="rounded border border-dashed bg-background/80 px-4 py-2 text-sm text-muted-foreground">
+              No data available
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

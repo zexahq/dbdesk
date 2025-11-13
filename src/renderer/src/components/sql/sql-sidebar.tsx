@@ -90,7 +90,7 @@ export function DbSidebar({
         </SidebarGroup>
       </SidebarHeader>
       <SidebarSeparator />
-      <SidebarContent className="pb-8">
+      <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Tables</SidebarGroupLabel>
           <SidebarGroupContent>

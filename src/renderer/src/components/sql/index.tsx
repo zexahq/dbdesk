@@ -11,6 +11,7 @@ import { SqlTopbar } from './sql-topbar'
 import { SqlTable } from './table'
 import { SqlStructure } from './sql-structure'
 import { cn } from '@renderer/lib/utils'
+import { useTableData } from '@renderer/api/queries/schema'
 
 interface SqlWorkspaceProps {
   profile: SQLConnectionProfile
@@ -21,6 +22,12 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [view, setView] = useState<'tables' | 'structure'>('tables')
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+
+  const {
+    data: tableData,
+    isLoading: isLoadingTableData,
+    error
+  } = useTableData(profile.id, selectedSchema || undefined, selectedTable || undefined)
 
   return (
     <SidebarProvider className="h-full">
@@ -47,14 +54,11 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
               onViewChange={setView}
               isSidebarOpen={isSidebarOpen}
               onSidebarOpenChange={setIsSidebarOpen}
+              tableData={tableData}
             />
             <div className="flex-1 overflow-hidden">
               {view === 'tables' && (
-                <SqlTable
-                  connectionId={profile.id}
-                  schema={selectedSchema || ''}
-                  table={selectedTable || ''}
-                />
+                <SqlTable isLoading={isLoadingTableData} error={error} tableData={tableData} />
               )}
               {view === 'structure' && (
                 <SqlStructure
