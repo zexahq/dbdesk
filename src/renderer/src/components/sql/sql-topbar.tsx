@@ -1,16 +1,36 @@
-import { Layers, Table, RefreshCcw } from 'lucide-react'
+import { Layers, Table, RefreshCcw, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@renderer/components/ui/toggle-group'
 
 interface SqlTopbarProps {
   view: 'tables' | 'structure'
   onViewChange: (view: 'tables' | 'structure') => void
+  isSidebarOpen: boolean
+  onSidebarOpenChange: (open: boolean) => void
 }
 
-export function SqlTopbar({ view, onViewChange }: SqlTopbarProps) {
+export function SqlTopbar({
+  view,
+  onViewChange,
+  isSidebarOpen,
+  onSidebarOpenChange
+}: SqlTopbarProps) {
   return (
     <div className="border-b">
       <div className="flex items-center justify-between gap-2 p-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="cursor-pointer"
+          onClick={() => onSidebarOpenChange(!isSidebarOpen)}
+        >
+          {isSidebarOpen ? (
+            <PanelLeftClose className="size-4" />
+          ) : (
+            <PanelLeftOpen className="size-4" />
+          )}
+          <span className="sr-only">Toggle sidebar</span>
+        </Button>
         <ToggleGroup
           type="single"
           aria-label="Toggle view"
