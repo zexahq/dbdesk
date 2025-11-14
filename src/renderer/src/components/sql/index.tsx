@@ -13,6 +13,7 @@ import { SqlTable } from './table'
 import { SqlStructure } from './sql-structure'
 import { cn } from '@renderer/lib/utils'
 import { useTableData } from '@renderer/api/queries/schema'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface SqlWorkspaceProps {
   profile: SQLConnectionProfile
@@ -31,6 +32,8 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
     setOffset(0)
   }, [selectedTable])
 
+  const queryClient = useQueryClient()
+
   const {
     data: tableData,
     isLoading: isLoadingTableData,
@@ -40,11 +43,20 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
     offset
   })
 
+  const refreshData = () => {
+    if (selectedSchema && selectedTable) {
+      // Invalidate all table data queries for this connection, schema, and table
+      queryClient.invalidateQueries({
+        queryKey: ['table-data', profile.id, selectedSchema, selectedTable]
+      })
+    }
+  }
+
   return (
     <SidebarProvider className="h-full">
       <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
         <ResizablePanel
-          defaultSize={24}
+          defaultSize={16}
           minSize={12}
           maxSize={32}
           className={cn(!isSidebarOpen && 'hidden')}
@@ -65,6 +77,8 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
               onViewChange={setView}
               isSidebarOpen={isSidebarOpen}
               onSidebarOpenChange={setIsSidebarOpen}
+              onRefresh={refreshData}
+              isLoading={isLoadingTableData}
             />
             <div className="flex-1 overflow-hidden">
               {view === 'tables' && (
@@ -78,13 +92,15 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
                 />
               )}
             </div>
-            <SqlBottombar
-              tableData={tableData}
-              limit={limit}
-              offset={offset}
-              onLimitChange={setLimit}
-              onOffsetChange={setOffset}
-            />
+            {tableData && (
+              <SqlBottombar
+                tableData={tableData}
+                limit={limit}
+                offset={offset}
+                onLimitChange={setLimit}
+                onOffsetChange={setOffset}
+              />
+            )}
           </SidebarInset>
         </ResizablePanel>
       </ResizablePanelGroup>

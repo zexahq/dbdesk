@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
-import { Home, Info } from 'lucide-react'
+import { Search, Home, Info } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
 import { Button } from './ui/button'
+import { QuickPanel } from './quick-panel'
 
 export function MainSidebar() {
   return (
@@ -18,6 +19,8 @@ export function MainSidebar() {
               <Info className="size-4" />
             </Link>
           </Button>
+
+          <QuickPanel />
         </div>
         <ThemeToggle />
       </div>

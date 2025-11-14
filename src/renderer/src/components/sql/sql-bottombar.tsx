@@ -6,7 +6,7 @@ import { TableDataResult } from '@renderer/api/client'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 
 interface SqlBottombarProps {
-  tableData?: TableDataResult
+  tableData: TableDataResult
   limit: number
   offset: number
   onLimitChange: (limit: number) => void
@@ -20,8 +20,8 @@ export const SqlBottombar = ({
   onLimitChange,
   onOffsetChange
 }: SqlBottombarProps) => {
-  const totalRows = tableData?.totalCount ?? 0
-  const executionTime = tableData?.executionTime ?? 0
+  const totalRows = tableData.totalCount
+  const executionTime = tableData.executionTime
 
   // Calculate page-based values
   const currentPage = Math.floor(offset / limit) + 1
@@ -127,13 +127,11 @@ export const SqlBottombar = ({
         </div>
 
         {/* Right side: Rows per page, total records, execution time */}
-        {tableData && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{totalRows} records</span>
-            <span className="text-sm text-muted-foreground">•</span>
-            <span className="text-sm text-muted-foreground">{executionTime.toFixed(2)} ms</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{totalRows} records</span>
+          <span className="text-sm text-muted-foreground">•</span>
+          <span className="text-sm text-muted-foreground">{executionTime.toFixed(2)} ms</span>
+        </div>
       </div>
     </div>
   )
