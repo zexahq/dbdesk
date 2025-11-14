@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import { type ColumnDef, flexRender } from '@tanstack/react-table'
 
 import {
@@ -30,6 +31,7 @@ export function DataTable<TData, TValue>({
     table,
     tableContainerRef,
     focusedCell,
+    selectionState,
     getIsCellSelected,
     onCellClick,
     onCellDoubleClick,
@@ -45,6 +47,59 @@ export function DataTable<TData, TValue>({
   const rowModel = table.getRowModel()
   const rows = rowModel.rows
   const hasRows = rows.length > 0
+
+  // Get column IDs for determining selection edges
+  const columnIds = React.useMemo(() => {
+    return table.getAllColumns().map((col) => col.id)
+  }, [table])
+
+  // Helper to determine if a cell is at the edge of the selection
+  const getCellEdgeClasses = React.useCallback(
+    (rowIndex: number, columnId: string) => {
+      if (!selectionState.selectionRange || selectionState.selectedCells.size === 0) {
+        return { edgeClasses: '', isEdgeCell: false }
+      }
+
+      const { start, end } = selectionState.selectionRange
+      const startColIndex = columnIds.indexOf(start.columnId)
+      const endColIndex = columnIds.indexOf(end.columnId)
+      const currentColIndex = columnIds.indexOf(columnId)
+
+      const minRow = Math.min(start.rowIndex, end.rowIndex)
+      const maxRow = Math.max(start.rowIndex, end.rowIndex)
+      const minCol = Math.min(startColIndex, endColIndex)
+      const maxCol = Math.max(startColIndex, endColIndex)
+
+      // Check if this cell is part of the selection
+      const isInSelection =
+        rowIndex >= minRow &&
+        rowIndex <= maxRow &&
+        currentColIndex >= minCol &&
+        currentColIndex <= maxCol
+
+      if (!isInSelection) {
+        return { edgeClasses: '', isEdgeCell: false }
+      }
+
+      const isTopEdge = rowIndex === minRow
+      const isBottomEdge = rowIndex === maxRow
+      const isLeftEdge = currentColIndex === minCol
+      const isRightEdge = currentColIndex === maxCol
+      const isEdgeCell = isTopEdge || isBottomEdge || isLeftEdge || isRightEdge
+
+      const edgeClasses: string[] = []
+
+      if (isTopEdge) edgeClasses.push('border-t-2 border-t-ring')
+      if (isBottomEdge) edgeClasses.push('border-b-2 border-b-ring')
+      if (isLeftEdge) edgeClasses.push('border-l-2 border-l-ring')
+      if (isRightEdge) edgeClasses.push('border-r-2 border-r-ring')
+
+      edgeClasses.push('bg-ring/5')
+
+      return { edgeClasses: edgeClasses.join(' '), isEdgeCell }
+    },
+    [selectionState, columnIds]
+  )
 
   return (
     <>
@@ -69,7 +124,7 @@ export function DataTable<TData, TValue>({
                       return (
                         <TableHead
                           key={header.id}
-                          className="relative border-border border-x first:border-l last:border-r truncate bg-background"
+                          className="relative border-border border-x border-b first:border-l last:border-r truncate bg-background"
                           style={{
                             width: header.getSize(),
                             maxWidth: header.getSize()
@@ -88,44 +143,78 @@ export function DataTable<TData, TValue>({
               </TableHeader>
               <TableBody className="[&_tr:last-child]:border-b">
                 {hasRows
-                  ? rows.map((row, rowIndex) => (
-                      <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                        {row.getVisibleCells().map((cell) => {
-                          const columnId =
-                            cell.column.id ||
-                            ((cell.column.columnDef as { accessorKey?: string })
-                              .accessorKey as string) ||
-                            ''
-                          const isFocused =
-                            focusedCell?.rowIndex === rowIndex && focusedCell?.columnId === columnId
-                          const isSelected = getIsCellSelected(rowIndex, columnId)
+                  ? rows.map((row, rowIndex) => {
+                      const isRowSelected = row.getIsSelected()
+                      return (
+                        <TableRow
+                          key={row.id}
+                          data-state={isRowSelected && 'selected'}
+                          className={cn(isRowSelected && 'bg-selected-cell')}
+                        >
+                          {row.getVisibleCells().map((cell) => {
+                            const columnId = cell.column.id
+                            const isSelectColumn = columnId === 'select'
+                            const isFocused =
+                              focusedCell?.rowIndex === rowIndex &&
+                              focusedCell?.columnId === columnId
+                            const isSelected = getIsCellSelected(rowIndex, columnId)
+                            const { edgeClasses, isEdgeCell } = getCellEdgeClasses(
+                              rowIndex,
+                              columnId
+                            )
+                            const hasSelectionBorder = isEdgeCell
 
-                          return (
-                            <TableCell
-                              key={cell.id}
-                              className={cn(
-                                'border-border border-x first:border-l last:border-r truncate cursor-pointer bg-accent/50',
-                                isFocused && 'outline-1 outline-primary outline-offset-0',
-                                isSelected && !isFocused && 'bg-selected-cell'
-                              )}
-                              style={{
-                                width: cell.column.getSize(),
-                                minWidth: cell.column.columnDef.minSize,
-                                maxWidth: cell.column.getSize()
-                              }}
-                              title={String(cell.getValue() ?? '')}
-                              onClick={(e) => onCellClick(rowIndex, columnId, e)}
-                              onDoubleClick={(e) => onCellDoubleClick(rowIndex, columnId, e)}
-                              onMouseDown={(e) => onCellMouseDown(rowIndex, columnId, e)}
-                              onMouseEnter={(e) => onCellMouseEnter(rowIndex, columnId, e)}
-                              onMouseUp={onCellMouseUp}
-                            >
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
-                          )
-                        })}
-                      </TableRow>
-                    ))
+                            return (
+                              <TableCell
+                                key={cell.id}
+                                className={cn(
+                                  // Default borders - remove on edge cells that are part of selection
+                                  !hasSelectionBorder &&
+                                    'border-border border-x first:border-l last:border-r',
+                                  'truncate bg-accent/50',
+                                  !isSelectColumn && 'cursor-pointer',
+                                  // Only show outline on focused cell if there's no selection border
+                                  isFocused &&
+                                    !hasSelectionBorder &&
+                                    'outline-2 outline-ring outline-offset-0',
+                                  isSelected && !isFocused && !isRowSelected && 'bg-selected-cell',
+                                  edgeClasses
+                                )}
+                                style={{
+                                  width: cell.column.getSize(),
+                                  minWidth: cell.column.columnDef.minSize,
+                                  maxWidth: cell.column.getSize()
+                                }}
+                                title={String(cell.getValue() ?? '')}
+                                onClick={
+                                  isSelectColumn
+                                    ? undefined
+                                    : (e) => onCellClick(rowIndex, columnId, e)
+                                }
+                                onDoubleClick={
+                                  isSelectColumn
+                                    ? undefined
+                                    : (e) => onCellDoubleClick(rowIndex, columnId, e)
+                                }
+                                onMouseDown={
+                                  isSelectColumn
+                                    ? undefined
+                                    : (e) => onCellMouseDown(rowIndex, columnId, e)
+                                }
+                                onMouseEnter={
+                                  isSelectColumn
+                                    ? undefined
+                                    : (e) => onCellMouseEnter(rowIndex, columnId, e)
+                                }
+                                onMouseUp={isSelectColumn ? undefined : onCellMouseUp}
+                              >
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </TableCell>
+                            )
+                          })}
+                        </TableRow>
+                      )
+                    })
                   : null}
               </TableBody>
             </Table>

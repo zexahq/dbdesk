@@ -117,7 +117,7 @@ function DataTableKeyboardShortcutsImpl() {
           },
           {
             keys: ['Esc'],
-            description: 'Clear selection'
+            description: 'Clear cell selection'
           }
         ]
       },

@@ -1,23 +1,69 @@
 import type { TableDataColumn } from '@common/types'
+import { Checkbox } from '@renderer/components/ui/checkbox'
 import { ColumnDef } from '@tanstack/react-table'
+import { cn } from '@renderer/lib/utils'
 
 const DEFAULT_COLUMN_WIDTH = 240
 const DEFAULT_MIN_COLUMN_WIDTH = 120
 
 export const getColumns = (columns: TableDataColumn[]): ColumnDef<Record<string, string>>[] => {
-  return columns.map((column) => ({
-    accessorKey: column.name,
-    header: () => (
-      <div className="flex flex-col px-2 py-1">
-        <span className="font-medium text-accent-foreground">{column.name}</span>
-        <span className="text-xs text-muted-foreground font-normal">{column.dataType}</span>
-      </div>
-    ),
-    meta: {
-      dataType: column.dataType,
-      name: column.name
+  return [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className={cn(
+            'border-foreground/20 bg-background/80',
+            'data-[state=checked]:bg-primary data-[state=checked]:border-primary',
+            'data-[state=checked]:text-primary-foreground',
+            'hover:border-foreground/40 hover:bg-background',
+            'dark:border-foreground/30 dark:bg-background/60',
+            'dark:data-[state=checked]:bg-primary dark:data-[state=checked]:border-primary',
+            'dark:hover:border-foreground/50 dark:hover:bg-background/80'
+          )}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className={cn(
+            'border-foreground/20 bg-background/80',
+            'data-[state=checked]:bg-primary data-[state=checked]:border-primary',
+            'data-[state=checked]:text-primary-foreground',
+            'hover:border-foreground/40 hover:bg-background',
+            'dark:border-foreground/30 dark:bg-background/60',
+            'dark:data-[state=checked]:bg-primary dark:data-[state=checked]:border-primary',
+            'dark:hover:border-foreground/50 dark:hover:bg-background/80'
+          )}
+        />
+      ),
+      size: 32,
+      enableSorting: false,
+      enableHiding: false,
+      enableResizing: false
     },
-    size: DEFAULT_COLUMN_WIDTH,
-    minSize: DEFAULT_MIN_COLUMN_WIDTH
-  }))
+    ...columns.map((column) => ({
+      accessorKey: column.name,
+      header: () => (
+        <div className="flex flex-col px-2 py-1">
+          <span className="font-medium text-accent-foreground">{column.name}</span>
+          <span className="text-xs text-muted-foreground font-normal">{column.dataType}</span>
+        </div>
+      ),
+      meta: {
+        dataType: column.dataType,
+        name: column.name
+      },
+      size: DEFAULT_COLUMN_WIDTH,
+      minSize: DEFAULT_MIN_COLUMN_WIDTH
+    }))
+  ]
 }

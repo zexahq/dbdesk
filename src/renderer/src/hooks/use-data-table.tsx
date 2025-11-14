@@ -4,7 +4,9 @@ import {
   type ColumnDef,
   type ColumnSizingState,
   getCoreRowModel,
+  type RowSelectionState,
   type TableOptions,
+  type Updater,
   useReactTable
 } from '@tanstack/react-table'
 import * as React from 'react'
@@ -23,6 +25,8 @@ interface UseDataTableProps<TData, TValue = unknown>
   onDataChange?: (data: TData[]) => void
 }
 
+const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
+
 export function useDataTable<TData, TValue = unknown>({
   columns,
   data,
@@ -40,8 +44,12 @@ export function useDataTable<TData, TValue = unknown>({
     selectionRange: null,
     isSelecting: false
   })
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
+    tableOptions.initialState?.rowSelection ?? {}
+  )
   const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({})
   const [pendingUpdates, setPendingUpdates] = React.useState<UpdateCell[]>([])
+  const [shiftAnchor, setShiftAnchor] = React.useState<CellPosition | null>(null)
 
   // Get column IDs
   const columnIds = React.useMemo(() => {
@@ -54,19 +62,35 @@ export function useDataTable<TData, TValue = unknown>({
       .filter((id): id is string => Boolean(id))
   }, [columns])
 
+  // Get navigable column IDs (exclude select and actions columns)
+  const navigableColumnIds = React.useMemo(() => {
+    return columnIds.filter((c) => !NON_NAVIGABLE_COLUMN_IDS.includes(c))
+  }, [columnIds])
+
+  // Handle row selection change (keep separate from cell selection)
+  const onRowSelectionChange = React.useCallback((updater: Updater<RowSelectionState>) => {
+    setRowSelection((currentRowSelection) => {
+      const newRowSelection = typeof updater === 'function' ? updater(currentRowSelection) : updater
+      return newRowSelection
+    })
+  }, [])
+
   // Table instance
   const table = useReactTable({
     ...tableOptions,
     data,
     columns,
     enableColumnResizing: true,
+    enableRowSelection: true,
     columnResizeMode: 'onChange',
     getCoreRowModel: getCoreRowModel(),
     state: {
       ...tableOptions.state,
-      columnSizing
+      columnSizing,
+      rowSelection
     },
-    onColumnSizingChange: setColumnSizing
+    onColumnSizingChange: setColumnSizing,
+    onRowSelectionChange
   })
 
   if (!tableRef.current) {
@@ -81,7 +105,7 @@ export function useDataTable<TData, TValue = unknown>({
     [selectionState.selectedCells]
   )
 
-  // Clear selection
+  // Clear selection (only clears cell selection, not row selection)
   const clearSelection = React.useCallback(() => {
     setSelectionState({
       selectedCells: new Set(),
@@ -166,7 +190,7 @@ export function useDataTable<TData, TValue = unknown>({
       if (!focusedCell) return
 
       const { rowIndex, columnId } = focusedCell
-      const currentColIndex = columnIds.indexOf(columnId)
+      const currentColIndex = navigableColumnIds.indexOf(columnId)
       const rows = table.getRowModel().rows
       const rowCount = rows.length
 
@@ -182,36 +206,36 @@ export function useDataTable<TData, TValue = unknown>({
           break
         case 'left':
           if (currentColIndex > 0) {
-            const prevColumnId = columnIds[currentColIndex - 1]
+            const prevColumnId = navigableColumnIds[currentColIndex - 1]
             if (prevColumnId) newColumnId = prevColumnId
           }
           break
         case 'right':
-          if (currentColIndex < columnIds.length - 1) {
-            const nextColumnId = columnIds[currentColIndex + 1]
+          if (currentColIndex < navigableColumnIds.length - 1) {
+            const nextColumnId = navigableColumnIds[currentColIndex + 1]
             if (nextColumnId) newColumnId = nextColumnId
           }
           break
         case 'home':
-          if (columnIds.length > 0) {
-            newColumnId = columnIds[0] ?? columnId
+          if (navigableColumnIds.length > 0) {
+            newColumnId = navigableColumnIds[0] ?? columnId
           }
           break
         case 'end':
-          if (columnIds.length > 0) {
-            newColumnId = columnIds[columnIds.length - 1] ?? columnId
+          if (navigableColumnIds.length > 0) {
+            newColumnId = navigableColumnIds[navigableColumnIds.length - 1] ?? columnId
           }
           break
         case 'ctrl+home':
           newRowIndex = 0
-          if (columnIds.length > 0) {
-            newColumnId = columnIds[0] ?? columnId
+          if (navigableColumnIds.length > 0) {
+            newColumnId = navigableColumnIds[0] ?? columnId
           }
           break
         case 'ctrl+end':
           newRowIndex = Math.max(0, rowCount - 1)
-          if (columnIds.length > 0) {
-            newColumnId = columnIds[columnIds.length - 1] ?? columnId
+          if (navigableColumnIds.length > 0) {
+            newColumnId = navigableColumnIds[navigableColumnIds.length - 1] ?? columnId
           }
           break
         case 'pageup': {
@@ -244,7 +268,7 @@ export function useDataTable<TData, TValue = unknown>({
         focusCell(newRowIndex, newColumnId)
       }
     },
-    [focusedCell, columnIds, table, focusCell]
+    [focusedCell, navigableColumnIds, table, focusCell]
   )
 
   // Start editing cell
@@ -336,6 +360,11 @@ export function useDataTable<TData, TValue = unknown>({
         return
       }
 
+      // Ignore clicks on select column (let checkbox handle it)
+      if (columnId === 'select') {
+        return
+      }
+
       const cellKey = getCellKey(rowIndex, columnId)
 
       if (event) {
@@ -365,8 +394,14 @@ export function useDataTable<TData, TValue = unknown>({
         }
       }
 
-      // Clear selection if clicking elsewhere
+      // Clear shift anchor when clicking (Shift is not held for mouse clicks)
+      if (shiftAnchor) {
+        setShiftAnchor(null)
+      }
+
+      // Clear cell selection if clicking elsewhere (but keep row selection)
       const hasSelectedCells = selectionState.selectedCells.size > 0
+
       if (hasSelectedCells && !selectionState.isSelecting) {
         const isClickingSelectedCell = selectionState.selectedCells.has(cellKey)
 
@@ -384,7 +419,15 @@ export function useDataTable<TData, TValue = unknown>({
         focusCell(rowIndex, columnId)
       }
     },
-    [selectionState, focusedCell, focusCell, onCellEditingStart, selectRange, clearSelection]
+    [
+      selectionState,
+      shiftAnchor,
+      focusedCell,
+      focusCell,
+      onCellEditingStart,
+      selectRange,
+      clearSelection
+    ]
   )
 
   // Handle cell double click
@@ -531,7 +574,14 @@ export function useDataTable<TData, TValue = unknown>({
 
         // Shift+Arrow for range selection
         if (shiftKey && key !== 'Tab' && focusedCell) {
-          const currentColIndex = columnIds.indexOf(focusedCell.columnId)
+          // If there's no shift anchor yet, set it to the currently focused cell
+          // This captures the cell that was focused when Shift was first pressed
+          const currentShiftAnchor = shiftAnchor || focusedCell
+          if (!shiftAnchor) {
+            setShiftAnchor(focusedCell)
+          }
+
+          const currentColIndex = navigableColumnIds.indexOf(focusedCell.columnId)
           let newRowIndex = focusedCell.rowIndex
           let newColumnId = focusedCell.columnId
 
@@ -544,25 +594,30 @@ export function useDataTable<TData, TValue = unknown>({
               break
             case 'left':
               if (currentColIndex > 0) {
-                const prevColumnId = columnIds[currentColIndex - 1]
+                const prevColumnId = navigableColumnIds[currentColIndex - 1]
                 if (prevColumnId) newColumnId = prevColumnId
               }
               break
             case 'right':
-              if (currentColIndex < columnIds.length - 1) {
-                const nextColumnId = columnIds[currentColIndex + 1]
+              if (currentColIndex < navigableColumnIds.length - 1) {
+                const nextColumnId = navigableColumnIds[currentColIndex + 1]
                 if (nextColumnId) newColumnId = nextColumnId
               }
               break
           }
 
-          const selectionStart = selectionState.selectionRange?.start || focusedCell
-          selectRange(selectionStart, {
+          // Always use the shift anchor as the selection start
+          selectRange(currentShiftAnchor, {
             rowIndex: newRowIndex,
             columnId: newColumnId
           })
+
           focusCell(newRowIndex, newColumnId)
         } else {
+          // Clear shift anchor when arrow keys are pressed without Shift
+          if (shiftAnchor) {
+            setShiftAnchor(null)
+          }
           if (selectionState.selectedCells.size > 0) {
             clearSelection()
           }
@@ -574,7 +629,8 @@ export function useDataTable<TData, TValue = unknown>({
       editingCell,
       focusedCell,
       selectionState,
-      columnIds,
+      shiftAnchor,
+      navigableColumnIds,
       table,
       selectAll,
       onDataUpdate,
@@ -586,16 +642,26 @@ export function useDataTable<TData, TValue = unknown>({
     ]
   )
 
-  // Set up keyboard event listener
+  // Set up keyboard event listeners
   React.useEffect(() => {
     const container = tableContainerRef.current
     if (!container) return
 
     container.addEventListener('keydown', onKeyDown)
+
+    // Clear shift anchor when Shift key is released
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Shift' && shiftAnchor) {
+        setShiftAnchor(null)
+      }
+    }
+
+    window.addEventListener('keyup', onKeyUp)
     return () => {
       container.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
     }
-  }, [onKeyDown])
+  }, [onKeyDown, shiftAnchor])
 
   // Prevent text selection during drag selection
   React.useEffect(() => {
