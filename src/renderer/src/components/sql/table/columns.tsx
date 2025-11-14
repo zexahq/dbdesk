@@ -13,6 +13,10 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<Record<string,
         <span className="text-xs text-muted-foreground font-normal">{column.dataType}</span>
       </div>
     ),
+    meta: {
+      dataType: column.dataType,
+      name: column.name
+    },
     size: DEFAULT_COLUMN_WIDTH,
     minSize: DEFAULT_MIN_COLUMN_WIDTH
   }))
