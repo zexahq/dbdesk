@@ -69,7 +69,7 @@ export function DataTable<TData, TValue>({
                       return (
                         <TableHead
                           key={header.id}
-                          className="relative border-border border-x first:border-l last:border-r bg-muted text-muted-foreground truncate"
+                          className="relative border-border border-x first:border-l last:border-r truncate bg-background"
                           style={{
                             width: header.getSize(),
                             maxWidth: header.getSize()
@@ -104,7 +104,7 @@ export function DataTable<TData, TValue>({
                             <TableCell
                               key={cell.id}
                               className={cn(
-                                'border-border border-x first:border-l last:border-r truncate cursor-pointer',
+                                'border-border border-x first:border-l last:border-r truncate cursor-pointer bg-accent/50',
                                 isFocused && 'outline-1 outline-primary outline-offset-0',
                                 isSelected && !isFocused && 'bg-selected-cell'
                               )}

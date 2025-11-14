@@ -39,7 +39,7 @@ export function QuickPanel() {
 
   return (
     <>
-      <Button variant="ghost" size="icon" className="cursor-pointer">
+      <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => setOpen(true)}>
         <kbd>
           <Search className="size-4" />
         </kbd>

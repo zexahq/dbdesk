@@ -74,7 +74,7 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
             </Select>
           </div>
           <div className="flex items-center gap-2">
-            <div className="relative">
+            <div className="relative w-full">
               <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
               <SidebarInput
                 placeholder="Search tables…"
