@@ -12,20 +12,54 @@ import { SqlBottombar } from './sql-bottombar'
 import { SqlTable } from './table'
 import { SqlStructure } from './sql-structure'
 import { cn } from '@renderer/lib/utils'
-import { useTableData } from '@renderer/api/queries/schema'
+import { useTableData, useSchemasWithTables } from '@renderer/api/queries/schema'
 import { useQueryClient } from '@tanstack/react-query'
+import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 
 interface SqlWorkspaceProps {
   profile: SQLConnectionProfile
 }
 
 export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
-  const [selectedSchema, setSelectedSchema] = useState<string | null>(null)
-  const [selectedTable, setSelectedTable] = useState<string | null>(null)
+  const {
+    selectedSchema,
+    selectedTable,
+    setSelectedSchema,
+    setSelectedTable,
+    setSchemasWithTables
+  } = useSqlWorkspaceStore()
+
   const [view, setView] = useState<'tables' | 'structure'>('tables')
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [limit, setLimit] = useState(50)
   const [offset, setOffset] = useState(0)
+
+  // Fetch schemas with tables and sync to store
+  const { data: schemasWithTables } = useSchemasWithTables(profile.id)
+  useEffect(() => {
+    if (schemasWithTables) {
+      setSchemasWithTables(schemasWithTables)
+    } else {
+      setSchemasWithTables([])
+    }
+  }, [schemasWithTables, setSchemasWithTables])
+
+  // Auto-select schema and table after data loads
+  useEffect(() => {
+    if (schemasWithTables && schemasWithTables.length > 0 && !selectedSchema) {
+      // Find "public" schema or use first schema
+      const publicSchema = schemasWithTables.find((s) => s.schema === 'public')
+      const targetSchema = publicSchema || schemasWithTables[0]
+
+      if (targetSchema) {
+        setSelectedSchema(targetSchema.schema)
+        // Select first table if available
+        if (targetSchema.tables.length > 0) {
+          setSelectedTable(targetSchema.tables[0])
+        }
+      }
+    }
+  }, [schemasWithTables, selectedSchema, setSelectedSchema, setSelectedTable])
 
   // Reset offset when table changes
   useEffect(() => {
@@ -43,13 +77,19 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
     offset
   })
 
-  const refreshData = () => {
+  const refreshTableData = () => {
     if (selectedSchema && selectedTable) {
       // Invalidate all table data queries for this connection, schema, and table
       queryClient.invalidateQueries({
         queryKey: ['table-data', profile.id, selectedSchema, selectedTable]
       })
     }
+  }
+
+  const refreshSchemasWithTables = () => {
+    queryClient.invalidateQueries({
+      queryKey: ['schemasWithTables', profile.id]
+    })
   }
 
   return (
@@ -61,13 +101,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
           maxSize={32}
           className={cn(!isSidebarOpen && 'hidden')}
         >
-          <DbSidebar
-            profile={profile}
-            selectedSchema={selectedSchema}
-            selectedTable={selectedTable}
-            onSchemaSelect={setSelectedSchema}
-            onTableSelect={setSelectedTable}
-          />
+          <DbSidebar profile={profile} onRefresh={refreshSchemasWithTables} />
         </ResizablePanel>
         <ResizableHandle withHandle className={cn(!isSidebarOpen && 'hidden')} />
         <ResizablePanel>
@@ -77,7 +111,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
               onViewChange={setView}
               isSidebarOpen={isSidebarOpen}
               onSidebarOpenChange={setIsSidebarOpen}
-              onRefresh={refreshData}
+              onRefresh={refreshTableData}
               isLoading={isLoadingTableData}
             />
             <div className="flex-1 overflow-hidden">

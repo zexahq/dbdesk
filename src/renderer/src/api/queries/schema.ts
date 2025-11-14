@@ -1,9 +1,10 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
-import type { TableDataOptions, TableDataResult, TableInfo } from '@common/types'
+import type { SchemaWithTables, TableDataOptions, TableDataResult, TableInfo } from '@common/types'
 
 const keys = {
   schemas: (connectionId: string) => ['schemas', connectionId] as const,
+  schemasWithTables: (connectionId: string) => ['schemasWithTables', connectionId] as const,
   tables: (connectionId: string, schema: string) => ['tables', connectionId, schema] as const,
   tableInfo: (connectionId: string, schema: string, table: string) =>
     ['table-introspection', connectionId, schema, table] as const,
@@ -41,6 +42,16 @@ export function useTables(connectionId?: string, schema?: string) {
       : ['tables', 'disabled'],
     queryFn: () => dbdeskClient.listTables(connectionId as string, schema as string),
     enabled
+  })
+}
+
+export function useSchemasWithTables(connectionId?: string) {
+  return useQuery<SchemaWithTables[]>({
+    queryKey: connectionId
+      ? keys.schemasWithTables(connectionId)
+      : ['schemasWithTables', 'disabled'],
+    queryFn: () => dbdeskClient.listSchemasWithTables(connectionId as string),
+    enabled: Boolean(connectionId)
   })
 }
 

@@ -4,6 +4,7 @@ import type {
   DatabaseType,
   DBConnectionOptions,
   QueryResult,
+  SchemaWithTables,
   TableDataOptions,
   TableDataResult,
   TableInfo
@@ -132,6 +133,17 @@ export const dbdeskAPI = {
       connectionId: connectionId.trim(),
       schema: schema.trim()
     })
+  },
+
+  /**
+   * List all schemas with their tables
+   */
+  async listSchemasWithTables(connectionId: string): Promise<SchemaWithTables[]> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+
+    return ipcRenderer.invoke('schema:listWithTables', { connectionId: connectionId.trim() })
   },
 
   /**

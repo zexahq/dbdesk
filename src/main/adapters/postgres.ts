@@ -3,7 +3,7 @@ import type { QueryResult, SQLAdapter, SQLConnectionOptions, TableInfo } from '@
 import { Pool, type QueryResult as PgQueryResult } from 'pg'
 
 import type { QueryResultRow } from 'pg'
-import type { TableDataOptions, TableDataResult } from '@common/types/sql'
+import type { SchemaWithTables, TableDataOptions, TableDataResult } from '@common/types/sql'
 import { QUERIES, buildTableDataQuery, buildTableCountQuery } from '../lib/postgers/queries'
 
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -81,6 +81,28 @@ export class PostgresAdapter implements SQLAdapter {
     return result.rows.map((row) => row.table_name)
   }
 
+  public async listSchemaWithTables(): Promise<SchemaWithTables[]> {
+    const pool = this.ensurePool()
+
+    const result = await pool.query<{ schema_name: string; tables: string }>(
+      QUERIES.LIST_SCHEMAS_WITH_TABLES
+    )
+
+    return result.rows.map((row) => {
+      let tables: string[] = []
+      if (row.tables && row.tables !== '{}') {
+        const arrayContent = row.tables.slice(1, -1) // Remove '{' and '}'
+        if (arrayContent.trim()) {
+          tables = arrayContent.split(',').map((t) => t.trim())
+        }
+      }
+      return {
+        schema: row.schema_name,
+        tables
+      }
+    })
+  }
+
   public async introspectTable(schema: string, table: string): Promise<TableInfo> {
     const pool = this.ensurePool()
 
@@ -103,16 +125,22 @@ export class PostgresAdapter implements SQLAdapter {
     const pool = this.ensurePool()
     const start = performance.now()
 
-    // Build and execute the data query
+    // Build queries
     const { query, params } = buildTableDataQuery(options)
-    const dataResult = await pool.query<QueryResultRow>(query, params)
-
-    // Build and execute the count query
     const { query: countQuery, params: countParams } = buildTableCountQuery(options)
-    const countResult = await pool.query<{ total: number }>(countQuery, countParams)
+
+    // Execute data, count, and column metadata queries in parallel
+    const [dataResult, countResult, columnInfo] = await Promise.all([
+      pool.query<QueryResultRow>(query, params),
+      pool.query<{ total: number }>(countQuery, countParams),
+      this.queryColumns(pool, options.schema, options.table)
+    ])
 
     const executionTime = performance.now() - start
-    const columns = dataResult.fields.map((field) => field.name)
+    const columns = columnInfo.map((column) => ({
+      name: column.name,
+      dataType: column.type
+    }))
     const totalCount = countResult.rows[0]?.total ?? 0
 
     return {

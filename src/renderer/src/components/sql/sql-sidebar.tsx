@@ -12,7 +12,6 @@ import {
   SidebarMenuItem,
   SidebarSeparator
 } from '@renderer/components/ui/sidebar'
-import { useSchemas, useTables } from '@renderer/api/queries/schema'
 import {
   Select,
   SelectContent,
@@ -20,31 +19,26 @@ import {
   SelectTrigger,
   SelectValue
 } from '@renderer/components/ui/select'
-import { DatabaseIcon, SearchIcon, Table2Icon } from 'lucide-react'
+import { DatabaseIcon, SearchIcon, Table2Icon, RefreshCcw } from 'lucide-react'
 import type { SQLConnectionProfile } from '@common/types'
+import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { Button } from '../ui/button'
 
 type DbSidebarProps = {
   profile: SQLConnectionProfile
-  selectedSchema: string | null
-  selectedTable: string | null
-  onSchemaSelect: (schema: string) => void
-  onTableSelect: (table: string) => void
+  onRefresh: () => void
 }
 
-export function DbSidebar({
-  profile,
-  selectedSchema,
-  selectedTable,
-  onSchemaSelect,
-  onTableSelect
-}: DbSidebarProps) {
+export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
   const [search, setSearch] = React.useState('')
 
-  const { data: schemas = [], isLoading: loadingSchemas } = useSchemas(profile.id)
-  const { data: tables = [], isLoading: loadingTables } = useTables(
-    profile.id,
-    selectedSchema || undefined
-  )
+  const { selectedSchema, selectedTable, setSelectedSchema, setSelectedTable, schemasWithTables } =
+    useSqlWorkspaceStore()
+
+  const schemas = schemasWithTables.map((s) => s.schema)
+  const tables = selectedSchema
+    ? schemasWithTables.find((s) => s.schema === selectedSchema)?.tables || []
+    : []
 
   const filteredTables = React.useMemo(() => {
     if (!search) return tables
@@ -62,12 +56,13 @@ export function DbSidebar({
             <Select
               value={selectedSchema || ''}
               onValueChange={(v) => {
-                onSchemaSelect(v)
+                setSelectedSchema(v)
+                setSelectedTable(null) // Reset table when schema changes
               }}
-              disabled={loadingSchemas || schemas.length === 0}
+              disabled={schemas.length === 0}
             >
               <SelectTrigger className="w-full h-10 pl-8 py-5">
-                <SelectValue placeholder={loadingSchemas ? 'Loading…' : 'Select schema'} />
+                <SelectValue placeholder="Select schema" />
               </SelectTrigger>
               <SelectContent>
                 {schemas.map((schema) => (
@@ -78,14 +73,19 @@ export function DbSidebar({
               </SelectContent>
             </Select>
           </div>
-          <div className="relative">
-            <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <SidebarInput
-              placeholder="Search tables…"
-              className="h-10 pl-8 py-4"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              <SidebarInput
+                placeholder="Search tables…"
+                className="h-10 pl-8 py-4"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
+              <RefreshCcw className="size-4" />
+            </Button>
           </div>
         </SidebarGroup>
       </SidebarHeader>
@@ -95,9 +95,9 @@ export function DbSidebar({
           <SidebarGroupLabel>Tables</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {loadingTables ? (
+              {!selectedSchema ? (
                 <SidebarMenuItem>
-                  <SidebarMenuButton aria-disabled>Loading tables…</SidebarMenuButton>
+                  <SidebarMenuButton aria-disabled>Select a schema first</SidebarMenuButton>
                 </SidebarMenuItem>
               ) : filteredTables.length === 0 ? (
                 <SidebarMenuItem>
@@ -108,7 +108,7 @@ export function DbSidebar({
                   <SidebarMenuItem key={table}>
                     <SidebarMenuButton
                       onClick={() => {
-                        onTableSelect(table)
+                        setSelectedTable(table)
                       }}
                       className="cursor-pointer"
                       isActive={selectedTable === table ? true : false}

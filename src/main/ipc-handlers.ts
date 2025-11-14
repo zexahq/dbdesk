@@ -4,6 +4,7 @@ import type {
   ConnectionProfile,
   DatabaseType,
   QueryResult,
+  SchemaWithTables,
   SQLAdapter,
   TableDataOptions,
   TableDataResult,
@@ -166,6 +167,13 @@ export const registerIpcHandlers = (): void => {
     const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
 
     return adapter.listTables(schema)
+  })
+
+  safeHandle('schema:listWithTables', async (payload): Promise<SchemaWithTables[]> => {
+    const { connectionId } = validateSchemaInput(payload) as { connectionId: string }
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    return adapter.listSchemaWithTables()
   })
 
   safeHandle('schema:introspect', async (payload): Promise<TableInfo> => {

@@ -3,6 +3,7 @@ import type {
   DatabaseType,
   DBConnectionOptions,
   QueryResult,
+  SchemaWithTables,
   TableDataOptions,
   TableDataResult,
   TableInfo
@@ -62,6 +63,10 @@ export const dbdeskClient = {
     return getDbdesk().listTables(connectionId, schema)
   },
 
+  async listSchemasWithTables(connectionId: string): Promise<SchemaWithTables[]> {
+    return getDbdesk().listSchemasWithTables(connectionId)
+  },
+
   async introspectTable(connectionId: string, schema: string, table: string): Promise<TableInfo> {
     return getDbdesk().introspectTable(connectionId, schema, table)
   },
@@ -81,6 +86,7 @@ export type {
   DatabaseType,
   DBConnectionOptions,
   QueryResult,
+  SchemaWithTables,
   TableDataOptions,
   TableDataResult,
   TableInfo

@@ -8,7 +8,17 @@ export type { QueryResultRow } from 'pg'
 export type { QueryResult, BaseAdapter, DBAdapter } from './adapter'
 
 // SQL types
-export type { SQLConnectionOptions, ColumnInfo, IndexInfo, TableInfo, SQLAdapter } from './sql'
+export type {
+  SQLConnectionOptions,
+  ColumnInfo,
+  IndexInfo,
+  TableInfo,
+  SQLAdapter,
+  TableDataColumn,
+  TableDataOptions,
+  TableDataResult,
+  SchemaWithTables
+} from './sql'
 
 // MongoDB types
 export type {
@@ -31,5 +41,3 @@ export type {
   RedisConnectionProfile,
   ConnectionProfile
 } from './connection'
-
-export type { TableDataOptions, TableDataResult } from './sql'

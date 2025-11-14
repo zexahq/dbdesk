@@ -23,6 +23,20 @@ export const QUERIES = {
     ORDER BY table_name
   `,
 
+  // Schema with tables query
+  LIST_SCHEMAS_WITH_TABLES: `
+    SELECT
+      s.schema_name,
+      COALESCE(array_agg(t.table_name ORDER BY t.table_name) FILTER (WHERE t.table_name IS NOT NULL), ARRAY[]::text[]) AS tables
+    FROM information_schema.schemata s
+    LEFT JOIN information_schema.tables t
+      ON s.schema_name = t.table_schema
+      AND t.table_type = 'BASE TABLE'
+    WHERE s.schema_name NOT IN ('pg_catalog', 'information_schema')
+    GROUP BY s.schema_name
+    ORDER BY s.schema_name
+  `,
+
   // Column queries
   LIST_COLUMNS: `
     SELECT

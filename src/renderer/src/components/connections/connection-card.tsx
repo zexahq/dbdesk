@@ -13,6 +13,7 @@ import { useConnect, useDeleteConnection, useDisconnect } from '@renderer/api/qu
 import { useMemo } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { useNavigate } from '@tanstack/react-router'
+import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 
 interface ConnectionCardProps {
   profile: ConnectionProfile
@@ -31,6 +32,7 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
   const { mutateAsync: disconnect, isPending: isDisconnecting } = useDisconnect()
   const { mutateAsync: deleteConnection, isPending: isDeleting } = useDeleteConnection()
   const navigate = useNavigate()
+  const { setCurrentConnection } = useSqlWorkspaceStore()
 
   const isBusy = isConnecting || isDisconnecting || isDeleting
 
@@ -41,11 +43,13 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
 
   const handleConnect = async () => {
     await connect(profile.id, {
-      onSuccess: () =>
+      onSuccess: () => {
+        setCurrentConnection(profile.id)
         navigate({
           to: '/connections/$connectionId',
           params: { connectionId: profile.id }
         })
+      }
     })
   }
 

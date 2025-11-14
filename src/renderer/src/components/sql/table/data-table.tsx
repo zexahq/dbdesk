@@ -55,7 +55,10 @@ export function DataTable<TData, TValue>({
             className="h-full overflow-auto focus:outline-none"
             tabIndex={0}
           >
-            <Table className="border-collapse table-fixed" style={{ width: table.getTotalSize() }}>
+            <Table
+              className="border-collapse table-fixed w-full!"
+              style={{ width: table.getTotalSize() }}
+            >
               <TableHeader className="sticky top-0">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>

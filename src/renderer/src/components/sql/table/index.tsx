@@ -23,8 +23,9 @@ export const SqlTable = ({ isLoading, error, tableData }: SqlTableProps) => {
     const normalizedRow = normalizeRow(row)
 
     return tableData.columns.reduce<Record<string, string>>((acc, column) => {
-      if (!(column in acc)) {
-        acc[column] = ''
+      const columnName = column.name
+      if (!(columnName in acc)) {
+        acc[columnName] = ''
       }
 
       return acc

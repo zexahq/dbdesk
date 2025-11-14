@@ -24,6 +24,14 @@ export interface ColumnInfo {
 }
 
 /**
+ * Column metadata included with table data results
+ */
+export interface TableDataColumn {
+  name: string
+  dataType: string
+}
+
+/**
  * Interface for table constraint metadata
  */
 export interface ConstraintInfo {
@@ -117,10 +125,18 @@ export interface TableDataOptions {
  */
 export interface TableDataResult {
   rows: QueryResultRow[]
-  columns: string[]
+  columns: TableDataColumn[]
   totalCount: number
   rowCount: number
   executionTime: number
+}
+
+/**
+ * Schema with its tables
+ */
+export interface SchemaWithTables {
+  schema: string
+  tables: string[]
 }
 
 /**
@@ -136,6 +152,11 @@ export interface SQLAdapter extends BaseAdapter {
    * List all tables in a specific schema
    */
   listTables(schema: string): Promise<string[]>
+
+  /**
+   * List all schemas with their tables
+   */
+  listSchemaWithTables(): Promise<SchemaWithTables[]>
 
   /**
    * Get detailed information about a table structure
