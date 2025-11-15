@@ -33,6 +33,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [limit, setLimit] = useState(50)
   const [offset, setOffset] = useState(0)
+  const [selectedRowsCount, setSelectedRowsCount] = useState(0)
 
   // Fetch schemas with tables and sync to store
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
@@ -113,10 +114,16 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
               onSidebarOpenChange={setIsSidebarOpen}
               onRefresh={refreshTableData}
               isLoading={isLoadingTableData}
+              selectedRowsCount={selectedRowsCount}
             />
             <div className="flex-1 overflow-hidden">
               {view === 'tables' && (
-                <SqlTable isLoading={isLoadingTableData} error={error} tableData={tableData} />
+                <SqlTable
+                  isLoading={isLoadingTableData}
+                  error={error}
+                  tableData={tableData}
+                  onSelectedRowsCountChange={setSelectedRowsCount}
+                />
               )}
               {view === 'structure' && (
                 <SqlStructure

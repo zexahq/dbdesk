@@ -23,6 +23,7 @@ interface UseDataTableProps<TData, TValue = unknown>
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onDataChange?: (data: TData[]) => void
+  onSelectedRowsCountChange: (count: number) => void
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
@@ -31,6 +32,7 @@ export function useDataTable<TData, TValue = unknown>({
   columns,
   data,
   onDataChange,
+  onSelectedRowsCountChange,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = React.useRef<HTMLDivElement>(null)
@@ -71,6 +73,7 @@ export function useDataTable<TData, TValue = unknown>({
   const onRowSelectionChange = React.useCallback((updater: Updater<RowSelectionState>) => {
     setRowSelection((currentRowSelection) => {
       const newRowSelection = typeof updater === 'function' ? updater(currentRowSelection) : updater
+      onSelectedRowsCountChange(Object.keys(newRowSelection).length)
       return newRowSelection
     })
   }, [])
@@ -103,6 +106,54 @@ export function useDataTable<TData, TValue = unknown>({
       return selectionState.selectedCells.has(getCellKey(rowIndex, columnId))
     },
     [selectionState.selectedCells]
+  )
+
+  // Helper to determine if a cell is at the edge of the selection
+  const getCellEdgeClasses = React.useCallback(
+    (rowIndex: number, columnId: string) => {
+      if (!selectionState.selectionRange || selectionState.selectedCells.size === 0) {
+        return { edgeClasses: '', isEdgeCell: false }
+      }
+
+      const { start, end } = selectionState.selectionRange
+      const startColIndex = columnIds.indexOf(start.columnId)
+      const endColIndex = columnIds.indexOf(end.columnId)
+      const currentColIndex = columnIds.indexOf(columnId)
+
+      const minRow = Math.min(start.rowIndex, end.rowIndex)
+      const maxRow = Math.max(start.rowIndex, end.rowIndex)
+      const minCol = Math.min(startColIndex, endColIndex)
+      const maxCol = Math.max(startColIndex, endColIndex)
+
+      // Check if this cell is part of the selection
+      const isInSelection =
+        rowIndex >= minRow &&
+        rowIndex <= maxRow &&
+        currentColIndex >= minCol &&
+        currentColIndex <= maxCol
+
+      if (!isInSelection) {
+        return { edgeClasses: '', isEdgeCell: false }
+      }
+
+      const isTopEdge = rowIndex === minRow
+      const isBottomEdge = rowIndex === maxRow
+      const isLeftEdge = currentColIndex === minCol
+      const isRightEdge = currentColIndex === maxCol
+      const isEdgeCell = isTopEdge || isBottomEdge || isLeftEdge || isRightEdge
+
+      const edgeClasses: string[] = []
+
+      if (isTopEdge) edgeClasses.push('border-t-2 border-t-ring')
+      if (isBottomEdge) edgeClasses.push('border-b-2 border-b-ring')
+      if (isLeftEdge) edgeClasses.push('border-l-2 border-l-ring')
+      if (isRightEdge) edgeClasses.push('border-r-2 border-r-ring')
+
+      edgeClasses.push('bg-ring/5')
+
+      return { edgeClasses: edgeClasses.join(' '), isEdgeCell }
+    },
+    [selectionState, columnIds]
   )
 
   // Clear selection (only clears cell selection, not row selection)
@@ -690,7 +741,9 @@ export function useDataTable<TData, TValue = unknown>({
     selectionState,
     columnSizing,
     pendingUpdates,
+    columnIds,
     getIsCellSelected,
+    getCellEdgeClasses,
     onCellClick,
     onCellDoubleClick,
     onCellMouseDown,

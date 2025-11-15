@@ -1,7 +1,9 @@
-import { Layers, Table, RefreshCcw, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Layers, Table, RefreshCcw, PanelLeftClose, PanelLeftOpen, Trash } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@renderer/components/ui/toggle-group'
 import { cn } from '@renderer/lib/utils'
+import { useState } from 'react'
+import { DeleteConfirmationDialog } from './dialogs/delete-confirmation-dialog'
 
 interface SqlTopbarProps {
   onRefresh: () => void
@@ -10,6 +12,7 @@ interface SqlTopbarProps {
   view: 'tables' | 'structure'
   onSidebarOpenChange: (open: boolean) => void
   onViewChange: (view: 'tables' | 'structure') => void
+  selectedRowsCount: number
 }
 
 export function SqlTopbar({
@@ -18,8 +21,16 @@ export function SqlTopbar({
   isSidebarOpen,
   onSidebarOpenChange,
   onRefresh,
-  isLoading
+  isLoading,
+  selectedRowsCount
 }: SqlTopbarProps) {
+  const [open, setOpen] = useState(false)
+
+  const onDelete = () => {
+    console.log('delete')
+    setOpen(false)
+  }
+
   return (
     <div className="border-b">
       <div className="flex items-center justify-between gap-2 p-2">
@@ -53,10 +64,17 @@ export function SqlTopbar({
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
-
-        <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
-          <RefreshCcw className={cn('size-4 cursor-pointer', isLoading && 'animate-spin')} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <DeleteConfirmationDialog
+            open={open}
+            onOpenChange={setOpen}
+            onDelete={onDelete}
+            selectedRowsCount={selectedRowsCount}
+          />
+          <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
+            <RefreshCcw className={cn('size-4 cursor-pointer', isLoading && 'animate-spin')} />
+          </Button>
+        </div>
       </div>
     </div>
   )

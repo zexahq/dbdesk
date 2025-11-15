@@ -1,6 +1,5 @@
 'use client'
 
-import * as React from 'react'
 import { type ColumnDef, flexRender } from '@tanstack/react-table'
 
 import {
@@ -20,19 +19,21 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onDataChange?: (data: TData[]) => void
+  onSelectedRowsCountChange: (count: number) => void
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
-  onDataChange
+  onDataChange,
+  onSelectedRowsCountChange
 }: DataTableProps<TData, TValue>) {
   const {
     table,
     tableContainerRef,
     focusedCell,
-    selectionState,
     getIsCellSelected,
+    getCellEdgeClasses,
     onCellClick,
     onCellDoubleClick,
     onCellMouseDown,
@@ -41,65 +42,13 @@ export function DataTable<TData, TValue>({
   } = useDataTable({
     columns,
     data,
-    onDataChange
+    onDataChange,
+    onSelectedRowsCountChange
   })
 
   const rowModel = table.getRowModel()
   const rows = rowModel.rows
   const hasRows = rows.length > 0
-
-  // Get column IDs for determining selection edges
-  const columnIds = React.useMemo(() => {
-    return table.getAllColumns().map((col) => col.id)
-  }, [table])
-
-  // Helper to determine if a cell is at the edge of the selection
-  const getCellEdgeClasses = React.useCallback(
-    (rowIndex: number, columnId: string) => {
-      if (!selectionState.selectionRange || selectionState.selectedCells.size === 0) {
-        return { edgeClasses: '', isEdgeCell: false }
-      }
-
-      const { start, end } = selectionState.selectionRange
-      const startColIndex = columnIds.indexOf(start.columnId)
-      const endColIndex = columnIds.indexOf(end.columnId)
-      const currentColIndex = columnIds.indexOf(columnId)
-
-      const minRow = Math.min(start.rowIndex, end.rowIndex)
-      const maxRow = Math.max(start.rowIndex, end.rowIndex)
-      const minCol = Math.min(startColIndex, endColIndex)
-      const maxCol = Math.max(startColIndex, endColIndex)
-
-      // Check if this cell is part of the selection
-      const isInSelection =
-        rowIndex >= minRow &&
-        rowIndex <= maxRow &&
-        currentColIndex >= minCol &&
-        currentColIndex <= maxCol
-
-      if (!isInSelection) {
-        return { edgeClasses: '', isEdgeCell: false }
-      }
-
-      const isTopEdge = rowIndex === minRow
-      const isBottomEdge = rowIndex === maxRow
-      const isLeftEdge = currentColIndex === minCol
-      const isRightEdge = currentColIndex === maxCol
-      const isEdgeCell = isTopEdge || isBottomEdge || isLeftEdge || isRightEdge
-
-      const edgeClasses: string[] = []
-
-      if (isTopEdge) edgeClasses.push('border-t-2 border-t-ring')
-      if (isBottomEdge) edgeClasses.push('border-b-2 border-b-ring')
-      if (isLeftEdge) edgeClasses.push('border-l-2 border-l-ring')
-      if (isRightEdge) edgeClasses.push('border-r-2 border-r-ring')
-
-      edgeClasses.push('bg-ring/5')
-
-      return { edgeClasses: edgeClasses.join(' '), isEdgeCell }
-    },
-    [selectionState, columnIds]
-  )
 
   return (
     <>
