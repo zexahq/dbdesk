@@ -7,6 +7,7 @@ import { Layers, Table, RefreshCcw, PanelLeftClose, PanelLeftOpen, Unplug } from
 import { useRouter } from '@tanstack/react-router'
 import { useDisconnect } from '@renderer/api/queries/connections'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { useDataTableStore } from '@renderer/store/data-table-store'
 
 interface SqlTopbarProps {
   onRefresh: () => void
@@ -15,7 +16,6 @@ interface SqlTopbarProps {
   view: 'tables' | 'structure'
   onSidebarOpenChange: (open: boolean) => void
   onViewChange: (view: 'tables' | 'structure') => void
-  selectedRowsCount: number
   connectionId: string
 }
 
@@ -26,13 +26,13 @@ export function SqlTopbar({
   onSidebarOpenChange,
   onRefresh,
   isLoading,
-  selectedRowsCount,
   connectionId
 }: SqlTopbarProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const { mutate: disconnect, isPending: isDisconnecting } = useDisconnect()
   const { reset } = useSqlWorkspaceStore()
+  const selectedRowsCount = useDataTableStore((state) => Object.keys(state.rowSelection).length)
 
   const onDelete = () => {
     console.log('delete')

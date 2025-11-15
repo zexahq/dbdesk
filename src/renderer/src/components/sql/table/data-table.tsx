@@ -19,14 +19,12 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onDataChange?: (data: TData[]) => void
-  onSelectedRowsCountChange: (count: number) => void
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
-  onDataChange,
-  onSelectedRowsCountChange
+  onDataChange
 }: DataTableProps<TData, TValue>) {
   const {
     table,
@@ -42,8 +40,7 @@ export function DataTable<TData, TValue>({
   } = useDataTable({
     columns,
     data,
-    onDataChange,
-    onSelectedRowsCountChange
+    onDataChange
   })
 
   const rowModel = table.getRowModel()

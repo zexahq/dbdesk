@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useState, useEffect } from 'react'
-import { Search, Table2Icon, Database, Unplug } from 'lucide-react'
+import { Search, Table2Icon, Database, Unplug, Moon, Sun } from 'lucide-react'
 import {
   CommandDialog,
   CommandEmpty,
@@ -16,6 +16,8 @@ import { Button } from './ui/button'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useConnections, useConnect, useDisconnect } from '@renderer/api/queries/connections'
 import { useNavigate } from '@tanstack/react-router'
+import { useDataTableStore } from '@renderer/store/data-table-store'
+import { useTheme } from '@renderer/hooks/use-theme'
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
@@ -26,6 +28,10 @@ export function QuickPanel() {
     currentConnectionId,
     setCurrentConnection
   } = useSqlWorkspaceStore()
+
+  const { reset } = useDataTableStore()
+  const { theme, toggleTheme } = useTheme()
+
   const { data: connections } = useConnections()
   const { mutateAsync: connect } = useConnect()
   const { mutateAsync: disconnect } = useDisconnect()
@@ -46,6 +52,7 @@ export function QuickPanel() {
   const handleTableSelect = (schema: string, table: string) => {
     setSelectedSchema(schema)
     setSelectedTable(table)
+    reset()
     setOpen(false)
   }
 
@@ -68,6 +75,11 @@ export function QuickPanel() {
     await disconnect(currentConnectionId)
     setCurrentConnection(null)
     navigate({ to: '/' })
+    setOpen(false)
+  }
+
+  const handleThemeToggle = () => {
+    toggleTheme()
     setOpen(false)
   }
 
@@ -106,8 +118,16 @@ export function QuickPanel() {
           {currentConnectionId && (
             <CommandGroup heading="Quick Actions" className="py-2">
               <CommandItem onSelect={handleDisconnect} className="py-2!">
-                <Unplug className="mr-2" />
+                <Unplug className="size-4 mr-2" />
                 <span className="text-sm">Disconnect</span>
+              </CommandItem>
+              <CommandItem onSelect={handleThemeToggle} className="py-2!">
+                {theme === 'light' ? (
+                  <Moon className="size-4 mr-2" />
+                ) : (
+                  <Sun className="size-4 mr-2" />
+                )}
+                <span className="text-sm">Toggle Theme</span>
               </CommandItem>
             </CommandGroup>
           )}

@@ -23,6 +23,7 @@ import { DatabaseIcon, SearchIcon, Table2Icon, RefreshCcw } from 'lucide-react'
 import type { SQLConnectionProfile } from '@common/types'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { Button } from '../ui/button'
+import { useDataTableStore } from '@renderer/store/data-table-store'
 
 type DbSidebarProps = {
   profile: SQLConnectionProfile
@@ -34,6 +35,7 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
 
   const { selectedSchema, selectedTable, setSelectedSchema, setSelectedTable, schemasWithTables } =
     useSqlWorkspaceStore()
+  const { reset } = useDataTableStore()
 
   const schemas = schemasWithTables.map((s) => s.schema)
   const tables = selectedSchema
@@ -57,7 +59,8 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
               value={selectedSchema || ''}
               onValueChange={(v) => {
                 setSelectedSchema(v)
-                setSelectedTable(null) // Reset table when schema changes
+                setSelectedTable(null)
+                reset()
               }}
               disabled={schemas.length === 0}
             >
@@ -109,6 +112,7 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
                     <SidebarMenuButton
                       onClick={() => {
                         setSelectedTable(table)
+                        reset()
                       }}
                       className="cursor-pointer"
                       isActive={selectedTable === table ? true : false}

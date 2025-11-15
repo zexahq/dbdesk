@@ -2,7 +2,6 @@
 
 import {
   type ColumnDef,
-  type ColumnSizingState,
   getCoreRowModel,
   type RowSelectionState,
   type TableOptions,
@@ -11,19 +10,14 @@ import {
 } from '@tanstack/react-table'
 import * as React from 'react'
 import { getCellKey, parseCellKey } from '@renderer/lib/data-table'
-import type {
-  CellPosition,
-  NavigationDirection,
-  SelectionState,
-  UpdateCell
-} from '@renderer/types/data-table'
+import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/types/data-table'
+import { useDataTableStore } from '@renderer/store/data-table-store'
 
 interface UseDataTableProps<TData, TValue = unknown>
   extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onDataChange?: (data: TData[]) => void
-  onSelectedRowsCountChange: (count: number) => void
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
@@ -32,26 +26,37 @@ export function useDataTable<TData, TValue = unknown>({
   columns,
   data,
   onDataChange,
-  onSelectedRowsCountChange,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = React.useRef<HTMLDivElement>(null)
   const tableRef = React.useRef<ReturnType<typeof useReactTable<TData>>>(null)
 
-  // State management
-  const [focusedCell, setFocusedCell] = React.useState<CellPosition | null>(null)
-  const [editingCell, setEditingCell] = React.useState<CellPosition | null>(null)
-  const [selectionState, setSelectionState] = React.useState<SelectionState>({
-    selectedCells: new Set(),
-    selectionRange: null,
-    isSelecting: false
-  })
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
-    tableOptions.initialState?.rowSelection ?? {}
-  )
-  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({})
-  const [pendingUpdates, setPendingUpdates] = React.useState<UpdateCell[]>([])
-  const [shiftAnchor, setShiftAnchor] = React.useState<CellPosition | null>(null)
+  // Zustand store
+  const {
+    focusedCell,
+    editingCell,
+    selectionState,
+    rowSelection,
+    columnSizing,
+    pendingUpdates,
+    shiftAnchor,
+    setFocusedCell,
+    setEditingCell,
+    setSelectionState,
+    setRowSelection,
+    setShiftAnchor,
+    setColumnSizing,
+    setPendingUpdates,
+    clearSelection
+  } = useDataTableStore()
+
+  // Initialize rowSelection from tableOptions if provided
+  React.useEffect(() => {
+    if (tableOptions.initialState?.rowSelection) {
+      setRowSelection(tableOptions.initialState.rowSelection)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
 
   // Get column IDs
   const columnIds = React.useMemo(() => {
@@ -70,13 +75,14 @@ export function useDataTable<TData, TValue = unknown>({
   }, [columnIds])
 
   // Handle row selection change (keep separate from cell selection)
-  const onRowSelectionChange = React.useCallback((updater: Updater<RowSelectionState>) => {
-    setRowSelection((currentRowSelection) => {
-      const newRowSelection = typeof updater === 'function' ? updater(currentRowSelection) : updater
-      onSelectedRowsCountChange(Object.keys(newRowSelection).length)
-      return newRowSelection
-    })
-  }, [])
+  const onRowSelectionChange = React.useCallback(
+    (updater: Updater<RowSelectionState>) => {
+      setRowSelection((currentRowSelection) => {
+        return typeof updater === 'function' ? updater(currentRowSelection) : updater
+      })
+    },
+    [setRowSelection]
+  )
 
   // Table instance
   const table = useReactTable({
@@ -156,14 +162,10 @@ export function useDataTable<TData, TValue = unknown>({
     [selectionState, columnIds]
   )
 
-  // Clear selection (only clears cell selection, not row selection)
-  const clearSelection = React.useCallback(() => {
-    setSelectionState({
-      selectedCells: new Set(),
-      selectionRange: null,
-      isSelecting: false
-    })
-  }, [])
+  // Clear selection wrapper (only clears cell selection, not row selection)
+  const clearCellSelection = React.useCallback(() => {
+    clearSelection()
+  }, [clearSelection])
 
   // Select all cells
   const selectAll = React.useCallback(() => {
@@ -225,15 +227,18 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Focus cell
-  const focusCell = React.useCallback((rowIndex: number, columnId: string) => {
-    setFocusedCell({ rowIndex, columnId })
-    setEditingCell(null)
+  const focusCell = React.useCallback(
+    (rowIndex: number, columnId: string) => {
+      setFocusedCell({ rowIndex, columnId })
+      setEditingCell(null)
 
-    // Focus the container if needed
-    if (tableContainerRef.current && document.activeElement !== tableContainerRef.current) {
-      tableContainerRef.current.focus()
-    }
-  }, [])
+      // Focus the container if needed
+      if (tableContainerRef.current && document.activeElement !== tableContainerRef.current) {
+        tableContainerRef.current.focus()
+      }
+    },
+    [setFocusedCell, setEditingCell]
+  )
 
   // Navigate cell
   const navigateCell = React.useCallback(
@@ -323,10 +328,13 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Start editing cell
-  const onCellEditingStart = React.useCallback((rowIndex: number, columnId: string) => {
-    setFocusedCell({ rowIndex, columnId })
-    setEditingCell({ rowIndex, columnId })
-  }, [])
+  const onCellEditingStart = React.useCallback(
+    (rowIndex: number, columnId: string) => {
+      setFocusedCell({ rowIndex, columnId })
+      setEditingCell({ rowIndex, columnId })
+    },
+    [setFocusedCell, setEditingCell]
+  )
 
   // Stop editing cell
   const onCellEditingStop = React.useCallback(
@@ -457,7 +465,7 @@ export function useDataTable<TData, TValue = unknown>({
         const isClickingSelectedCell = selectionState.selectedCells.has(cellKey)
 
         if (!isClickingSelectedCell) {
-          clearSelection()
+          clearCellSelection()
         } else {
           focusCell(rowIndex, columnId)
           return
@@ -568,7 +576,7 @@ export function useDataTable<TData, TValue = unknown>({
           })
 
           onDataUpdate(updates)
-          clearSelection()
+          clearCellSelection()
         }
         return
       }
@@ -602,7 +610,7 @@ export function useDataTable<TData, TValue = unknown>({
         case 'Escape':
           event.preventDefault()
           if (selectionState.selectedCells.size > 0) {
-            clearSelection()
+            clearCellSelection()
           } else {
             setFocusedCell(null)
             setEditingCell(null)
@@ -670,7 +678,7 @@ export function useDataTable<TData, TValue = unknown>({
             setShiftAnchor(null)
           }
           if (selectionState.selectedCells.size > 0) {
-            clearSelection()
+            clearCellSelection()
           }
           navigateCell(direction)
         }
@@ -685,11 +693,14 @@ export function useDataTable<TData, TValue = unknown>({
       table,
       selectAll,
       onDataUpdate,
-      clearSelection,
+      clearCellSelection,
       navigateCell,
       selectRange,
       focusCell,
-      onCellEditingStart
+      onCellEditingStart,
+      setShiftAnchor,
+      setFocusedCell,
+      setEditingCell
     ]
   )
 
@@ -752,6 +763,6 @@ export function useDataTable<TData, TValue = unknown>({
     onCellEditingStart,
     onCellEditingStop,
     onDataUpdate,
-    clearSelection
+    clearSelection: clearCellSelection
   }
 }

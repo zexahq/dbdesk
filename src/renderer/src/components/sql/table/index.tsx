@@ -7,15 +7,9 @@ interface SqlTableProps {
   isLoading: boolean
   error: Error | null
   tableData?: TableDataResult
-  onSelectedRowsCountChange: (count: number) => void
 }
 
-export const SqlTable = ({
-  isLoading,
-  error,
-  tableData,
-  onSelectedRowsCountChange
-}: SqlTableProps) => {
+export const SqlTable = ({ isLoading, error, tableData }: SqlTableProps) => {
   if (isLoading) {
     return <div>Loading table data...</div>
   }
@@ -41,11 +35,7 @@ export const SqlTable = ({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex-1 overflow-hidden min-h-0">
-        <DataTable
-          columns={columns}
-          data={rows}
-          onSelectedRowsCountChange={onSelectedRowsCountChange}
-        />
+        <DataTable columns={columns} data={rows} />
       </div>
     </div>
   )
