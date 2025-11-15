@@ -99,12 +99,12 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
           )}
         </div>
       </CardContent>
-      <CardFooter className="flex items-center justify-between gap-2">
+      <CardFooter className="flex items-center justify-between gap-2 w-full">
         <div className="flex items-center gap-2 w-full">
           <Button
             size="sm"
             variant="destructive"
-            className="w-16"
+            className="w-1/2"
             onClick={() => void handleDelete()}
             disabled={isBusy}
           >
@@ -113,7 +113,7 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
           <Button
             size="sm"
             variant="secondary"
-            className="w-16"
+            className="w-1/2"
             onClick={() => onEdit?.(profile)}
             disabled={isBusy}
           >
@@ -121,7 +121,12 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
           </Button>
         </div>
         <div className="flex justify-end gap-2 w-full">
-          <Button size="sm" className="cursor-pointer" onClick={handleConnect} disabled={isBusy}>
+          <Button
+            size="sm"
+            className="cursor-pointer w-1/2"
+            onClick={handleConnect}
+            disabled={isBusy}
+          >
             {isConnecting ? 'Connecting…' : 'Connect'}
           </Button>
         </div>

@@ -18,6 +18,12 @@ import { useConnections, useConnect, useDisconnect } from '@renderer/api/queries
 import { useNavigate } from '@tanstack/react-router'
 import { useDataTableStore } from '@renderer/store/data-table-store'
 import { useTheme } from '@renderer/hooks/use-theme'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@renderer/components/ui/tooltip'
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
@@ -86,9 +92,16 @@ export function QuickPanel() {
   return (
     <>
       <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => setOpen(true)}>
-        <kbd>
-          <Search className="size-4" />
-        </kbd>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <kbd>
+              <Search className="size-4" />
+            </kbd>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Quick Search (Ctrl + K)</p>
+          </TooltipContent>
+        </Tooltip>
       </Button>
       <CommandDialog
         open={open}
