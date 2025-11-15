@@ -1,9 +1,12 @@
-import { Layers, Table, RefreshCcw, PanelLeftClose, PanelLeftOpen, Trash } from 'lucide-react'
-import { Button } from '@renderer/components/ui/button'
-import { ToggleGroup, ToggleGroupItem } from '@renderer/components/ui/toggle-group'
-import { cn } from '@renderer/lib/utils'
 import { useState } from 'react'
+import { cn } from '@renderer/lib/utils'
+import { Button } from '@renderer/components/ui/button'
 import { DeleteConfirmationDialog } from './dialogs/delete-confirmation-dialog'
+import { ToggleGroup, ToggleGroupItem } from '@renderer/components/ui/toggle-group'
+import { Layers, Table, RefreshCcw, PanelLeftClose, PanelLeftOpen, Unplug } from 'lucide-react'
+import { useRouter } from '@tanstack/react-router'
+import { useDisconnect } from '@renderer/api/queries/connections'
+import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 
 interface SqlTopbarProps {
   onRefresh: () => void
@@ -13,6 +16,7 @@ interface SqlTopbarProps {
   onSidebarOpenChange: (open: boolean) => void
   onViewChange: (view: 'tables' | 'structure') => void
   selectedRowsCount: number
+  connectionId: string
 }
 
 export function SqlTopbar({
@@ -22,13 +26,26 @@ export function SqlTopbar({
   onSidebarOpenChange,
   onRefresh,
   isLoading,
-  selectedRowsCount
+  selectedRowsCount,
+  connectionId
 }: SqlTopbarProps) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
+  const { mutate: disconnect, isPending: isDisconnecting } = useDisconnect()
+  const { reset } = useSqlWorkspaceStore()
 
   const onDelete = () => {
     console.log('delete')
     setOpen(false)
+  }
+
+  const handleDisconnect = () => {
+    disconnect(connectionId, {
+      onSuccess: () => {
+        reset()
+        router.navigate({ to: '/' })
+      }
+    })
   }
 
   return (
@@ -73,6 +90,15 @@ export function SqlTopbar({
           />
           <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
             <RefreshCcw className={cn('size-4 cursor-pointer', isLoading && 'animate-spin')} />
+          </Button>
+          <Button
+            variant="destructive"
+            size="icon"
+            className="cursor-pointer"
+            onClick={handleDisconnect}
+            disabled={isDisconnecting}
+          >
+            <Unplug className="size-4" />
           </Button>
         </div>
       </div>

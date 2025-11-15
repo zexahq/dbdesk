@@ -15,6 +15,7 @@ interface SqlWorkspaceStore {
   setSelectedTable: (table: string | null) => void
   setCurrentConnection: (connectionId: string | null) => void
   setSchemasWithTables: (schemas: SchemaWithTables[]) => void
+  reset: () => void
 }
 
 export const useSqlWorkspaceStore = create<SqlWorkspaceStore>((set) => ({
@@ -34,5 +35,12 @@ export const useSqlWorkspaceStore = create<SqlWorkspaceStore>((set) => ({
       selectedTable: null,
       schemasWithTables: []
     }),
-  setSchemasWithTables: (schemas) => set({ schemasWithTables: schemas })
+  setSchemasWithTables: (schemas) => set({ schemasWithTables: schemas }),
+  reset: () =>
+    set({
+      selectedSchema: null,
+      selectedTable: null,
+      currentConnectionId: null,
+      schemasWithTables: []
+    })
 }))

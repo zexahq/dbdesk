@@ -34,8 +34,8 @@ export const DeleteConfirmationDialog = ({
           className={cn('cursor-pointer', selectedRowsCount === 0 && 'hidden')}
           disabled={selectedRowsCount === 0}
         >
-          Delete {selectedRowsCount} rows
           <Trash className="size-4" />
+          Delete {selectedRowsCount} rows
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

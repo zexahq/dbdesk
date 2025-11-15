@@ -16,6 +16,7 @@ import { deleteProfile, getProfile, loadProfiles, saveProfile } from './storage'
 import {
   validateConnectionIdentifier,
   validateCreateConnectionInput,
+  validateUpdateConnectionInput,
   validateQueryInput,
   validateSchemaInput,
   validateTableDataInput
@@ -90,6 +91,42 @@ export const registerIpcHandlers = (): void => {
 
     await saveProfile(profile)
     return profile
+  })
+
+  safeHandle('connections:update', async (payload) => {
+    const { connectionId, name, type, options } = validateUpdateConnectionInput(payload)
+
+    const profiles = await loadProfiles()
+    const existingProfile = profiles.find((item) => item.id === connectionId)
+
+    if (!existingProfile) {
+      throw new ValidationError(`Connection profile "${connectionId}" not found`)
+    }
+
+    if (!adapterRegistry.getFactory(type)) {
+      throw new ValidationError(`Adapter "${type}" is not available`)
+    }
+
+    // If connection is active and options changed, we should reconnect
+    const isConnected = connectionManager.isConnected(connectionId)
+    const optionsChanged =
+      JSON.stringify(existingProfile.options) !== JSON.stringify(options) ||
+      existingProfile.type !== type
+
+    if (isConnected && optionsChanged) {
+      await connectionManager.closeConnection(connectionId).catch(() => {})
+    }
+
+    const updatedProfile = {
+      ...existingProfile,
+      name,
+      type,
+      options: options as ConnectionProfile['options'],
+      updatedAt: new Date()
+    } as ConnectionProfile
+
+    await saveProfile(updatedProfile)
+    return updatedProfile
   })
 
   safeHandle('connections:connect', async (payload) => {

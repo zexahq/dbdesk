@@ -39,6 +39,15 @@ export const dbdeskClient = {
     return getDbdesk().createConnection(name, type, options)
   },
 
+  async updateConnection(
+    connectionId: string,
+    name: string,
+    type: DatabaseType,
+    options: DBConnectionOptions
+  ): Promise<ConnectionProfile> {
+    return getDbdesk().updateConnection(connectionId, name, type, options)
+  },
+
   async connect(connectionId: string): Promise<{ success: boolean; connectionId?: string }> {
     return getDbdesk().connect(connectionId)
   },

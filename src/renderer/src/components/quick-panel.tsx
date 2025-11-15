@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useState, useEffect } from 'react'
-import { Search, Table2Icon } from 'lucide-react'
+import { Search, Table2Icon, Database } from 'lucide-react'
 import {
   CommandDialog,
   CommandEmpty,
@@ -14,10 +14,21 @@ import {
 } from '@renderer/components/ui/command'
 import { Button } from './ui/button'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { useConnections, useConnect } from '@renderer/api/queries/connections'
+import { useNavigate } from '@tanstack/react-router'
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
-  const { setSelectedSchema, setSelectedTable, schemasWithTables } = useSqlWorkspaceStore()
+  const {
+    setSelectedSchema,
+    setSelectedTable,
+    schemasWithTables,
+    currentConnectionId,
+    setCurrentConnection
+  } = useSqlWorkspaceStore()
+  const { data: connections } = useConnections()
+  const { mutateAsync: connect } = useConnect()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -37,6 +48,20 @@ export function QuickPanel() {
     setOpen(false)
   }
 
+  const handleConnectionSelect = async (connectionId: string) => {
+    try {
+      await connect(connectionId)
+      setCurrentConnection(connectionId)
+      navigate({
+        to: '/connections/$connectionId',
+        params: { connectionId }
+      })
+      setOpen(false)
+    } catch (error) {
+      console.error('Failed to connect:', error)
+    }
+  }
+
   return (
     <>
       <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => setOpen(true)}>
@@ -52,6 +77,23 @@ export function QuickPanel() {
         <CommandInput placeholder="Type a schema or table name..." />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
+          {!currentConnectionId && connections && connections.length > 0 && (
+            <>
+              <CommandGroup heading="Connections" className="py-2">
+                {connections.map((connection) => (
+                  <CommandItem
+                    key={connection.id}
+                    onSelect={() => handleConnectionSelect(connection.id)}
+                    className="py-2!"
+                  >
+                    <Database className="size-4 mr-2" />
+                    <span className="text-sm">{connection.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              {schemasWithTables.length > 0 && <CommandSeparator />}
+            </>
+          )}
           {schemasWithTables.length > 0 && (
             <>
               <CommandGroup heading="Entities" className="py-2">

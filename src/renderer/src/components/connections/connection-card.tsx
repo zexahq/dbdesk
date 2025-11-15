@@ -9,32 +9,32 @@ import {
 } from '@renderer/components/ui/card'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
-import { useConnect, useDeleteConnection, useDisconnect } from '@renderer/api/queries/connections'
+import { useConnect, useDeleteConnection } from '@renderer/api/queries/connections'
 import { useMemo } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { useNavigate } from '@tanstack/react-router'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import postgresImage from '../../assets/postgres.svg'
 
 interface ConnectionCardProps {
   profile: ConnectionProfile
   onEdit?: (profile: ConnectionProfile) => void
 }
 
-const typeLabelMap: Record<ConnectionProfile['type'], string> = {
-  postgres: 'PostgreSQL',
-  mysql: 'MySQL',
-  mongodb: 'MongoDB',
-  redis: 'Redis'
+const typeLabelMap: Record<ConnectionProfile['type'], { label: string; image: string }> = {
+  postgres: { label: 'PostgreSQL', image: postgresImage },
+  mysql: { label: 'MySQL', image: '' },
+  mongodb: { label: 'MongoDB', image: '' },
+  redis: { label: 'Redis', image: '' }
 }
 
 export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
   const { mutateAsync: connect, isPending: isConnecting } = useConnect()
-  const { mutateAsync: disconnect, isPending: isDisconnecting } = useDisconnect()
   const { mutateAsync: deleteConnection, isPending: isDeleting } = useDeleteConnection()
   const navigate = useNavigate()
   const { setCurrentConnection } = useSqlWorkspaceStore()
 
-  const isBusy = isConnecting || isDisconnecting || isDeleting
+  const isBusy = isConnecting || isDeleting
 
   const lastConnectedLabel = useMemo(() => {
     if (!profile.lastConnectedAt) return 'Never connected'
@@ -65,7 +65,14 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
       <CardHeader className="gap-1">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-lg font-semibold">{profile.name}</CardTitle>
-          <Badge variant="secondary">{typeLabelMap[profile.type]}</Badge>
+          <Badge variant="secondary" className="flex items-center gap-2 px-2 py-1">
+            <img
+              src={typeLabelMap[profile.type].image}
+              alt={typeLabelMap[profile.type].label}
+              className="size-5 mr-2"
+            />
+            {typeLabelMap[profile.type].label}
+          </Badge>
         </div>
         <CardDescription>{lastConnectedLabel}</CardDescription>
       </CardHeader>
@@ -77,52 +84,45 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
             {'port' in profile.options && profile.options.port ? `:${profile.options.port}` : ''}
           </p>
         </div>
-        {'database' in profile.options && (
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">Database</p>
-            <p className="font-medium">{profile.options.database}</p>
-          </div>
-        )}
-        {'user' in profile.options && (
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">User</p>
-            <p className="font-medium">{profile.options.user}</p>
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-2">
+          {'database' in profile.options && (
+            <div>
+              <p className="text-xs uppercase text-muted-foreground">Database</p>
+              <p className="font-medium">{profile.options.database}</p>
+            </div>
+          )}
+          {'user' in profile.options && (
+            <div>
+              <p className="text-xs uppercase text-muted-foreground">User</p>
+              <p className="font-medium">{profile.options.user}</p>
+            </div>
+          )}
+        </div>
       </CardContent>
-      <CardFooter className="grid gap-2">
-        <div className="flex gap-2">
-          <Button size="sm" className="flex-1" onClick={handleConnect} disabled={isBusy}>
-            {isConnecting ? 'Connecting…' : 'Connect'}
-          </Button>
+      <CardFooter className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 w-full">
           <Button
             size="sm"
-            variant="outline"
-            className="flex-1"
-            onClick={() => disconnect(profile.id)}
+            variant="destructive"
+            className="w-16"
+            onClick={() => void handleDelete()}
             disabled={isBusy}
           >
-            {isDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+            {isDeleting ? 'Deleting…' : 'Delete'}
           </Button>
-        </div>
-        <div className="flex gap-2">
           <Button
             size="sm"
             variant="secondary"
-            className="flex-1"
+            className="w-16"
             onClick={() => onEdit?.(profile)}
             disabled={isBusy}
           >
             Edit
           </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="flex-1"
-            onClick={() => void handleDelete()}
-            disabled={isBusy}
-          >
-            {isDeleting ? 'Deleting…' : 'Delete'}
+        </div>
+        <div className="flex justify-end gap-2 w-full">
+          <Button size="sm" className="cursor-pointer" onClick={handleConnect} disabled={isBusy}>
+            {isConnecting ? 'Connecting…' : 'Connect'}
           </Button>
         </div>
       </CardFooter>

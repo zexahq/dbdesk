@@ -32,6 +32,21 @@ export function useCreateConnection() {
   })
 }
 
+export function useUpdateConnection() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      connectionId: string
+      name: string
+      type: DatabaseType
+      options: DBConnectionOptions
+    }) => dbdeskClient.updateConnection(input.connectionId, input.name, input.type, input.options),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.connections })
+    }
+  })
+}
+
 export function useConnect() {
   const queryClient = useQueryClient()
   return useMutation({

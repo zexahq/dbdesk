@@ -13,6 +13,13 @@ type CreateConnectionInput = {
   options: DBConnectionOptions
 }
 
+type UpdateConnectionInput = {
+  connectionId: string
+  name: string
+  type: DatabaseType
+  options: DBConnectionOptions
+}
+
 export type RunQueryInput = {
   connectionId: string
   query: string
@@ -44,6 +51,19 @@ export const validateCreateConnectionInput = (input: unknown): CreateConnectionI
   const options = validateConnectionOptions(type, input.options)
 
   return { name, type, options }
+}
+
+export const validateUpdateConnectionInput = (input: unknown): UpdateConnectionInput => {
+  if (!isObject(input)) {
+    throw new ValidationError('Invalid payload: expected object for connection update details')
+  }
+
+  const connectionId = toNonEmptyString(input.connectionId, 'connectionId')
+  const name = toNonEmptyString(input.name, 'name')
+  const type = toDatabaseType(input.type)
+  const options = validateConnectionOptions(type, input.options)
+
+  return { connectionId, name, type, options }
 }
 
 export const validateConnectionProfile = (profile: ConnectionProfile): ConnectionProfile => {

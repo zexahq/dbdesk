@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import type { ConnectionProfile } from '@common/types'
+import { useState, useRef, useEffect } from 'react'
+import type { ConnectionProfile, DatabaseType } from '@common/types'
 import { useConnections } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
-import { Separator } from '@renderer/components/ui/separator'
 import { Skeleton } from '@renderer/components/ui/skeleton'
+import { ChevronDown } from 'lucide-react'
 import { ConnectionCard } from './connection-card'
 import { ConnectionDialog } from './connection-dialog'
 
@@ -11,14 +11,36 @@ export function ConnectionList() {
   const { data: connections, isLoading, isError, error } = useConnections()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingConnection, setEditingConnection] = useState<ConnectionProfile | null>(null)
+  const [selectedDatabaseType, setSelectedDatabaseType] = useState<DatabaseType | null>(null)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const handleNewConnection = () => {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isDropdownOpen])
+
+  const handleNewConnection = (type: DatabaseType) => {
+    setSelectedDatabaseType(type)
     setEditingConnection(null)
     setIsModalOpen(true)
+    setIsDropdownOpen(false)
   }
 
   const handleEditConnection = (profile: ConnectionProfile) => {
     setEditingConnection(profile)
+    setSelectedDatabaseType(null)
     setIsModalOpen(true)
   }
 
@@ -26,6 +48,7 @@ export function ConnectionList() {
     setIsModalOpen(open)
     if (!open) {
       setEditingConnection(null)
+      setSelectedDatabaseType(null)
     }
   }
 
@@ -41,11 +64,33 @@ export function ConnectionList() {
               Manage database profiles and establish connections.
             </p>
           </div>
-          <Button onClick={handleNewConnection}>New Connection</Button>
+          <div className="relative" ref={dropdownRef}>
+            <Button className="cursor-pointer" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+              New Connection
+              <ChevronDown className="size-4" />
+            </Button>
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-md border bg-popover shadow-md z-50">
+                <div className="p-1">
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                    onClick={() => handleNewConnection('postgres')}
+                  >
+                    PostgreSQL
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {}}
+                    disabled
+                  >
+                    MySQL
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
-
-      <Separator />
 
       {isError && (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
@@ -75,6 +120,7 @@ export function ConnectionList() {
         open={isModalOpen}
         onOpenChange={handleModalOpenChange}
         connection={editingConnection}
+        databaseType={selectedDatabaseType || undefined}
       />
     </div>
   )

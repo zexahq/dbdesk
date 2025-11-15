@@ -115,6 +115,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
               onRefresh={refreshTableData}
               isLoading={isLoadingTableData}
               selectedRowsCount={selectedRowsCount}
+              connectionId={profile.id}
             />
             <div className="flex-1 overflow-hidden">
               {view === 'tables' && (

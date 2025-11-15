@@ -1,25 +1,25 @@
-import type { ConnectionProfile } from '@common/types'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '../ui/dialog'
-import { QuickConnect } from './quick-connect'
-import { ConnectionForm } from './connection-form'
-import { Separator } from '@renderer/components/ui/separator'
+import type { ConnectionProfile, DatabaseType } from '@common/types'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
+import { PostgresConnectionForm } from './connection-forms/postgres/postgres-connection-form'
 
 interface ConnectionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   connection?: ConnectionProfile | null
+  databaseType?: DatabaseType
 }
 
-export function ConnectionDialog({ open, onOpenChange, connection }: ConnectionDialogProps) {
+export function ConnectionDialog({
+  open,
+  onOpenChange,
+  connection,
+  databaseType
+}: ConnectionDialogProps) {
+  const type = connection?.type || databaseType
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg w-2xl max-w-none!">
         <DialogHeader>
           <DialogTitle>{connection ? 'Edit Connection' : 'New Connection'}</DialogTitle>
           <DialogDescription>
@@ -28,13 +28,10 @@ export function ConnectionDialog({ open, onOpenChange, connection }: ConnectionD
               : 'Create a new database connection profile.'}
           </DialogDescription>
         </DialogHeader>
-        {!connection && (
-          <div className="flex flex-col gap-2">
-            <QuickConnect onSuccess={() => onOpenChange(false)} />
-            <Separator />
-          </div>
+        {!type && <div className="flex flex-col gap-2">Select a database type to continue.</div>}
+        {type === 'postgres' && (
+          <PostgresConnectionForm connection={connection} onSuccess={() => onOpenChange(false)} />
         )}
-        <ConnectionForm connection={connection} onSuccess={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )

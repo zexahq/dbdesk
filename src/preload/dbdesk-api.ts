@@ -58,6 +58,36 @@ export const dbdeskAPI = {
   },
 
   /**
+   * Update an existing connection profile
+   */
+  async updateConnection(
+    connectionId: string,
+    name: string,
+    type: DatabaseType,
+    options: DBConnectionOptions
+  ): Promise<ConnectionProfile> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Connection name is required')
+    }
+    if (!type || typeof type !== 'string') {
+      throw new Error('Database type is required')
+    }
+    if (!options || typeof options !== 'object') {
+      throw new Error('Connection options are required')
+    }
+
+    return ipcRenderer.invoke('connections:update', {
+      connectionId: connectionId.trim(),
+      name: name.trim(),
+      type,
+      options
+    })
+  },
+
+  /**
    * Establish a connection to a database using a saved profile
    */
   async connect(connectionId: string): Promise<{ success: boolean; connectionId?: string }> {
