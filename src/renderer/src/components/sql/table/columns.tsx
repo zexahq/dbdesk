@@ -1,7 +1,7 @@
 import type { TableDataColumn } from '@common/types'
 import { Checkbox } from '@renderer/components/ui/checkbox'
-import { ColumnDef } from '@tanstack/react-table'
 import { cn } from '@renderer/lib/utils'
+import { ColumnDef } from '@tanstack/react-table'
 
 const DEFAULT_COLUMN_WIDTH = 240
 const DEFAULT_MIN_COLUMN_WIDTH = 120

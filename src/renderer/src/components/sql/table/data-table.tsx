@@ -2,17 +2,11 @@
 
 import { type ColumnDef, flexRender } from '@tanstack/react-table'
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@renderer/components/ui/table'
-import { ColumnResizer } from './column-resizer'
-import { cn } from '@renderer/lib/utils'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@renderer/components/ui/table'
 import { useDataTable } from '@renderer/hooks/use-data-table'
+import { cn } from '@renderer/lib/utils'
+import { ColumnResizer } from './column-resizer'
+import { DataTableCell } from './data-table-cell'
 import { DataTableKeyboardShortcuts } from './data-table-keyboard-shortcuts'
 
 interface DataTableProps<TData, TValue> {
@@ -30,13 +24,16 @@ export function DataTable<TData, TValue>({
     table,
     tableContainerRef,
     focusedCell,
+    editingCell,
     getIsCellSelected,
     getCellEdgeClasses,
     onCellClick,
     onCellDoubleClick,
     onCellMouseDown,
     onCellMouseEnter,
-    onCellMouseUp
+    onCellMouseUp,
+    onCellEditingStop,
+    onDataUpdate
   } = useDataTable({
     columns,
     data,
@@ -99,63 +96,26 @@ export function DataTable<TData, TValue>({
                         >
                           {row.getVisibleCells().map((cell) => {
                             const columnId = cell.column.id
-                            const isSelectColumn = columnId === 'select'
-                            const isFocused =
-                              focusedCell?.rowIndex === rowIndex &&
-                              focusedCell?.columnId === columnId
-                            const isSelected = getIsCellSelected(rowIndex, columnId)
-                            const { edgeClasses, isEdgeCell, isInSelection } = getCellEdgeClasses(
-                              rowIndex,
-                              columnId
-                            )
-                            const hasSelectionBorder = isEdgeCell || isInSelection
 
                             return (
-                              <TableCell
+                              <DataTableCell
                                 key={cell.id}
-                                className={cn(
-                                  // Default borders - remove on cells that are part of selection
-                                  !isInSelection &&
-                                    'border-border border-x first:border-l last:border-r',
-                                  'truncate bg-accent/50',
-                                  !isSelectColumn && 'cursor-pointer',
-                                  // Only show outline on focused cell if there's no selection border
-                                  isFocused &&
-                                    !hasSelectionBorder &&
-                                    'outline-2 outline-ring outline-offset-0',
-                                  isSelected && !isFocused && !isRowSelected && 'bg-selected-cell',
-                                  edgeClasses
-                                )}
-                                style={{
-                                  width: cell.column.getSize(),
-                                  minWidth: cell.column.columnDef.minSize,
-                                  maxWidth: cell.column.getSize()
-                                }}
-                                title={String(cell.getValue() ?? '')}
-                                onClick={
-                                  isSelectColumn
-                                    ? undefined
-                                    : (e) => onCellClick(rowIndex, columnId, e)
-                                }
-                                onDoubleClick={
-                                  isSelectColumn
-                                    ? undefined
-                                    : (e) => onCellDoubleClick(rowIndex, columnId, e)
-                                }
-                                onMouseDown={
-                                  isSelectColumn
-                                    ? undefined
-                                    : (e) => onCellMouseDown(rowIndex, columnId, e)
-                                }
-                                onMouseEnter={
-                                  isSelectColumn
-                                    ? undefined
-                                    : (e) => onCellMouseEnter(rowIndex, columnId, e)
-                                }
-                                onMouseUp={isSelectColumn ? undefined : onCellMouseUp}
-                              >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </TableCell>
+                                cell={cell}
+                                rowIndex={rowIndex}
+                                columnId={columnId}
+                                isRowSelected={isRowSelected}
+                                focusedCell={focusedCell}
+                                editingCell={editingCell}
+                                getIsCellSelected={getIsCellSelected}
+                                getCellEdgeClasses={getCellEdgeClasses}
+                                onCellClick={onCellClick}
+                                onCellDoubleClick={onCellDoubleClick}
+                                onCellMouseDown={onCellMouseDown}
+                                onCellMouseEnter={onCellMouseEnter}
+                                onCellMouseUp={onCellMouseUp}
+                                onCellEditingStop={onCellEditingStop}
+                                onDataUpdate={onDataUpdate}
+                              />
                             )
                           })}
                         </TableRow>
