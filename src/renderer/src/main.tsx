@@ -1,14 +1,48 @@
 import './styles/main.css'
 
+import loader from '@monaco-editor/loader'
+import * as monaco from 'monaco-editor'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
-import { RouterProvider, createRouter } from '@tanstack/react-router'
+
 import { QueryClientProvider } from '@tanstack/react-query'
-// import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
 
 // Import the generated route tree
-import { routeTree } from './routeTree.gen'
 import { queryClient } from './lib/query-client'
+import { routeTree } from './routeTree.gen'
+
+// Import Monaco Editor workers
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
+import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
+import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
+import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
+
+// Configure Monaco Environment for workers
+window.MonacoEnvironment = {
+  getWorker(_moduleId: string, label: string) {
+    switch (label) {
+      case 'json':
+        return new JsonWorker()
+      case 'css':
+      case 'scss':
+      case 'less':
+        return new CssWorker()
+      case 'html':
+      case 'handlebars':
+      case 'razor':
+        return new HtmlWorker()
+      case 'typescript':
+      case 'javascript':
+        return new TsWorker()
+      default:
+        return new EditorWorker()
+    }
+  }
+}
+
+loader.config({ monaco })
 
 // Create a new router instance
 const router = createRouter({ routeTree })
@@ -28,7 +62,6 @@ if (!rootElement.innerHTML) {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
-        {/* {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />} */}
       </QueryClientProvider>
     </StrictMode>
   )

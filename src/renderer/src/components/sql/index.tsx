@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react'
+import type { SQLConnectionProfile } from '@common/types'
+import { useSchemasWithTables, useTableData } from '@renderer/api/queries/schema'
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup
 } from '@renderer/components/ui/resizable'
-import { DbSidebar } from './sql-sidebar'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
-import type { SQLConnectionProfile } from '@common/types'
-import { SqlTopbar } from './sql-topbar'
-import { SqlBottombar } from './sql-bottombar'
-import { SqlTable } from './table'
-import { SqlStructure } from './sql-structure'
 import { cn } from '@renderer/lib/utils'
-import { useTableData, useSchemasWithTables } from '@renderer/api/queries/schema'
-import { useQueryClient } from '@tanstack/react-query'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { SqlBottombar } from './sql-bottombar'
+import { DbSidebar } from './sql-sidebar'
+import { SqlStructure } from './sql-structure'
+import { SqlTopbar } from './sql-topbar'
+import { SqlTable } from './table'
 
 interface SqlWorkspaceProps {
   profile: SQLConnectionProfile

@@ -1,8 +1,6 @@
 'use client'
 
-import * as React from 'react'
-import { useState, useEffect } from 'react'
-import { Search, Table2Icon, Database, Unplug, Moon, Sun } from 'lucide-react'
+import { useConnect, useConnections, useDisconnect } from '@renderer/api/queries/connections'
 import {
   CommandDialog,
   CommandEmpty,
@@ -12,13 +10,15 @@ import {
   CommandList,
   CommandSeparator
 } from '@renderer/components/ui/command'
-import { Button } from './ui/button'
-import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
-import { useConnections, useConnect, useDisconnect } from '@renderer/api/queries/connections'
-import { useNavigate } from '@tanstack/react-router'
-import { useDataTableStore } from '@renderer/store/data-table-store'
-import { useTheme } from '@renderer/hooks/use-theme'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { useTheme } from '@renderer/hooks/use-theme'
+import { useDataTableStore } from '@renderer/store/data-table-store'
+import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { useNavigate } from '@tanstack/react-router'
+import { Database, Moon, Search, Sun, Table2Icon, Unplug } from 'lucide-react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { Button } from './ui/button'
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
@@ -124,7 +124,7 @@ export function QuickPanel() {
             </>
           )}
           {currentConnectionId && (
-            <CommandGroup heading="Quick Actions" className="py-2">
+            <CommandGroup heading="Connection Actions" className="py-2">
               <CommandItem onSelect={handleDisconnect} className="py-2!">
                 <Unplug className="size-4 mr-2" />
                 <span className="text-sm">Disconnect</span>

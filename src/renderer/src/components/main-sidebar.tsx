@@ -1,9 +1,8 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { Info } from 'lucide-react'
+import { Home, Info } from 'lucide-react'
+import { QuickPanel } from './quick-panel'
 import { ThemeToggle } from './theme-toggle'
 import { Button } from './ui/button'
-import { QuickPanel } from './quick-panel'
-import { Home } from 'lucide-react'
 
 export function MainSidebar() {
   const location = useLocation()
@@ -24,11 +23,13 @@ export function MainSidebar() {
         </div>
         <div className="flex flex-col gap-2 items-center">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" className="cursor-pointer" asChild>
-            <Link to="/about" className="[&.active]:font-bold">
-              <Info className="size-4" />
-            </Link>
-          </Button>
+          {!isConnectionPage && (
+            <Button variant="ghost" size="icon" className="cursor-pointer" asChild>
+              <Link to="/about" className="[&.active]:font-bold">
+                <Info className="size-4" />
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
     </div>

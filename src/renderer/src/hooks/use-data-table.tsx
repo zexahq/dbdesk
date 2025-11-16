@@ -154,28 +154,28 @@ export function useDataTable<TData, TValue = unknown>({
       if (isTopEdge) {
         edgeClasses.push('border-t-2 border-t-ring')
       } else {
-        edgeClasses.push('border-t border-t-ring')
+        edgeClasses.push('border-t border-t-border')
       }
 
       // Bottom border: thick for bottom edge, regular for all other cells in selection
       if (isBottomEdge) {
         edgeClasses.push('border-b-2 border-b-ring')
       } else {
-        edgeClasses.push('border-b border-b-ring')
+        edgeClasses.push('border-b border-b-border')
       }
 
       // Left border: thick for left edge, regular for all other cells in selection
       if (isLeftEdge) {
         edgeClasses.push('border-l-2 border-l-ring')
       } else {
-        edgeClasses.push('border-l border-l-ring')
+        edgeClasses.push('border-l border-l-border')
       }
 
       // Right border: thick for right edge, regular for all other cells in selection
       if (isRightEdge) {
         edgeClasses.push('border-r-2 border-r-ring')
       } else {
-        edgeClasses.push('border-r border-r-ring')
+        edgeClasses.push('border-r border-r-border')
       }
 
       edgeClasses.push('bg-ring/5')
