@@ -118,7 +118,7 @@ export function useDataTable<TData, TValue = unknown>({
   const getCellEdgeClasses = React.useCallback(
     (rowIndex: number, columnId: string) => {
       if (!selectionState.selectionRange || selectionState.selectedCells.size === 0) {
-        return { edgeClasses: '', isEdgeCell: false }
+        return { edgeClasses: '', isEdgeCell: false, isInSelection: false }
       }
 
       const { start, end } = selectionState.selectionRange
@@ -139,7 +139,7 @@ export function useDataTable<TData, TValue = unknown>({
         currentColIndex <= maxCol
 
       if (!isInSelection) {
-        return { edgeClasses: '', isEdgeCell: false }
+        return { edgeClasses: '', isEdgeCell: false, isInSelection: false }
       }
 
       const isTopEdge = rowIndex === minRow
@@ -150,14 +150,37 @@ export function useDataTable<TData, TValue = unknown>({
 
       const edgeClasses: string[] = []
 
-      if (isTopEdge) edgeClasses.push('border-t-2 border-t-ring')
-      if (isBottomEdge) edgeClasses.push('border-b-2 border-b-ring')
-      if (isLeftEdge) edgeClasses.push('border-l-2 border-l-ring')
-      if (isRightEdge) edgeClasses.push('border-r-2 border-r-ring')
+      // Top border: thick for top edge, regular for all other cells in selection
+      if (isTopEdge) {
+        edgeClasses.push('border-t-2 border-t-ring')
+      } else {
+        edgeClasses.push('border-t border-t-ring')
+      }
+
+      // Bottom border: thick for bottom edge, regular for all other cells in selection
+      if (isBottomEdge) {
+        edgeClasses.push('border-b-2 border-b-ring')
+      } else {
+        edgeClasses.push('border-b border-b-ring')
+      }
+
+      // Left border: thick for left edge, regular for all other cells in selection
+      if (isLeftEdge) {
+        edgeClasses.push('border-l-2 border-l-ring')
+      } else {
+        edgeClasses.push('border-l border-l-ring')
+      }
+
+      // Right border: thick for right edge, regular for all other cells in selection
+      if (isRightEdge) {
+        edgeClasses.push('border-r-2 border-r-ring')
+      } else {
+        edgeClasses.push('border-r border-r-ring')
+      }
 
       edgeClasses.push('bg-ring/5')
 
-      return { edgeClasses: edgeClasses.join(' '), isEdgeCell }
+      return { edgeClasses: edgeClasses.join(' '), isEdgeCell, isInSelection: true }
     },
     [selectionState, columnIds]
   )

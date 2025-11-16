@@ -18,12 +18,7 @@ import { useConnections, useConnect, useDisconnect } from '@renderer/api/queries
 import { useNavigate } from '@tanstack/react-router'
 import { useDataTableStore } from '@renderer/store/data-table-store'
 import { useTheme } from '@renderer/hooks/use-theme'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@renderer/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
@@ -134,16 +129,18 @@ export function QuickPanel() {
                 <Unplug className="size-4 mr-2" />
                 <span className="text-sm">Disconnect</span>
               </CommandItem>
-              <CommandItem onSelect={handleThemeToggle} className="py-2!">
-                {theme === 'light' ? (
-                  <Moon className="size-4 mr-2" />
-                ) : (
-                  <Sun className="size-4 mr-2" />
-                )}
-                <span className="text-sm">Toggle Theme</span>
-              </CommandItem>
             </CommandGroup>
           )}
+          <CommandGroup heading="General Settings" className="py-2">
+            <CommandItem onSelect={handleThemeToggle} className="py-2!">
+              {theme === 'light' ? (
+                <Moon className="size-4 mr-2" />
+              ) : (
+                <Sun className="size-4 mr-2" />
+              )}
+              <span className="text-sm">Toggle Theme</span>
+            </CommandItem>
+          </CommandGroup>
           {schemasWithTables.length > 0 && (
             <>
               <CommandGroup heading="Entities" className="py-2">

@@ -104,18 +104,18 @@ export function DataTable<TData, TValue>({
                               focusedCell?.rowIndex === rowIndex &&
                               focusedCell?.columnId === columnId
                             const isSelected = getIsCellSelected(rowIndex, columnId)
-                            const { edgeClasses, isEdgeCell } = getCellEdgeClasses(
+                            const { edgeClasses, isEdgeCell, isInSelection } = getCellEdgeClasses(
                               rowIndex,
                               columnId
                             )
-                            const hasSelectionBorder = isEdgeCell
+                            const hasSelectionBorder = isEdgeCell || isInSelection
 
                             return (
                               <TableCell
                                 key={cell.id}
                                 className={cn(
-                                  // Default borders - remove on edge cells that are part of selection
-                                  !hasSelectionBorder &&
+                                  // Default borders - remove on cells that are part of selection
+                                  !isInSelection &&
                                     'border-border border-x first:border-l last:border-r',
                                   'truncate bg-accent/50',
                                   !isSelectColumn && 'cursor-pointer',
