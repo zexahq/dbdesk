@@ -1,6 +1,6 @@
+import type { ConnectionProfile, DatabaseType, DBConnectionOptions } from '@common/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
-import type { ConnectionProfile, DatabaseType, DBConnectionOptions } from '@common/types'
 
 const keys = {
   connections: ['connections'] as const

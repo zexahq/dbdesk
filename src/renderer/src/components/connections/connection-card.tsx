@@ -1,4 +1,7 @@
 import type { ConnectionProfile } from '@common/types'
+import { useConnect, useDeleteConnection } from '@renderer/api/queries/connections'
+import { Badge } from '@renderer/components/ui/badge'
+import { Button } from '@renderer/components/ui/button'
 import {
   Card,
   CardContent,
@@ -7,13 +10,11 @@ import {
   CardHeader,
   CardTitle
 } from '@renderer/components/ui/card'
-import { Badge } from '@renderer/components/ui/badge'
-import { Button } from '@renderer/components/ui/button'
-import { useConnect, useDeleteConnection } from '@renderer/api/queries/connections'
-import { useMemo } from 'react'
-import { formatDistanceToNow } from 'date-fns'
-import { useNavigate } from '@tanstack/react-router'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { useNavigate } from '@tanstack/react-router'
+import { formatDistanceToNow } from 'date-fns'
+import { useMemo } from 'react'
+import toast from 'react-hot-toast'
 import postgresImage from '../../assets/postgres.svg'
 
 interface ConnectionCardProps {
@@ -49,6 +50,9 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
           to: '/connections/$connectionId',
           params: { connectionId: profile.id }
         })
+      },
+      onError: () => {
+        toast.error(`Failed to connect to "${profile.name}"`)
       }
     })
   }
