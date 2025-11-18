@@ -1,5 +1,6 @@
 import type { TableDataColumn } from '@common/types'
 import { Checkbox } from '@renderer/components/ui/checkbox'
+import { getCellVariant } from '@renderer/lib/data-table'
 import { cn } from '@renderer/lib/utils'
 import { ColumnDef } from '@tanstack/react-table'
 
@@ -60,7 +61,8 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<Record<string,
       ),
       meta: {
         dataType: column.dataType,
-        name: column.name
+        name: column.name,
+        variant: getCellVariant(column.dataType)
       },
       size: DEFAULT_COLUMN_WIDTH,
       minSize: DEFAULT_MIN_COLUMN_WIDTH

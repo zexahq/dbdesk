@@ -19,7 +19,7 @@ export function BasicEditor({
   onChange,
   onSave,
   onCancel,
-  height = '300px',
+  height = '500px',
   language = 'plaintext'
 }: BasicEditorProps) {
   const editorRef = React.useRef<editor.IStandaloneCodeEditor | null>(null)
@@ -55,7 +55,9 @@ export function BasicEditor({
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
     editorRef.current = editor
     editor.focus()
-    editor.trigger(editor.getModel()?.uri.toString() ?? '', 'editor.action.formatDocument', null)
+    setTimeout(() => {
+      editorRef.current?.getAction('editor.action.formatDocument')?.run()
+    }, 100)
   }
 
   return (
@@ -68,7 +70,6 @@ export function BasicEditor({
       onMount={handleEditorDidMount}
       options={{
         minimap: { enabled: false },
-
         scrollBeyondLastLine: false,
         wordWrap: 'on',
         automaticLayout: true,

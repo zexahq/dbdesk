@@ -115,6 +115,7 @@ export function DataTable<TData, TValue>({
                                 onCellMouseUp={onCellMouseUp}
                                 onCellEditingStop={onCellEditingStop}
                                 onDataUpdate={onDataUpdate}
+                                tableContainerRef={tableContainerRef}
                               />
                             )
                           })}
