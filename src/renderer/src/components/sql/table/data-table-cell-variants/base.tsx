@@ -43,8 +43,11 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
 
   const allowCellInteraction = !isSelectColumn && !isEditing
 
-  const tableCellProps: React.ComponentProps<typeof TableCell> = {
+  const tableCellProps: React.ComponentProps<typeof TableCell> & {
+    'data-column-id'?: string
+  } = {
     ref: cellRef,
+    'data-column-id': columnId,
     className: cn(
       !isInSelection && 'border-border border-x first:border-l last:border-r',
       'truncate bg-accent/50',

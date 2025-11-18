@@ -113,7 +113,10 @@ export function NumericDataTableCell<TData, TValue>(props: DataTableCellProps<TD
   )
 
   return (
-    <TableCell {...tableCellProps} className={cn(tableCellProps.className, 'cursor-text')}>
+    <TableCell
+      {...tableCellProps}
+      className={cn(tableCellProps.className, 'cursor-text', isEditing && 'bg-muted/10')}
+    >
       {isEditing ? (
         <input
           ref={inputRef}

@@ -19,14 +19,21 @@ export function parseCellKey(cellKey: string): { rowIndex: number; columnId: str
 
 /**
  * Formats a cell value to a string for display
+ * Merges normalization logic: handles null, undefined, objects, and primitives
  */
 export function formatCellValue(value: unknown): string {
-  if (value === null || value === undefined) {
+  if (value === null) {
+    return 'NULL'
+  }
+
+  if (value === undefined) {
     return ''
   }
+
   if (typeof value === 'string') {
     return value
   }
+
   if (typeof value === 'object') {
     try {
       return JSON.stringify(value, null, 2)
@@ -34,6 +41,7 @@ export function formatCellValue(value: unknown): string {
       return String(value)
     }
   }
+
   return String(value)
 }
 

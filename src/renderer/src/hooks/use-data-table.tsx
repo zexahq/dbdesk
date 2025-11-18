@@ -1,5 +1,8 @@
 'use client'
 
+import { getCellKey, parseCellKey } from '@renderer/lib/data-table'
+import { useDataTableStore } from '@renderer/store/data-table-store'
+import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/types/data-table'
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -9,9 +12,6 @@ import {
   useReactTable
 } from '@tanstack/react-table'
 import * as React from 'react'
-import { getCellKey, parseCellKey } from '@renderer/lib/data-table'
-import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/types/data-table'
-import { useDataTableStore } from '@renderer/store/data-table-store'
 
 interface UseDataTableProps<TData, TValue = unknown>
   extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
@@ -30,6 +30,7 @@ export function useDataTable<TData, TValue = unknown>({
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = React.useRef<HTMLDivElement>(null)
   const tableRef = React.useRef<ReturnType<typeof useReactTable<TData>>>(null)
+  const rowMapRef = React.useRef<Map<number, HTMLTableRowElement>>(new Map())
 
   // Zustand store
   const {
@@ -249,9 +250,114 @@ export function useDataTable<TData, TValue = unknown>({
     [columnIds]
   )
 
+  // Scroll cell into view
+  const scrollCellIntoView = React.useCallback(
+    (rowIndex: number, columnId: string, direction?: NavigationDirection) => {
+      const container = tableContainerRef.current
+      if (!container) return
+
+      const rowElement = rowMapRef.current.get(rowIndex)
+      if (!rowElement) {
+        // If row is not rendered yet, try to scroll to approximate position
+        // This is a fallback for when rows are not in the DOM
+        const headerElement = container.querySelector('thead')
+        const headerHeight = headerElement?.getBoundingClientRect().height ?? 0
+        const approximateRowHeight = 40 // Approximate row height
+        const targetScrollTop = rowIndex * approximateRowHeight
+
+        // Only scroll if the target is outside the viewport
+        const viewportTop = container.scrollTop + headerHeight
+        const viewportBottom = container.scrollTop + container.clientHeight
+
+        if (targetScrollTop < viewportTop) {
+          // Scroll to show row at top
+          container.scrollTop = Math.max(0, targetScrollTop - headerHeight)
+        } else if (targetScrollTop + approximateRowHeight > viewportBottom) {
+          // Scroll to show row at bottom
+          container.scrollTop = targetScrollTop + approximateRowHeight - container.clientHeight
+        }
+        return
+      }
+
+      // Row is rendered, use scrollIntoView or manual calculation
+      const headerElement = container.querySelector('thead')
+      const headerHeight = headerElement?.getBoundingClientRect().height ?? 0
+      const containerRect = container.getBoundingClientRect()
+
+      // Calculate viewport boundaries relative to the container's scroll position
+      const viewportTop = container.scrollTop + headerHeight
+      const viewportBottom = container.scrollTop + container.clientHeight
+
+      // Calculate row position relative to container's scroll position
+      const rowTop = rowElement.offsetTop
+      const rowBottom = rowTop + rowElement.offsetHeight
+
+      // Check if row is fully visible
+      const isFullyVisible = rowTop >= viewportTop && rowBottom <= viewportBottom
+
+      if (isFullyVisible) {
+        // Row is already visible, but we might need to scroll horizontally for the column
+        // Find the cell element and scroll it horizontally if needed
+        const cellElement = rowElement.querySelector(
+          `[data-column-id="${columnId}"]`
+        ) as HTMLElement
+        if (cellElement) {
+          const cellRect = cellElement.getBoundingClientRect()
+          const containerLeft = containerRect.left
+          const containerRight = containerRect.right
+
+          if (cellRect.left < containerLeft) {
+            // Cell is to the left of viewport, scroll left
+            container.scrollLeft = container.scrollLeft + (cellRect.left - containerLeft)
+          } else if (cellRect.right > containerRight) {
+            // Cell is to the right of viewport, scroll right
+            container.scrollLeft = container.scrollLeft + (cellRect.right - containerRight)
+          }
+        }
+        return
+      }
+
+      // Row is not fully visible, scroll it into view
+      if (direction === 'down' || direction === 'pagedown' || direction === 'ctrl+end') {
+        // For downward navigation, align to bottom
+        const scrollNeeded = rowBottom - viewportBottom
+        if (scrollNeeded > 0) {
+          container.scrollTop += scrollNeeded
+        }
+      } else if (direction === 'up' || direction === 'pageup' || direction === 'ctrl+home') {
+        // For upward navigation, align to top
+        const scrollNeeded = viewportTop - rowTop
+        if (scrollNeeded > 0) {
+          container.scrollTop -= scrollNeeded
+        }
+      } else {
+        // For other directions (left, right, home, end), center the row
+        const rowCenter = rowTop + rowElement.offsetHeight / 2
+        const viewportCenter = viewportTop + (viewportBottom - viewportTop) / 2
+        const scrollNeeded = rowCenter - viewportCenter
+        container.scrollTop += scrollNeeded
+      }
+
+      // Also handle horizontal scrolling for the column
+      const cellElement = rowElement.querySelector(`[data-column-id="${columnId}"]`) as HTMLElement
+      if (cellElement) {
+        const cellRect = cellElement.getBoundingClientRect()
+        const containerLeft = containerRect.left
+        const containerRight = containerRect.right
+
+        if (cellRect.left < containerLeft) {
+          container.scrollLeft = container.scrollLeft + (cellRect.left - containerLeft)
+        } else if (cellRect.right > containerRight) {
+          container.scrollLeft = container.scrollLeft + (cellRect.right - containerRight)
+        }
+      }
+    },
+    []
+  )
+
   // Focus cell
   const focusCell = React.useCallback(
-    (rowIndex: number, columnId: string) => {
+    (rowIndex: number, columnId: string, scrollDirection?: NavigationDirection) => {
       setFocusedCell({ rowIndex, columnId })
       setEditingCell(null)
 
@@ -259,8 +365,13 @@ export function useDataTable<TData, TValue = unknown>({
       if (tableContainerRef.current && document.activeElement !== tableContainerRef.current) {
         tableContainerRef.current.focus()
       }
+
+      // Scroll cell into view after a brief delay to ensure DOM is updated
+      requestAnimationFrame(() => {
+        scrollCellIntoView(rowIndex, columnId, scrollDirection)
+      })
     },
-    [setFocusedCell, setEditingCell]
+    [setFocusedCell, setEditingCell, scrollCellIntoView]
   )
 
   // Navigate cell
@@ -344,7 +455,7 @@ export function useDataTable<TData, TValue = unknown>({
       }
 
       if (newRowIndex !== rowIndex || newColumnId !== columnId) {
-        focusCell(newRowIndex, newColumnId)
+        focusCell(newRowIndex, newColumnId, direction)
       }
     },
     [focusedCell, navigableColumnIds, table, focusCell]
@@ -770,6 +881,7 @@ export function useDataTable<TData, TValue = unknown>({
   return {
     table,
     tableContainerRef,
+    rowMapRef,
     focusedCell,
     editingCell,
     selectionState,

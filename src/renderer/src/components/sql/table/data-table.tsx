@@ -23,6 +23,7 @@ export function DataTable<TData, TValue>({
   const {
     table,
     tableContainerRef,
+    rowMapRef,
     focusedCell,
     editingCell,
     getIsCellSelected,
@@ -43,6 +44,8 @@ export function DataTable<TData, TValue>({
   const rowModel = table.getRowModel()
   const rows = rowModel.rows
   const hasRows = rows.length > 0
+
+  console.log('rows', data)
 
   return (
     <>
@@ -91,6 +94,13 @@ export function DataTable<TData, TValue>({
                       return (
                         <TableRow
                           key={row.id}
+                          ref={(el) => {
+                            if (el) {
+                              rowMapRef.current.set(rowIndex, el)
+                            } else {
+                              rowMapRef.current.delete(rowIndex)
+                            }
+                          }}
                           data-state={isRowSelected && 'selected'}
                           className={cn(isRowSelected && 'bg-selected-cell')}
                         >

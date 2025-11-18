@@ -1,13 +1,13 @@
-import type { TableDataColumn } from '@common/types'
+import type { QueryResultRow, TableDataColumn } from '@common/types'
 import { Checkbox } from '@renderer/components/ui/checkbox'
-import { getCellVariant } from '@renderer/lib/data-table'
+import { formatCellValue, getCellVariant } from '@renderer/lib/data-table'
 import { cn } from '@renderer/lib/utils'
 import { ColumnDef } from '@tanstack/react-table'
 
 const DEFAULT_COLUMN_WIDTH = 240
 const DEFAULT_MIN_COLUMN_WIDTH = 120
 
-export const getColumns = (columns: TableDataColumn[]): ColumnDef<Record<string, string>>[] => {
+export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow>[] => {
   return [
     {
       id: 'select',
@@ -59,6 +59,10 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<Record<string,
           <span className="text-xs text-muted-foreground font-normal">{column.dataType}</span>
         </div>
       ),
+      cell: ({ getValue }) => {
+        const value = getValue()
+        return <span className="truncate">{formatCellValue(value)}</span>
+      },
       meta: {
         dataType: column.dataType,
         name: column.name,

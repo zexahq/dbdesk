@@ -55,9 +55,6 @@ export function BasicEditor({
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
     editorRef.current = editor
     editor.focus()
-    setTimeout(() => {
-      editorRef.current?.getAction('editor.action.formatDocument')?.run()
-    }, 100)
   }
 
   return (
