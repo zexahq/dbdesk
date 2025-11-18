@@ -61,7 +61,13 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
       ),
       cell: ({ getValue }) => {
         const value = getValue()
-        return <span className="truncate">{formatCellValue(value)}</span>
+        const formattedValue = formatCellValue(value)
+        const isNull = value === null
+        return (
+          <span className={cn('truncate', isNull && 'text-muted-foreground')}>
+            {formattedValue}
+          </span>
+        )
       },
       meta: {
         dataType: column.dataType,

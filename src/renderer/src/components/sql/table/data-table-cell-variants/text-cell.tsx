@@ -25,7 +25,7 @@ export function TextDataTableCell<TData, TValue>(props: DataTableCellProps<TData
     tableContainerRef
   } = useDataTableCellContext(props)
 
-  const [editorValue, setEditorValue] = React.useState(cellValueString)
+  const [editorValue, setEditorValue] = React.useState(cellValue === null ? '' : cellValueString)
   const [isSheetOpen, setIsSheetOpen] = React.useState(false)
   const isClosingRef = React.useRef(false)
   const isSavingRef = React.useRef(false)
@@ -34,11 +34,11 @@ export function TextDataTableCell<TData, TValue>(props: DataTableCellProps<TData
     if (isEditing) {
       isClosingRef.current = false
       isSavingRef.current = false
-      setEditorValue(cellValueString)
+      setEditorValue(cellValue === null ? '' : cellValueString)
     } else {
       setIsSheetOpen(false)
     }
-  }, [isEditing, cellValueString])
+  }, [isEditing, cellValueString, cellValue])
 
   const restoreFocus = React.useCallback(() => {
     setTimeout(() => {
@@ -144,7 +144,7 @@ export function TextDataTableCell<TData, TValue>(props: DataTableCellProps<TData
                   <span>Cancel</span>
                 </Button>
                 <Button variant="default" size="sm" onClick={handleSave} className="gap-2">
-                  <span>Save changes</span>
+                  <span>Save</span>
                 </Button>
               </div>
             </div>
@@ -163,4 +163,3 @@ export function TextDataTableCell<TData, TValue>(props: DataTableCellProps<TData
     </>
   )
 }
-
