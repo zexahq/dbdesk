@@ -1,6 +1,7 @@
 'use client'
 
 import Editor from '@monaco-editor/react'
+import { useTheme } from '@renderer/hooks/use-theme'
 import type { editor } from 'monaco-editor'
 import { KeyCode } from 'monaco-editor'
 import * as React from 'react'
@@ -22,7 +23,11 @@ export function BasicEditor({
   height = '500px',
   language = 'plaintext'
 }: BasicEditorProps) {
+  const { theme } = useTheme()
   const editorRef = React.useRef<editor.IStandaloneCodeEditor | null>(null)
+
+  // Map application theme to Monaco editor theme
+  const editorTheme = theme === 'dark' ? 'vs-dark' : 'vs'
 
   // Handle keyboard shortcuts
   React.useEffect(() => {
@@ -61,7 +66,7 @@ export function BasicEditor({
     <Editor
       height={height}
       language={language}
-      theme="vs-dark"
+      theme={editorTheme}
       value={value}
       onChange={(val) => onChange?.(val ?? '')}
       onMount={handleEditorDidMount}

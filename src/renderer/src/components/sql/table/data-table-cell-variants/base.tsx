@@ -36,8 +36,8 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   const hasSelectionBorder = isEdgeCell || isInSelection
 
   const cellValue = cell.getValue()
-  const cellValueString = formatCellValue(cellValue)
   const dataType = (cell.column.columnDef.meta as { dataType?: string } | undefined)?.dataType
+  const cellValueString = formatCellValue(cellValue, dataType)
   const editorLanguage = getEditorLanguage(dataType)
   const renderedCell = flexRender(cell.column.columnDef.cell, cell.getContext())
 

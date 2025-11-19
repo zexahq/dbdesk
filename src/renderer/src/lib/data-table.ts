@@ -1,3 +1,5 @@
+import { format } from 'date-fns'
+
 /**
  * Generates a unique key for a cell based on its row index and column ID
  */
@@ -21,7 +23,7 @@ export function parseCellKey(cellKey: string): { rowIndex: number; columnId: str
  * Formats a cell value to a string for display
  * Merges normalization logic: handles null, undefined, objects, and primitives
  */
-export function formatCellValue(value: unknown): string {
+export function formatCellValue(value: unknown, dataType?: string): string {
   if (value === null) {
     return 'NULL'
   }
@@ -32,6 +34,22 @@ export function formatCellValue(value: unknown): string {
 
   if (typeof value === 'string') {
     return value
+  }
+
+  if (value instanceof Date) {
+    const isTimezoneAware =
+      dataType?.includes('with time zone') ||
+      dataType?.includes('tz') ||
+      dataType === 'timestamptz' ||
+      dataType === 'timetz'
+
+    const formatString = isTimezoneAware ? 'yyyy-MM-dd HH:mm:ss.SSSxxx' : 'yyyy-MM-dd HH:mm:ss.SSS'
+
+    try {
+      return format(value, formatString)
+    } catch {
+      return value.toISOString()
+    }
   }
 
   if (typeof value === 'object') {
@@ -45,7 +63,7 @@ export function formatCellValue(value: unknown): string {
   return String(value)
 }
 
-export type DataTableCellVariant = 'text' | 'numeric' | 'json' | 'boolean'
+export type DataTableCellVariant = 'text' | 'numeric' | 'json' | 'boolean' | 'date'
 
 const JSON_TYPES = new Set(['json', 'jsonb'])
 const BOOLEAN_TYPES = new Set(['boolean', 'bool'])
@@ -71,6 +89,19 @@ const NUMERIC_TYPES = new Set([
   'money'
 ])
 
+const DATE_TYPES = new Set([
+  'date',
+  'timestamp',
+  'timestamp without time zone',
+  'timestamp with time zone',
+  'timestamptz',
+  'time',
+  'time without time zone',
+  'time with time zone',
+  'timetz',
+  'interval'
+])
+
 export function getCellVariant(dataType: string | undefined): DataTableCellVariant {
   if (!dataType) return 'text'
   const normalizedType = dataType.trim().toLowerCase()
@@ -83,6 +114,9 @@ export function getCellVariant(dataType: string | undefined): DataTableCellVaria
   }
   if (NUMERIC_TYPES.has(normalizedType)) {
     return 'numeric'
+  }
+  if (DATE_TYPES.has(normalizedType)) {
+    return 'date'
   }
 
   return 'text'

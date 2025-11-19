@@ -3,6 +3,7 @@
 import type { DataTableCellVariant } from '@renderer/lib/data-table'
 
 import { BooleanDataTableCell } from './data-table-cell-variants/boolean-cell'
+import { DateTimeDataTableCell } from './data-table-cell-variants/date-time-cell'
 import { NumericDataTableCell } from './data-table-cell-variants/numeric-cell'
 import { TextDataTableCell } from './data-table-cell-variants/text-cell'
 import type { DataTableCellProps } from './data-table-cell.types'
@@ -22,6 +23,8 @@ export function DataTableCell<TData, TValue>(props: DataTableCellProps<TData, TV
       return <NumericDataTableCell {...props} />
     case 'boolean':
       return <BooleanDataTableCell {...props} />
+    case 'date':
+      return <DateTimeDataTableCell {...props} />
     default:
       return <TextDataTableCell {...props} />
   }

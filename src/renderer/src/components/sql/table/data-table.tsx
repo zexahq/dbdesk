@@ -45,8 +45,6 @@ export function DataTable<TData, TValue>({
   const rows = rowModel.rows
   const hasRows = rows.length > 0
 
-  console.log('rows', data)
-
   return (
     <>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">

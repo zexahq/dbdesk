@@ -8,26 +8,9 @@ import * as React from 'react'
 import type { DataTableCellProps } from '../data-table-cell.types'
 import { useDataTableCellContext } from './base'
 
-function normalizeNumericValue(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') {
-    return null
-  }
-  if (typeof value === 'number') {
-    return Number.isNaN(value) ? null : value
-  }
-  const parsed = Number(value)
-  return Number.isNaN(parsed) ? null : parsed
-}
+import { format } from 'date-fns'
 
-function parseNumericInput(value: string): number | null | undefined {
-  const trimmed = value.trim()
-  if (trimmed === '') return null
-  if (trimmed === '-' || trimmed === '+') return undefined
-  const parsed = Number(trimmed)
-  return Number.isNaN(parsed) ? undefined : parsed
-}
-
-export function NumericDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
+export function DateTimeDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
   const {
     tableCellProps,
     renderedCell,
@@ -36,7 +19,8 @@ export function NumericDataTableCell<TData, TValue>(props: DataTableCellProps<TD
     columnId,
     tableContainerRef,
     cellValueString,
-    cellValue
+    cellValue,
+    dataType
   } = useDataTableCellContext(props)
 
   const [value, setValue] = React.useState(cellValueString)
@@ -44,13 +28,33 @@ export function NumericDataTableCell<TData, TValue>(props: DataTableCellProps<TD
 
   React.useEffect(() => {
     if (isEditing) {
-      const nextValue = cellValue === null || cellValue === undefined ? '' : String(cellValue ?? '')
+      let nextValue = ''
+      if (cellValue instanceof Date) {
+        const isTimezoneAware =
+          dataType?.includes('with time zone') ||
+          dataType?.includes('tz') ||
+          dataType === 'timestamptz' ||
+          dataType === 'timetz'
+
+        const formatString = isTimezoneAware
+          ? 'yyyy-MM-dd HH:mm:ss.SSSxxx'
+          : 'yyyy-MM-dd HH:mm:ss.SSS'
+
+        try {
+          nextValue = format(cellValue, formatString)
+        } catch {
+          // Fallback if formatting fails
+          nextValue = cellValue.toISOString()
+        }
+      } else if (cellValue !== null && cellValue !== undefined) {
+        nextValue = String(cellValue)
+      }
       setValue(nextValue)
       requestAnimationFrame(() => inputRef.current?.focus())
     } else {
       setValue(cellValueString)
     }
-  }, [isEditing, cellValue, cellValueString])
+  }, [isEditing, cellValue, cellValueString, dataType])
 
   const restoreFocus = React.useCallback(() => {
     setTimeout(() => {
@@ -60,30 +64,21 @@ export function NumericDataTableCell<TData, TValue>(props: DataTableCellProps<TD
 
   const commitValue = React.useCallback(
     (nextValue: string, opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => {
-      const parsed = parseNumericInput(nextValue)
-      if (parsed === undefined) {
-        setValue(cellValueString)
-        props.onCellEditingStop(opts)
-        restoreFocus()
-        return
-      }
-
-      const originalNumeric = normalizeNumericValue(cellValue)
-      const hasChanged =
-        parsed !== originalNumeric && !(parsed === null && originalNumeric === null)
+      const trimmed = nextValue.trim()
+      const hasChanged = trimmed !== cellValueString
 
       if (hasChanged) {
         props.onDataUpdate({
           rowIndex,
           columnId,
-          value: parsed
+          value: trimmed === '' ? null : trimmed
         })
       }
 
       props.onCellEditingStop(opts)
       restoreFocus()
     },
-    [cellValue, cellValueString, props, rowIndex, columnId, restoreFocus]
+    [cellValueString, props, rowIndex, columnId, restoreFocus]
   )
 
   const onInputBlur = React.useCallback(() => {
@@ -129,7 +124,6 @@ export function NumericDataTableCell<TData, TValue>(props: DataTableCellProps<TD
           onBlur={onInputBlur}
           onKeyDown={onInputKeyDown}
           className="w-full border-none bg-transparent p-0 text-sm outline-none"
-          inputMode="decimal"
           autoFocus
         />
       ) : (
