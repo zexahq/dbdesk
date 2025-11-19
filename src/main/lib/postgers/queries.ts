@@ -40,14 +40,27 @@ export const QUERIES = {
   // Column queries
   LIST_COLUMNS: `
     SELECT
-      column_name,
-      data_type,
-      is_nullable,
-      column_default
-    FROM information_schema.columns
-    WHERE table_schema = $1
-      AND table_name = $2
-    ORDER BY ordinal_position
+      c.column_name,
+      c.data_type,
+      c.is_nullable,
+      c.column_default,
+      CASE
+        WHEN tc.constraint_type = 'PRIMARY KEY' THEN TRUE
+        ELSE FALSE
+      END AS is_primary_key
+    FROM information_schema.columns c
+    LEFT JOIN information_schema.key_column_usage kcu
+      ON c.table_schema = kcu.table_schema
+      AND c.table_name = kcu.table_name
+      AND c.column_name = kcu.column_name
+    LEFT JOIN information_schema.table_constraints tc
+      ON kcu.constraint_name = tc.constraint_name
+      AND kcu.table_schema = tc.table_schema
+      AND kcu.table_name = tc.table_name
+      AND tc.constraint_type = 'PRIMARY KEY'
+    WHERE c.table_schema = $1
+      AND c.table_name = $2
+    ORDER BY c.ordinal_position
   `,
 
   // Constraint queries

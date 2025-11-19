@@ -1,10 +1,18 @@
+import type {
+  DeleteTableRowsOptions,
+  DeleteTableRowsResult,
+  QueryResult,
+  SQLAdapter,
+  SQLConnectionOptions,
+  TableInfo
+} from '@common/types'
 import { performance } from 'node:perf_hooks'
-import type { QueryResult, SQLAdapter, SQLConnectionOptions, TableInfo } from '@common/types'
 import { Pool, type QueryResult as PgQueryResult } from 'pg'
 
-import type { QueryResultRow } from 'pg'
 import type { SchemaWithTables, TableDataOptions, TableDataResult } from '@common/types/sql'
-import { QUERIES, buildTableDataQuery, buildTableCountQuery } from '../lib/postgers/queries'
+import type { QueryResultRow } from 'pg'
+import { QUERIES, buildTableCountQuery, buildTableDataQuery } from '../lib/postgers/queries'
+import { quoteIdentifier } from '../lib/postgers/utils'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -139,8 +147,10 @@ export class PostgresAdapter implements SQLAdapter {
     const executionTime = performance.now() - start
     const columns = columnInfo.map((column) => ({
       name: column.name,
-      dataType: column.type
+      dataType: column.type,
+      isPrimaryKey: column.isPrimaryKey ?? false
     }))
+    const primaryKeyColumns = columnInfo.filter((column) => column.isPrimaryKey).map((c) => c.name)
     const totalCount = countResult.rows[0]?.total ?? 0
 
     return {
@@ -148,7 +158,65 @@ export class PostgresAdapter implements SQLAdapter {
       columns,
       totalCount,
       rowCount: dataResult.rows.length,
-      executionTime
+      executionTime,
+      primaryKeyColumns
+    }
+  }
+
+  public async deleteTableRows(options: DeleteTableRowsOptions): Promise<DeleteTableRowsResult> {
+    const pool = this.ensurePool()
+    const { schema, table, rows } = options
+
+    if (!rows || rows.length === 0) {
+      return { deletedRowCount: 0 }
+    }
+
+    const columns = await this.queryColumns(pool, schema, table)
+    const primaryKeyColumns = columns
+      .filter((column) => column.isPrimaryKey)
+      .map((column) => column.name)
+
+    if (primaryKeyColumns.length === 0) {
+      throw new Error(
+        `Table "${schema}.${table}" does not have a primary key. Add a primary key to delete rows safely.`
+      )
+    }
+
+    const client = await pool.connect()
+
+    try {
+      await client.query('BEGIN')
+      let deletedRowCount = 0
+
+      for (const row of rows) {
+        const values = primaryKeyColumns.map((column) => {
+          if (!(column in row)) {
+            throw new Error(`Selected row is missing value for primary key column "${column}".`)
+          }
+          const value = row[column as keyof typeof row]
+          if (value === undefined) {
+            throw new Error(`Primary key column "${column}" is undefined for the selected row.`)
+          }
+          return value
+        })
+
+        const whereClause = primaryKeyColumns
+          .map((column, index) => `${quoteIdentifier(column)} = $${index + 1}`)
+          .join(' AND ')
+
+        const query = `DELETE FROM ${quoteIdentifier(schema)}.${quoteIdentifier(table)} WHERE ${whereClause}`
+        const result = await client.query(query, values)
+        deletedRowCount += result.rowCount ?? 0
+      }
+
+      await client.query('COMMIT')
+
+      return { deletedRowCount }
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw error
+    } finally {
+      client.release()
     }
   }
 
@@ -180,13 +248,15 @@ export class PostgresAdapter implements SQLAdapter {
       data_type: string
       is_nullable: 'YES' | 'NO'
       column_default: unknown
+      is_primary_key: boolean
     }>(QUERIES.LIST_COLUMNS, [schema, table])
 
     return result.rows.map((row) => ({
       name: row.column_name,
       type: row.data_type,
       nullable: row.is_nullable === 'YES',
-      defaultValue: row.column_default ?? undefined
+      defaultValue: row.column_default ?? undefined,
+      isPrimaryKey: row.is_primary_key
     }))
   }
 

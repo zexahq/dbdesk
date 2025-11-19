@@ -2,7 +2,9 @@ import type {
   ConnectionProfile,
   DatabaseType,
   DBConnectionOptions,
+  DeleteTableRowsResult,
   QueryResult,
+  QueryResultRow,
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,
@@ -246,6 +248,36 @@ export const dbdeskAPI = {
     }
 
     return ipcRenderer.invoke('table:data', payload)
+  },
+
+  /**
+   * Delete rows from a table using their primary key values
+   */
+  async deleteTableRows(
+    connectionId: string,
+    schema: string,
+    table: string,
+    rows: QueryResultRow[]
+  ): Promise<DeleteTableRowsResult> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!schema || typeof schema !== 'string' || schema.trim() === '') {
+      throw new Error('Schema name is required')
+    }
+    if (!table || typeof table !== 'string' || table.trim() === '') {
+      throw new Error('Table name is required')
+    }
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error('At least one row is required to delete')
+    }
+
+    return ipcRenderer.invoke('table:deleteRows', {
+      connectionId: connectionId.trim(),
+      schema: schema.trim(),
+      table: table.trim(),
+      rows
+    })
   }
 }
 

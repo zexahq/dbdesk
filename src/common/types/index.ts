@@ -10,6 +10,8 @@ export type { BaseAdapter, DBAdapter, QueryResult } from './adapter'
 // SQL types
 export type {
   ColumnInfo,
+  DeleteTableRowsOptions,
+  DeleteTableRowsResult,
   IndexInfo,
   SQLAdapter,
   SQLConnectionOptions,

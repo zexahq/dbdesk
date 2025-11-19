@@ -42,6 +42,10 @@ export type ConnectionIdentifierInput = {
 export type TableDataInput = SchemaIntrospectInput &
   Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'>
 
+export type TableDeleteRowsInput = SchemaIntrospectInput & {
+  rows: Array<Record<string, unknown>>
+}
+
 export const validateCreateConnectionInput = (input: unknown): CreateConnectionInput => {
   if (!isObject(input)) {
     throw new ValidationError('Invalid payload: expected object for connection details')
@@ -209,6 +213,35 @@ export const validateTableDataInput = (input: unknown): TableDataInput => {
     sortColumn,
     sortOrder,
     filters
+  }
+}
+
+export const validateDeleteRowsInput = (input: unknown): TableDeleteRowsInput => {
+  if (!isObject(input)) {
+    throw new ValidationError('Invalid delete rows payload: expected object')
+  }
+
+  const { connectionId, schema, table } = validateSchemaInput(input, {
+    requireSchema: true,
+    requireTable: true
+  }) as SchemaIntrospectInput
+
+  if (!Array.isArray(input.rows) || input.rows.length === 0) {
+    throw new ValidationError('Invalid value for "rows": expected non-empty array')
+  }
+
+  const rows = input.rows.map((row, index) => {
+    if (!isObject(row)) {
+      throw new ValidationError(`Invalid row at index ${index}: expected object`)
+    }
+    return row
+  })
+
+  return {
+    connectionId,
+    schema,
+    table,
+    rows
   }
 }
 

@@ -1,5 +1,12 @@
-import type { SchemaWithTables, TableDataOptions, TableDataResult, TableInfo } from '@common/types'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import type {
+  DeleteTableRowsResult,
+  QueryResultRow,
+  SchemaWithTables,
+  TableDataOptions,
+  TableDataResult,
+  TableInfo
+} from '@common/types'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
 
 const keys = {
@@ -91,5 +98,24 @@ export function useTableData(
       ),
     enabled,
     placeholderData: keepPreviousData
+  })
+}
+
+export function useDeleteTableRows(connectionId?: string) {
+  return useMutation({
+    mutationFn: ({
+      schema,
+      table,
+      rows
+    }: {
+      schema: string
+      table: string
+      rows: QueryResultRow[]
+    }): Promise<DeleteTableRowsResult> => {
+      if (!connectionId) {
+        throw new Error('Connection ID is required to delete rows')
+      }
+      return dbdeskClient.deleteTableRows(connectionId, schema, table, rows)
+    }
   })
 }

@@ -22,6 +22,8 @@ interface SqlTopbarProps {
   columns?: TableDataColumn[]
   filters?: TableFilterCondition[]
   onFiltersChange: (filters: TableFilterCondition[] | undefined) => void
+  onDeleteRows: () => Promise<void> | void
+  isDeletePending: boolean
 }
 
 export function SqlTopbar({
@@ -34,7 +36,9 @@ export function SqlTopbar({
   connectionId,
   columns = [],
   filters,
-  onFiltersChange
+  onFiltersChange,
+  onDeleteRows,
+  isDeletePending
 }: SqlTopbarProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -42,9 +46,12 @@ export function SqlTopbar({
   const { reset } = useSqlWorkspaceStore()
   const selectedRowsCount = useDataTableStore((state) => Object.keys(state.rowSelection).length)
 
-  const onDelete = () => {
-    console.log('delete')
-    setOpen(false)
+  const handleDelete = async () => {
+    try {
+      await onDeleteRows()
+    } finally {
+      setOpen(false)
+    }
   }
 
   const handleDisconnect = () => {
@@ -100,8 +107,9 @@ export function SqlTopbar({
           <DeleteConfirmationDialog
             open={open}
             onOpenChange={setOpen}
-            onDelete={onDelete}
+            onDelete={handleDelete}
             selectedRowsCount={selectedRowsCount}
+            isPending={isDeletePending}
           />
           <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
             <RefreshCcw className={cn('size-4 cursor-pointer', isLoading && 'animate-spin')} />

@@ -1,5 +1,5 @@
-import type { BaseAdapter } from './adapter'
 import type { QueryResultRow } from 'pg'
+import type { BaseAdapter } from './adapter'
 
 /**
  * SQL database connection options (PostgreSQL, MySQL)
@@ -21,6 +21,7 @@ export interface ColumnInfo {
   type: string
   nullable: boolean
   defaultValue?: unknown
+  isPrimaryKey?: boolean
 }
 
 /**
@@ -29,6 +30,7 @@ export interface ColumnInfo {
 export interface TableDataColumn {
   name: string
   dataType: string
+  isPrimaryKey?: boolean
 }
 
 /**
@@ -129,6 +131,17 @@ export interface TableDataResult {
   totalCount: number
   rowCount: number
   executionTime: number
+  primaryKeyColumns: string[]
+}
+
+export interface DeleteTableRowsOptions {
+  schema: string
+  table: string
+  rows: QueryResultRow[]
+}
+
+export interface DeleteTableRowsResult {
+  deletedRowCount: number
 }
 
 /**
@@ -167,4 +180,9 @@ export interface SQLAdapter extends BaseAdapter {
    * Fetch data from a table with optional pagination and filtering
    */
   fetchTableData(options: TableDataOptions): Promise<TableDataResult>
+
+  /**
+   * Delete rows from a table using their primary keys
+   */
+  deleteTableRows(options: DeleteTableRowsOptions): Promise<DeleteTableRowsResult>
 }

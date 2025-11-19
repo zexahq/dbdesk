@@ -1,5 +1,9 @@
-import type { SQLConnectionProfile, TableFilterCondition } from '@common/types'
-import { useSchemasWithTables, useTableData } from '@renderer/api/queries/schema'
+import type { QueryResultRow, SQLConnectionProfile, TableFilterCondition } from '@common/types'
+import {
+  useDeleteTableRows,
+  useSchemasWithTables,
+  useTableData
+} from '@renderer/api/queries/schema'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -7,9 +11,11 @@ import {
 } from '@renderer/components/ui/resizable'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import { cn } from '@renderer/lib/utils'
+import { useDataTableStore } from '@renderer/store/data-table-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import toast from 'react-hot-toast'
 import { SqlBottombar } from './sql-bottombar'
 import { DbSidebar } from './sql-sidebar'
 import { SqlStructure } from './sql-structure'
@@ -28,6 +34,8 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
     setSelectedTable,
     setSchemasWithTables
   } = useSqlWorkspaceStore()
+  const rowSelection = useDataTableStore((state) => state.rowSelection)
+  const setRowSelection = useDataTableStore((state) => state.setRowSelection)
 
   const [view, setView] = useState<'tables' | 'structure'>('tables')
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -79,6 +87,9 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
     offset,
     filters
   })
+  const { mutateAsync: deleteRowsMutation, isPending: isDeletePending } = useDeleteTableRows(
+    profile.id
+  )
 
   const refreshTableData = () => {
     if (selectedSchema && selectedTable) {
@@ -94,6 +105,60 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
       queryKey: ['schemasWithTables', profile.id]
     })
   }
+
+  useEffect(() => {
+    setRowSelection({})
+  }, [selectedTable, setRowSelection])
+
+  const selectedRows = useMemo<QueryResultRow[]>(() => {
+    if (!tableData) {
+      return []
+    }
+    return Object.entries(rowSelection)
+      .filter(([, isSelected]) => Boolean(isSelected))
+      .map(([rowId]) => tableData.rows[Number(rowId)])
+      .filter((row): row is QueryResultRow => Boolean(row))
+  }, [rowSelection, tableData])
+
+  const handleDeleteSelectedRows = useCallback(async () => {
+    if (!selectedSchema || !selectedTable || !tableData) {
+      return
+    }
+
+    if (!tableData.primaryKeyColumns || tableData.primaryKeyColumns.length === 0) {
+      toast.error('Please add a primary key column to delete rows.')
+      return
+    }
+
+    if (selectedRows.length === 0) {
+      toast.error('Select at least one row to delete.')
+      return
+    }
+
+    try {
+      const result = await deleteRowsMutation({
+        schema: selectedSchema,
+        table: selectedTable,
+        rows: selectedRows
+      })
+      toast.success(
+        `Deleted ${result.deletedRowCount} row${result.deletedRowCount === 1 ? '' : 's'}.`
+      )
+      setRowSelection({})
+      refreshTableData()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete rows.'
+      toast.error(message)
+    }
+  }, [
+    deleteRowsMutation,
+    refreshTableData,
+    selectedRows,
+    selectedSchema,
+    selectedTable,
+    setRowSelection,
+    tableData
+  ])
 
   return (
     <SidebarProvider className="h-full">
@@ -120,6 +185,8 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
               columns={tableData?.columns}
               filters={filters}
               onFiltersChange={setFilters}
+              onDeleteRows={handleDeleteSelectedRows}
+              isDeletePending={isDeletePending}
             />
             <div className="flex-1 overflow-hidden">
               {view === 'tables' && (

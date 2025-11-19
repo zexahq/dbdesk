@@ -3,6 +3,7 @@ import { Checkbox } from '@renderer/components/ui/checkbox'
 import { formatCellValue, getCellVariant } from '@renderer/lib/data-table'
 import { cn } from '@renderer/lib/utils'
 import { ColumnDef } from '@tanstack/react-table'
+import { Key } from 'lucide-react'
 
 const DEFAULT_COLUMN_WIDTH = 240
 const DEFAULT_MIN_COLUMN_WIDTH = 120
@@ -55,7 +56,12 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
       accessorKey: column.name,
       header: () => (
         <div className="flex flex-col px-2 py-1">
-          <span className="font-medium text-accent-foreground">{column.name}</span>
+          <span className="font-medium text-accent-foreground flex items-center gap-1">
+            {column.name}
+            {column.isPrimaryKey ? (
+              <Key className="size-3 text-muted-foreground" aria-label="Primary key" />
+            ) : null}
+          </span>
           <span className="text-xs text-muted-foreground font-normal">{column.dataType}</span>
         </div>
       ),
@@ -72,7 +78,8 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
       meta: {
         dataType: column.dataType,
         name: column.name,
-        variant: getCellVariant(column.dataType)
+        variant: getCellVariant(column.dataType),
+        isPrimaryKey: column.isPrimaryKey ?? false
       },
       size: DEFAULT_COLUMN_WIDTH,
       minSize: DEFAULT_MIN_COLUMN_WIDTH

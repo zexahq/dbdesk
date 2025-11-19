@@ -69,14 +69,12 @@ export function TableFilterPopover({
   const [filterRows, setFilterRows] = useState<FilterRow[]>(() => mapFiltersToRows(activeFilters))
 
   useEffect(() => {
-    setFilterRows(mapFiltersToRows(activeFilters))
-  }, [activeFilters])
-
-  useEffect(() => {
     if (columns.length === 0) {
       setFilterRows([])
+      return
     }
-  }, [columns])
+    setFilterRows(mapFiltersToRows(activeFilters))
+  }, [columns, activeFilters])
 
   const addFilterRow = useCallback(() => {
     const defaultColumn = columns[0]?.name

@@ -2,7 +2,9 @@ import type {
   ConnectionProfile,
   DatabaseType,
   DBConnectionOptions,
+  DeleteTableRowsResult,
   QueryResult,
+  QueryResultRow,
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,
@@ -87,6 +89,15 @@ export const dbdeskClient = {
     options?: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'>
   ): Promise<TableDataResult> {
     return getDbdesk().fetchTableData(connectionId, schema, table, options)
+  },
+
+  async deleteTableRows(
+    connectionId: string,
+    schema: string,
+    table: string,
+    rows: QueryResultRow[]
+  ): Promise<DeleteTableRowsResult> {
+    return getDbdesk().deleteTableRows(connectionId, schema, table, rows)
   }
 }
 
@@ -94,7 +105,9 @@ export type {
   ConnectionProfile,
   DatabaseType,
   DBConnectionOptions,
+  DeleteTableRowsResult,
   QueryResult,
+  QueryResultRow,
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,

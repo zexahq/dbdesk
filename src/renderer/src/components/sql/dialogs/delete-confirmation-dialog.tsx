@@ -1,16 +1,16 @@
 import {
   AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
+  AlertDialogHeader,
+  AlertDialogTitle,
   AlertDialogTrigger
 } from '@renderer/components/ui/alert-dialog'
-import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/ui/button'
+import { cn } from '@renderer/lib/utils'
 import { Trash } from 'lucide-react'
 
 interface DeleteConfirmationDialogProps {
@@ -18,13 +18,15 @@ interface DeleteConfirmationDialogProps {
   onOpenChange: (open: boolean) => void
   onDelete: () => void
   selectedRowsCount: number
+  isPending?: boolean
 }
 
 export const DeleteConfirmationDialog = ({
   open,
   onOpenChange,
   onDelete,
-  selectedRowsCount
+  selectedRowsCount,
+  isPending = false
 }: DeleteConfirmationDialogProps) => {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -49,9 +51,10 @@ export const DeleteConfirmationDialog = ({
           <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={onDelete}
-            className="bg-destructive text-white cursor-pointer hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60"
+            disabled={isPending}
+            className="bg-destructive text-white cursor-pointer hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60 disabled:opacity-70"
           >
-            Delete
+            {isPending ? 'Deleting...' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,6 +1,7 @@
 import type {
   ConnectionProfile,
   DatabaseType,
+  DeleteTableRowsResult,
   QueryResult,
   SchemaWithTables,
   SQLAdapter,
@@ -17,6 +18,7 @@ import { ConnectionError, QueryError, sanitizeError, ValidationError } from './u
 import {
   validateConnectionIdentifier,
   validateCreateConnectionInput,
+  validateDeleteRowsInput,
   validateQueryInput,
   validateSchemaInput,
   validateTableDataInput,
@@ -252,5 +254,16 @@ export const registerIpcHandlers = (): void => {
     }
 
     return adapter.fetchTableData(options)
+  })
+
+  safeHandle('table:deleteRows', async (payload): Promise<DeleteTableRowsResult> => {
+    const { connectionId, schema, table, rows } = validateDeleteRowsInput(payload)
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    return adapter.deleteTableRows({
+      schema,
+      table,
+      rows
+    })
   })
 }
