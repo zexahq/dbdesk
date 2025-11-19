@@ -3,7 +3,8 @@ import type {
   DBConnectionOptions,
   DatabaseType,
   SQLConnectionOptions,
-  TableDataOptions
+  TableDataOptions,
+  TableFilterCondition
 } from '@common/types'
 import { ValidationError } from './errors'
 
@@ -39,7 +40,7 @@ export type ConnectionIdentifierInput = {
 }
 
 export type TableDataInput = SchemaIntrospectInput &
-  Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'>
+  Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'>
 
 export const validateCreateConnectionInput = (input: unknown): CreateConnectionInput => {
   if (!isObject(input)) {
@@ -191,6 +192,14 @@ export const validateTableDataInput = (input: unknown): TableDataInput => {
     throw new ValidationError('Invalid value for "sortOrder": expected string')
   }
 
+  let filters: TableFilterCondition[] | undefined
+  if (input.filters !== undefined) {
+    if (!Array.isArray(input.filters)) {
+      throw new ValidationError('Invalid value for "filters": expected array')
+    }
+    filters = input.filters.map((filter, index) => validateFilterCondition(filter, index))
+  }
+
   return {
     connectionId,
     schema,
@@ -198,8 +207,98 @@ export const validateTableDataInput = (input: unknown): TableDataInput => {
     limit,
     offset,
     sortColumn,
-    sortOrder
+    sortOrder,
+    filters
   }
+}
+
+const validateFilterCondition = (filter: unknown, index: number): TableFilterCondition => {
+  if (!isObject(filter)) {
+    throw new ValidationError(`Invalid filter at index ${index}: expected object`)
+  }
+
+  const column = toNonEmptyString(filter.column, `filters[${index}].column`)
+  const operator = toFilterOperator(filter.operator, `filters[${index}].operator`)
+
+  if (operator === 'IN') {
+    if (!Array.isArray(filter.value)) {
+      throw new ValidationError(
+        `Invalid filter at index ${index}: "IN" operator requires array value`
+      )
+    }
+    if (filter.value.length === 0) {
+      throw new ValidationError(
+        `Invalid filter at index ${index}: "IN" operator requires non-empty array`
+      )
+    }
+    const values = filter.value.map((v, i) =>
+      validateFilterScalarValue(v, `filters[${index}].value[${i}]`)
+    )
+    return { column, operator: 'IN', value: values }
+  }
+
+  if (operator === 'IS') {
+    const isValue = toFilterIsValue(filter.value, `filters[${index}].value`)
+    return { column, operator: 'IS', value: isValue }
+  }
+
+  const value = validateFilterScalarValue(filter.value, `filters[${index}].value`)
+  return { column, operator, value }
+}
+
+const toFilterOperator = (value: unknown, field: string): TableFilterCondition['operator'] => {
+  if (typeof value !== 'string') {
+    throw new ValidationError(`Invalid value for "${field}": expected string`)
+  }
+
+  const validOperators = ['=', '<>', '>', '<', '>=', '<=', 'LIKE', 'ILIKE', 'IN', 'IS']
+  if (!validOperators.includes(value)) {
+    throw new ValidationError(
+      `Invalid value for "${field}": expected one of ${validOperators.join(', ')}`
+    )
+  }
+
+  return value as TableFilterCondition['operator']
+}
+
+const toFilterIsValue = (value: unknown, field: string): 'NULL' | 'NOT NULL' | 'TRUE' | 'FALSE' => {
+  if (typeof value !== 'string') {
+    throw new ValidationError(`Invalid value for "${field}": expected string`)
+  }
+
+  const validValues = ['NULL', 'NOT NULL', 'TRUE', 'FALSE']
+  if (!validValues.includes(value)) {
+    throw new ValidationError(
+      `Invalid value for "${field}": expected one of ${validValues.join(', ')}`
+    )
+  }
+
+  return value as 'NULL' | 'NOT NULL' | 'TRUE' | 'FALSE'
+}
+
+const validateFilterScalarValue = (
+  value: unknown,
+  field: string
+): string | number | bigint | boolean | Date => {
+  if (value === null || value === undefined) {
+    throw new ValidationError(`Invalid value for "${field}": cannot be null or undefined`)
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'bigint') {
+    return value
+  }
+
+  if (value instanceof Date) {
+    return value
+  }
+
+  throw new ValidationError(
+    `Invalid value for "${field}": expected string, number, boolean, bigint, or Date`
+  )
 }
 
 const isObject = (value: unknown): value is Record<string, any> =>

@@ -1,6 +1,6 @@
+import type { SchemaWithTables, TableDataOptions, TableDataResult, TableInfo } from '@common/types'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
-import type { SchemaWithTables, TableDataOptions, TableDataResult, TableInfo } from '@common/types'
 
 const keys = {
   schemas: (connectionId: string) => ['schemas', connectionId] as const,
@@ -12,7 +12,7 @@ const keys = {
     connectionId: string,
     schema: string,
     table: string,
-    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'>
+    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'>
   ) =>
     [
       'table-data',
@@ -22,7 +22,8 @@ const keys = {
       options.limit ?? 50,
       options.offset ?? 0,
       options.sortColumn ?? null,
-      options.sortOrder ?? null
+      options.sortOrder ?? null,
+      options.filters ? JSON.stringify(options.filters) : null
     ] as const
 }
 
@@ -71,7 +72,7 @@ export function useTableData(
   connectionId?: string,
   schema?: string,
   table?: string,
-  options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'> = {
+  options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'> = {
     limit: 50,
     offset: 0
   }

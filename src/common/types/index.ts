@@ -5,39 +5,40 @@
 
 // Base adapter types
 export type { QueryResultRow } from 'pg'
-export type { QueryResult, BaseAdapter, DBAdapter } from './adapter'
+export type { BaseAdapter, DBAdapter, QueryResult } from './adapter'
 
 // SQL types
 export type {
-  SQLConnectionOptions,
   ColumnInfo,
   IndexInfo,
-  TableInfo,
   SQLAdapter,
+  SQLConnectionOptions,
+  SchemaWithTables,
   TableDataColumn,
   TableDataOptions,
   TableDataResult,
-  SchemaWithTables
+  TableFilterCondition,
+  TableInfo
 } from './sql'
 
 // MongoDB types
 export type {
-  MongoDBConnectionOptions,
-  MongoDBIndexInfo,
   CollectionInfo,
-  MongoDBAdapter
+  MongoDBAdapter,
+  MongoDBConnectionOptions,
+  MongoDBIndexInfo
 } from './mongodb'
 
 // Redis types
-export type { RedisConnectionOptions, RedisKeyType, KeyInfo, RedisAdapter } from './redis'
+export type { KeyInfo, RedisAdapter, RedisConnectionOptions, RedisKeyType } from './redis'
 
 // Connection types
 export type {
-  DatabaseType,
-  SQLDatabaseType,
+  ConnectionProfile,
   DBConnectionOptions,
-  SQLConnectionProfile,
+  DatabaseType,
   MongoDBConnectionProfile,
   RedisConnectionProfile,
-  ConnectionProfile
+  SQLConnectionProfile,
+  SQLDatabaseType
 } from './connection'

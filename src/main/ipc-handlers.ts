@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto'
-import { ipcMain } from 'electron'
 import type {
   ConnectionProfile,
   DatabaseType,
@@ -10,18 +8,20 @@ import type {
   TableDataResult,
   TableInfo
 } from '@common/types'
-import { connectionManager } from './connectionManager'
+import { ipcMain } from 'electron'
+import { randomUUID } from 'node:crypto'
 import { adapterRegistry, listRegisteredAdapters } from './adapters'
+import { connectionManager } from './connectionManager'
 import { deleteProfile, getProfile, loadProfiles, saveProfile } from './storage'
+import { ConnectionError, QueryError, sanitizeError, ValidationError } from './utils/errors'
 import {
   validateConnectionIdentifier,
   validateCreateConnectionInput,
-  validateUpdateConnectionInput,
   validateQueryInput,
   validateSchemaInput,
-  validateTableDataInput
+  validateTableDataInput,
+  validateUpdateConnectionInput
 } from './utils/validation'
-import { ConnectionError, QueryError, ValidationError, sanitizeError } from './utils/errors'
 
 type SafeIpcHandler<Payload, Result> = (payload: Payload) => Promise<Result> | Result
 
@@ -229,7 +229,7 @@ export const registerIpcHandlers = (): void => {
   })
 
   safeHandle('table:data', async (payload): Promise<TableDataResult> => {
-    const { connectionId, schema, table, limit, offset, sortColumn, sortOrder } =
+    const { connectionId, schema, table, limit, offset, sortColumn, sortOrder, filters } =
       validateTableDataInput(payload)
     const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
 
@@ -245,6 +245,10 @@ export const registerIpcHandlers = (): void => {
       if (sortOrder) {
         options.sortOrder = sortOrder
       }
+    }
+
+    if (filters && filters.length > 0) {
+      options.filters = filters
     }
 
     return adapter.fetchTableData(options)

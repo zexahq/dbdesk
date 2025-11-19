@@ -1,4 +1,3 @@
-import { ipcRenderer } from 'electron'
 import type {
   ConnectionProfile,
   DatabaseType,
@@ -9,6 +8,7 @@ import type {
   TableDataResult,
   TableInfo
 } from '@common/types'
+import { ipcRenderer } from 'electron'
 
 export const dbdeskAPI = {
   /**
@@ -204,7 +204,7 @@ export const dbdeskAPI = {
     connectionId: string,
     schema: string,
     table: string,
-    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'> = {
+    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'> = {
       limit: 50,
       offset: 0
     }
@@ -239,6 +239,10 @@ export const dbdeskAPI = {
 
     if (options.sortOrder) {
       payload.sortOrder = options.sortOrder
+    }
+
+    if (options.filters && options.filters.length > 0) {
+      payload.filters = options.filters
     }
 
     return ipcRenderer.invoke('table:data', payload)

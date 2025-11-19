@@ -1,4 +1,4 @@
-import type { SQLConnectionProfile } from '@common/types'
+import type { SQLConnectionProfile, TableFilterCondition } from '@common/types'
 import { useSchemasWithTables, useTableData } from '@renderer/api/queries/schema'
 import {
   ResizableHandle,
@@ -33,6 +33,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [limit, setLimit] = useState(50)
   const [offset, setOffset] = useState(0)
+  const [filters, setFilters] = useState<TableFilterCondition[] | undefined>(undefined)
 
   // Fetch schemas with tables and sync to store
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
@@ -61,9 +62,10 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
     }
   }, [schemasWithTables, selectedSchema, setSelectedSchema, setSelectedTable])
 
-  // Reset offset when table changes
+  // Reset offset and filters when table changes
   useEffect(() => {
     setOffset(0)
+    setFilters(undefined)
   }, [selectedTable])
 
   const queryClient = useQueryClient()
@@ -74,7 +76,8 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
     error
   } = useTableData(profile.id, selectedSchema || undefined, selectedTable || undefined, {
     limit,
-    offset
+    offset,
+    filters
   })
 
   const refreshTableData = () => {
@@ -114,6 +117,9 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
               onRefresh={refreshTableData}
               isLoading={isLoadingTableData}
               connectionId={profile.id}
+              columns={tableData?.columns}
+              filters={filters}
+              onFiltersChange={setFilters}
             />
             <div className="flex-1 overflow-hidden">
               {view === 'tables' && (

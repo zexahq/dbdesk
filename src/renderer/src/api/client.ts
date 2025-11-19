@@ -84,7 +84,7 @@ export const dbdeskClient = {
     connectionId: string,
     schema: string,
     table: string,
-    options?: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder'>
+    options?: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'>
   ): Promise<TableDataResult> {
     return getDbdesk().fetchTableData(connectionId, schema, table, options)
   }
