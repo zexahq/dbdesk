@@ -39,22 +39,19 @@ export const QUERIES = {
 
   // Column queries
   LIST_COLUMNS: `
-    SELECT DISTINCT
+    SELECT
       c.ordinal_position,
       c.column_name,
       c.data_type,
       c.is_nullable,
       c.column_default,
-      CASE
-        WHEN tc.constraint_type = 'PRIMARY KEY' THEN TRUE
-        ELSE FALSE
-      END AS is_primary_key,
-      fk.constraint_name AS fk_constraint_name,
-      fk_ref.table_schema AS referenced_table_schema,
-      fk_ref.table_name AS referenced_table_name,
-      fk_ref.column_name AS referenced_column_name,
-      rc.delete_rule,
-      rc.update_rule
+      BOOL_OR(tc.constraint_type = 'PRIMARY KEY') AS is_primary_key,
+      MAX(fk.constraint_name) AS fk_constraint_name,
+      MAX(fk_ref.table_schema) AS referenced_table_schema,
+      MAX(fk_ref.table_name) AS referenced_table_name,
+      MAX(fk_ref.column_name) AS referenced_column_name,
+      MAX(rc.delete_rule) AS delete_rule,
+      MAX(rc.update_rule) AS update_rule
     FROM information_schema.columns c
     LEFT JOIN information_schema.key_column_usage kcu
       ON c.table_schema = kcu.table_schema
@@ -83,6 +80,12 @@ export const QUERIES = {
       AND fk.ordinal_position = fk_ref.ordinal_position
     WHERE c.table_schema = $1
       AND c.table_name = $2
+    GROUP BY
+      c.ordinal_position,
+      c.column_name,
+      c.data_type,
+      c.is_nullable,
+      c.column_default
     ORDER BY c.ordinal_position
   `,
 

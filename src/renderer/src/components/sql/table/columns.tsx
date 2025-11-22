@@ -54,6 +54,7 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
       enableResizing: false
     },
     ...columns.map((column) => ({
+      id: column.name,
       accessorKey: column.name,
       header: () => (
         <div className="flex flex-col px-2 py-1">
