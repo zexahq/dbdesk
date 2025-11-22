@@ -194,7 +194,7 @@ export function TableFilterPopover({
       <PopoverTrigger asChild>
         <Button
           variant={hasFiltersApplied ? 'default' : 'ghost'}
-          className="cursor-pointer gap-2"
+          className="cursor-pointer gap-2 h-8"
           disabled={!hasColumns}
         >
           <Filter className="size-4" />

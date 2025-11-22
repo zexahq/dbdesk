@@ -39,6 +39,7 @@ export function useDataTable<TData, TValue = unknown>({
     selectionState,
     rowSelection,
     columnSizing,
+    columnVisibility,
     pendingUpdates,
     shiftAnchor,
     setFocusedCell,
@@ -47,6 +48,7 @@ export function useDataTable<TData, TValue = unknown>({
     setRowSelection,
     setShiftAnchor,
     setColumnSizing,
+    setColumnVisibility,
     setPendingUpdates,
     clearSelection
   } = useDataTableStore()
@@ -92,14 +94,17 @@ export function useDataTable<TData, TValue = unknown>({
     columns,
     enableColumnResizing: true,
     enableRowSelection: true,
+    enableHiding: true,
     columnResizeMode: 'onChange',
     getCoreRowModel: getCoreRowModel(),
     state: {
       ...tableOptions.state,
       columnSizing,
+      columnVisibility,
       rowSelection
     },
     onColumnSizingChange: setColumnSizing,
+    onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange
   })
 
@@ -886,6 +891,7 @@ export function useDataTable<TData, TValue = unknown>({
     editingCell,
     selectionState,
     columnSizing,
+    columnVisibility,
     pendingUpdates,
     columnIds,
     getIsCellSelected,

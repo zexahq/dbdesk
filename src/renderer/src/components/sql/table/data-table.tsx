@@ -58,9 +58,9 @@ export function DataTable<TData, TValue>({
               className="border-collapse table-fixed w-full!"
               style={{ width: table.getTotalSize() }}
             >
-              <TableHeader className="sticky top-0">
+              <TableHeader className="sticky top-0 z-10">
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
+                  <TableRow key={headerGroup.id} className="bg-background">
                     {headerGroup.headers.map((header) => {
                       const name =
                         (header.column.columnDef as { meta?: { name: string } }).meta?.name ?? ''
@@ -68,7 +68,7 @@ export function DataTable<TData, TValue>({
                       return (
                         <TableHead
                           key={header.id}
-                          className="relative border-border border-x border-b first:border-l last:border-r truncate bg-background"
+                          className="relative border-border border-x border-b-2 first:border-l last:border-r truncate bg-background"
                           style={{
                             width: header.getSize(),
                             maxWidth: header.getSize()

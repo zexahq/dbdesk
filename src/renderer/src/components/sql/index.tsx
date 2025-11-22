@@ -116,6 +116,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
 
   useEffect(() => {
     setRowSelection({})
+    useDataTableStore.getState().setColumnVisibility({})
   }, [selectedTable, setRowSelection])
 
   const selectedRows = useMemo<QueryResultRow[]>(() => {

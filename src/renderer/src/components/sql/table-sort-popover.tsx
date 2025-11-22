@@ -140,7 +140,7 @@ export function TableSortPopover({ columns = [], activeSorts, onApply }: TableSo
       <PopoverTrigger asChild>
         <Button
           variant={hasSortsApplied ? 'default' : 'ghost'}
-          className="cursor-pointer gap-2"
+          className="cursor-pointer gap-2 h-8"
           disabled={!hasColumns}
         >
           <ArrowUpDown className="size-4" />

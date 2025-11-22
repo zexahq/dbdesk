@@ -9,6 +9,7 @@ import { useRouter } from '@tanstack/react-router'
 import { Layers, PanelLeftClose, PanelLeftOpen, RefreshCcw, Table, Unplug } from 'lucide-react'
 import { useState } from 'react'
 import { DeleteConfirmationDialog } from './dialogs/delete-confirmation-dialog'
+import { TableColumnVisibilityDropdown } from './table-column-visibility-dropdown'
 import { TableFilterPopover } from './table-filter-popover'
 import { TableSortPopover } from './table-sort-popover'
 
@@ -114,6 +115,7 @@ export function SqlTopbar({
               onApply={onSortRulesChange}
             />
           )}
+          {view === 'tables' && <TableColumnVisibilityDropdown columns={columns} />}
         </div>
         <div className="flex items-center gap-2 pt-1.5">
           <DeleteConfirmationDialog

@@ -1,6 +1,6 @@
-import { create } from 'zustand'
-import type { ColumnSizingState, RowSelectionState } from '@tanstack/react-table'
 import type { CellPosition, SelectionState, UpdateCell } from '@renderer/types/data-table'
+import type { ColumnSizingState, RowSelectionState, VisibilityState } from '@tanstack/react-table'
+import { create } from 'zustand'
 
 interface DataTableStore {
   // Cell focus and editing
@@ -15,6 +15,9 @@ interface DataTableStore {
   // Column sizing
   columnSizing: ColumnSizingState
 
+  // Column visibility
+  columnVisibility: VisibilityState
+
   // Pending updates
   pendingUpdates: UpdateCell[]
 
@@ -28,6 +31,9 @@ interface DataTableStore {
   setShiftAnchor: (anchor: CellPosition | null) => void
   setColumnSizing: (
     sizing: ColumnSizingState | ((prev: ColumnSizingState) => ColumnSizingState)
+  ) => void
+  setColumnVisibility: (
+    visibility: VisibilityState | ((prev: VisibilityState) => VisibilityState)
   ) => void
   setPendingUpdates: (updates: UpdateCell[] | ((prev: UpdateCell[]) => UpdateCell[])) => void
   clearSelection: () => void
@@ -48,6 +54,7 @@ export const useDataTableStore = create<DataTableStore>((set) => ({
   rowSelection: {},
   shiftAnchor: null,
   columnSizing: {},
+  columnVisibility: {},
   pendingUpdates: [],
 
   // Actions
@@ -66,6 +73,11 @@ export const useDataTableStore = create<DataTableStore>((set) => ({
     set((state) => ({
       columnSizing: typeof sizing === 'function' ? sizing(state.columnSizing) : sizing
     })),
+  setColumnVisibility: (visibility) =>
+    set((state) => ({
+      columnVisibility:
+        typeof visibility === 'function' ? visibility(state.columnVisibility) : visibility
+    })),
   setPendingUpdates: (updates) =>
     set((state) => ({
       pendingUpdates: typeof updates === 'function' ? updates(state.pendingUpdates) : updates
@@ -82,6 +94,7 @@ export const useDataTableStore = create<DataTableStore>((set) => ({
       rowSelection: {},
       shiftAnchor: null,
       columnSizing: {},
+      columnVisibility: {},
       pendingUpdates: []
     })
 }))
