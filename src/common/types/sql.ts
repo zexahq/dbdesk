@@ -22,6 +22,18 @@ export interface ColumnInfo {
   nullable: boolean
   defaultValue?: unknown
   isPrimaryKey?: boolean
+  foreignKey?: ForeignKeyInfo
+}
+
+/**
+ * Foreign key reference information
+ */
+export interface ForeignKeyInfo {
+  referencedSchema: string
+  referencedTable: string
+  referencedColumn: string
+  onDelete: 'CASCADE' | 'RESTRICT' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION'
+  onUpdate: 'CASCADE' | 'RESTRICT' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION'
 }
 
 /**
@@ -31,6 +43,7 @@ export interface TableDataColumn {
   name: string
   dataType: string
   isPrimaryKey?: boolean
+  foreignKey?: ForeignKeyInfo
 }
 
 /**

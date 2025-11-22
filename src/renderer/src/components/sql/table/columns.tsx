@@ -1,9 +1,10 @@
 import type { QueryResultRow, TableDataColumn } from '@common/types'
 import { Checkbox } from '@renderer/components/ui/checkbox'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { formatCellValue, getCellVariant } from '@renderer/lib/data-table'
 import { cn } from '@renderer/lib/utils'
 import { ColumnDef } from '@tanstack/react-table'
-import { Key } from 'lucide-react'
+import { Key, Link } from 'lucide-react'
 
 const DEFAULT_COLUMN_WIDTH = 240
 const DEFAULT_MIN_COLUMN_WIDTH = 120
@@ -61,6 +62,24 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
             {column.isPrimaryKey ? (
               <Key className="size-3 text-yellow-400 rotate-45" aria-label="Primary key" />
             ) : null}
+            {column.foreignKey ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link className="size-3 text-green-400 cursor-help" aria-label="Foreign key" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <div className="flex flex-col gap-1 text-sm">
+                    <div className="font-semibold">Foreign key relation:</div>
+                    <div>
+                      {column.name} → {column.foreignKey.referencedSchema}.
+                      {column.foreignKey.referencedTable}.{column.foreignKey.referencedColumn}
+                    </div>
+                    <div>On update: {column.foreignKey.onUpdate}</div>
+                    <div>On delete: {column.foreignKey.onDelete}</div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
           </span>
           <span className="text-xs text-muted-foreground font-normal">{column.dataType}</span>
         </div>
@@ -79,7 +98,8 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
         dataType: column.dataType,
         name: column.name,
         variant: getCellVariant(column.dataType),
-        isPrimaryKey: column.isPrimaryKey ?? false
+        isPrimaryKey: column.isPrimaryKey ?? false,
+        foreignKey: column.foreignKey
       },
       size: DEFAULT_COLUMN_WIDTH,
       minSize: DEFAULT_MIN_COLUMN_WIDTH

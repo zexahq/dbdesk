@@ -148,7 +148,8 @@ export class PostgresAdapter implements SQLAdapter {
     const columns = columnInfo.map((column) => ({
       name: column.name,
       dataType: column.type,
-      isPrimaryKey: column.isPrimaryKey ?? false
+      isPrimaryKey: column.isPrimaryKey ?? false,
+      foreignKey: column.foreignKey
     }))
     const primaryKeyColumns = columnInfo.filter((column) => column.isPrimaryKey).map((c) => c.name)
     const totalCount = countResult.rows[0]?.total ?? 0
@@ -249,6 +250,12 @@ export class PostgresAdapter implements SQLAdapter {
       is_nullable: 'YES' | 'NO'
       column_default: unknown
       is_primary_key: boolean
+      fk_constraint_name: string | null
+      referenced_table_schema: string | null
+      referenced_table_name: string | null
+      referenced_column_name: string | null
+      delete_rule: string | null
+      update_rule: string | null
     }>(QUERIES.LIST_COLUMNS, [schema, table])
 
     return result.rows.map((row) => ({
@@ -256,7 +263,30 @@ export class PostgresAdapter implements SQLAdapter {
       type: row.data_type,
       nullable: row.is_nullable === 'YES',
       defaultValue: row.column_default ?? undefined,
-      isPrimaryKey: row.is_primary_key
+      isPrimaryKey: row.is_primary_key,
+      foreignKey:
+        row.fk_constraint_name &&
+        row.referenced_table_schema &&
+        row.referenced_table_name &&
+        row.referenced_column_name
+          ? {
+              referencedSchema: row.referenced_table_schema,
+              referencedTable: row.referenced_table_name,
+              referencedColumn: row.referenced_column_name,
+              onDelete: (row.delete_rule || 'NO ACTION') as
+                | 'CASCADE'
+                | 'RESTRICT'
+                | 'SET NULL'
+                | 'SET DEFAULT'
+                | 'NO ACTION',
+              onUpdate: (row.update_rule || 'NO ACTION') as
+                | 'CASCADE'
+                | 'RESTRICT'
+                | 'SET NULL'
+                | 'SET DEFAULT'
+                | 'NO ACTION'
+            }
+          : undefined
     }))
   }
 

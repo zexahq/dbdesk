@@ -39,7 +39,8 @@ export const QUERIES = {
 
   // Column queries
   LIST_COLUMNS: `
-    SELECT
+    SELECT DISTINCT
+      c.ordinal_position,
       c.column_name,
       c.data_type,
       c.is_nullable,
@@ -47,7 +48,13 @@ export const QUERIES = {
       CASE
         WHEN tc.constraint_type = 'PRIMARY KEY' THEN TRUE
         ELSE FALSE
-      END AS is_primary_key
+      END AS is_primary_key,
+      fk.constraint_name AS fk_constraint_name,
+      fk_ref.table_schema AS referenced_table_schema,
+      fk_ref.table_name AS referenced_table_name,
+      fk_ref.column_name AS referenced_column_name,
+      rc.delete_rule,
+      rc.update_rule
     FROM information_schema.columns c
     LEFT JOIN information_schema.key_column_usage kcu
       ON c.table_schema = kcu.table_schema
@@ -58,6 +65,22 @@ export const QUERIES = {
       AND kcu.table_schema = tc.table_schema
       AND kcu.table_name = tc.table_name
       AND tc.constraint_type = 'PRIMARY KEY'
+    LEFT JOIN information_schema.key_column_usage fk
+      ON c.table_schema = fk.table_schema
+      AND c.table_name = fk.table_name
+      AND c.column_name = fk.column_name
+    LEFT JOIN information_schema.table_constraints fk_tc
+      ON fk.constraint_name = fk_tc.constraint_name
+      AND fk.table_schema = fk_tc.table_schema
+      AND fk.table_name = fk_tc.table_name
+      AND fk_tc.constraint_type = 'FOREIGN KEY'
+    LEFT JOIN information_schema.referential_constraints rc
+      ON fk.constraint_name = rc.constraint_name
+      AND fk.table_schema = rc.constraint_schema
+    LEFT JOIN information_schema.key_column_usage fk_ref
+      ON rc.unique_constraint_name = fk_ref.constraint_name
+      AND rc.unique_constraint_schema = fk_ref.table_schema
+      AND fk.ordinal_position = fk_ref.ordinal_position
     WHERE c.table_schema = $1
       AND c.table_name = $2
     ORDER BY c.ordinal_position
