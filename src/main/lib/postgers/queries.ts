@@ -113,7 +113,7 @@ export function buildTableDataQuery(options: TableDataOptions): {
   query: string
   params: SqlParameter[]
 } {
-  const { schema, table, filters, sortColumn, sortOrder = 'ASC', limit = 50, offset = 0 } = options
+  const { schema, table, filters, sortRules = [], limit = 50, offset = 0 } = options
 
   let query = `SELECT * FROM ${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
   const params: SqlParameter[] = []
@@ -127,8 +127,15 @@ export function buildTableDataQuery(options: TableDataOptions): {
   }
 
   // Add ORDER BY
-  if (sortColumn) {
-    query += ` ORDER BY ${quoteIdentifier(sortColumn)} ${sortOrder}`
+  if (sortRules.length > 0) {
+    const validRules = sortRules
+      .filter((rule) => rule.column)
+      .map(
+        (rule) => `${quoteIdentifier(rule.column)} ${rule.direction === 'DESC' ? 'DESC' : 'ASC'}`
+      )
+    if (validRules.length > 0) {
+      query += ` ORDER BY ${validRules.join(', ')}`
+    }
   }
 
   // Add LIMIT and OFFSET
@@ -142,7 +149,7 @@ export function buildTableDataQuery(options: TableDataOptions): {
  * Build a COUNT query for getting total records
  */
 export function buildTableCountQuery(
-  options: Omit<TableDataOptions, 'sortColumn' | 'sortOrder' | 'limit' | 'offset'>
+  options: Omit<TableDataOptions, 'sortRules' | 'limit' | 'offset'>
 ): {
   query: string
   params: SqlParameter[]

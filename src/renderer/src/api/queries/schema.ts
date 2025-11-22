@@ -19,7 +19,7 @@ const keys = {
     connectionId: string,
     schema: string,
     table: string,
-    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'>
+    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortRules' | 'filters'>
   ) =>
     [
       'table-data',
@@ -28,8 +28,7 @@ const keys = {
       table,
       options.limit ?? 50,
       options.offset ?? 0,
-      options.sortColumn ?? null,
-      options.sortOrder ?? null,
+      options.sortRules ? JSON.stringify(options.sortRules) : null,
       options.filters ? JSON.stringify(options.filters) : null
     ] as const
 }
@@ -79,7 +78,7 @@ export function useTableData(
   connectionId?: string,
   schema?: string,
   table?: string,
-  options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'> = {
+  options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortRules' | 'filters'> = {
     limit: 50,
     offset: 0
   }

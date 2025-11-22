@@ -206,7 +206,7 @@ export const dbdeskAPI = {
     connectionId: string,
     schema: string,
     table: string,
-    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'> = {
+    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortRules' | 'filters'> = {
       limit: 50,
       offset: 0
     }
@@ -235,12 +235,8 @@ export const dbdeskAPI = {
       payload.offset = options.offset
     }
 
-    if (options.sortColumn) {
-      payload.sortColumn = options.sortColumn
-    }
-
-    if (options.sortOrder) {
-      payload.sortOrder = options.sortOrder
+    if (options.sortRules && options.sortRules.length > 0) {
+      payload.sortRules = options.sortRules
     }
 
     if (options.filters && options.filters.length > 0) {

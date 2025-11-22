@@ -1,4 +1,9 @@
-import type { QueryResultRow, SQLConnectionProfile, TableFilterCondition } from '@common/types'
+import type {
+  QueryResultRow,
+  SQLConnectionProfile,
+  TableFilterCondition,
+  TableSortRule
+} from '@common/types'
 import {
   useDeleteTableRows,
   useSchemasWithTables,
@@ -42,6 +47,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
   const [limit, setLimit] = useState(50)
   const [offset, setOffset] = useState(0)
   const [filters, setFilters] = useState<TableFilterCondition[] | undefined>(undefined)
+  const [sortRules, setSortRules] = useState<TableSortRule[] | undefined>(undefined)
 
   // Fetch schemas with tables and sync to store
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
@@ -74,6 +80,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
   useEffect(() => {
     setOffset(0)
     setFilters(undefined)
+    setSortRules(undefined)
   }, [selectedTable])
 
   const queryClient = useQueryClient()
@@ -85,7 +92,8 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
   } = useTableData(profile.id, selectedSchema || undefined, selectedTable || undefined, {
     limit,
     offset,
-    filters
+    filters,
+    sortRules
   })
   const { mutateAsync: deleteRowsMutation, isPending: isDeletePending } = useDeleteTableRows(
     profile.id
@@ -185,6 +193,8 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
               columns={tableData?.columns}
               filters={filters}
               onFiltersChange={setFilters}
+              sortRules={sortRules}
+              onSortRulesChange={setSortRules}
               onDeleteRows={handleDeleteSelectedRows}
               isDeletePending={isDeletePending}
             />

@@ -231,7 +231,7 @@ export const registerIpcHandlers = (): void => {
   })
 
   safeHandle('table:data', async (payload): Promise<TableDataResult> => {
-    const { connectionId, schema, table, limit, offset, sortColumn, sortOrder, filters } =
+    const { connectionId, schema, table, limit, offset, sortRules, filters } =
       validateTableDataInput(payload)
     const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
 
@@ -242,11 +242,8 @@ export const registerIpcHandlers = (): void => {
       offset
     }
 
-    if (sortColumn) {
-      options.sortColumn = sortColumn
-      if (sortOrder) {
-        options.sortOrder = sortOrder
-      }
+    if (sortRules && sortRules.length > 0) {
+      options.sortRules = sortRules
     }
 
     if (filters && filters.length > 0) {

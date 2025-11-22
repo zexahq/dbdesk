@@ -112,12 +112,16 @@ export type TableFilterCondition =
   | TableFilterInCondition
   | TableFilterIsCondition
 
+export interface TableSortRule {
+  column: string
+  direction: 'ASC' | 'DESC'
+}
+
 export interface TableDataOptions {
   schema: string
   table: string
   filters?: TableFilterCondition[]
-  sortColumn?: string
-  sortOrder?: 'ASC' | 'DESC'
+  sortRules?: TableSortRule[]
   limit?: number
   offset?: number
 }

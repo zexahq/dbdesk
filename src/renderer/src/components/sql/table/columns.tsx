@@ -59,7 +59,7 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
           <span className="font-medium text-accent-foreground flex items-center gap-1">
             {column.name}
             {column.isPrimaryKey ? (
-              <Key className="size-3 text-muted-foreground" aria-label="Primary key" />
+              <Key className="size-3 text-yellow-400 rotate-45" aria-label="Primary key" />
             ) : null}
           </span>
           <span className="text-xs text-muted-foreground font-normal">{column.dataType}</span>

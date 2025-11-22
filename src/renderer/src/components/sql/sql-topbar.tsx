@@ -1,4 +1,4 @@
-import type { TableDataColumn, TableFilterCondition } from '@common/types'
+import type { TableDataColumn, TableFilterCondition, TableSortRule } from '@common/types'
 import { useDisconnect } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@renderer/components/ui/toggle-group'
@@ -10,6 +10,7 @@ import { Layers, PanelLeftClose, PanelLeftOpen, RefreshCcw, Table, Unplug } from
 import { useState } from 'react'
 import { DeleteConfirmationDialog } from './dialogs/delete-confirmation-dialog'
 import { TableFilterPopover } from './table-filter-popover'
+import { TableSortPopover } from './table-sort-popover'
 
 interface SqlTopbarProps {
   onRefresh: () => void
@@ -22,6 +23,8 @@ interface SqlTopbarProps {
   columns?: TableDataColumn[]
   filters?: TableFilterCondition[]
   onFiltersChange: (filters: TableFilterCondition[] | undefined) => void
+  sortRules?: TableSortRule[]
+  onSortRulesChange: (rules: TableSortRule[] | undefined) => void
   onDeleteRows: () => Promise<void> | void
   isDeletePending: boolean
 }
@@ -37,6 +40,8 @@ export function SqlTopbar({
   columns = [],
   filters,
   onFiltersChange,
+  sortRules,
+  onSortRulesChange,
   onDeleteRows,
   isDeletePending
 }: SqlTopbarProps) {
@@ -100,6 +105,13 @@ export function SqlTopbar({
               columns={columns}
               activeFilters={filters}
               onApply={onFiltersChange}
+            />
+          )}
+          {view === 'tables' && (
+            <TableSortPopover
+              columns={columns}
+              activeSorts={sortRules}
+              onApply={onSortRulesChange}
             />
           )}
         </div>

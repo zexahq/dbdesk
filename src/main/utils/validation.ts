@@ -4,7 +4,8 @@ import type {
   DatabaseType,
   SQLConnectionOptions,
   TableDataOptions,
-  TableFilterCondition
+  TableFilterCondition,
+  TableSortRule
 } from '@common/types'
 import { ValidationError } from './errors'
 
@@ -40,7 +41,7 @@ export type ConnectionIdentifierInput = {
 }
 
 export type TableDataInput = SchemaIntrospectInput &
-  Pick<TableDataOptions, 'limit' | 'offset' | 'sortColumn' | 'sortOrder' | 'filters'>
+  Pick<TableDataOptions, 'limit' | 'offset' | 'sortRules' | 'filters'>
 
 export type TableDeleteRowsInput = SchemaIntrospectInput & {
   rows: Array<Record<string, unknown>>
@@ -174,26 +175,12 @@ export const validateTableDataInput = (input: unknown): TableDataInput => {
   const limit = toOptionalInteger(input.limit, 'limit', { min: 1, defaultValue: 50 })
   const offset = toOptionalInteger(input.offset, 'offset', { min: 0, defaultValue: 0 })
 
-  let sortColumn: string | undefined
-  if (typeof input.sortColumn === 'string') {
-    const column = input.sortColumn.trim()
-    if (column) {
-      sortColumn = column
+  let sortRules: TableSortRule[] | undefined
+  if (input.sortRules !== undefined) {
+    if (!Array.isArray(input.sortRules)) {
+      throw new ValidationError('Invalid value for "sortRules": expected array')
     }
-  } else if (input.sortColumn !== undefined) {
-    throw new ValidationError('Invalid value for "sortColumn": expected string')
-  }
-
-  let sortOrder: 'ASC' | 'DESC' | undefined
-  if (typeof input.sortOrder === 'string') {
-    const order = input.sortOrder.toUpperCase()
-    if (order === 'ASC' || order === 'DESC') {
-      sortOrder = order
-    } else {
-      throw new ValidationError('Invalid value for "sortOrder": expected "ASC" or "DESC"')
-    }
-  } else if (input.sortOrder !== undefined) {
-    throw new ValidationError('Invalid value for "sortOrder": expected string')
+    sortRules = input.sortRules.map((rule, index) => validateSortRule(rule, index))
   }
 
   let filters: TableFilterCondition[] | undefined
@@ -210,8 +197,7 @@ export const validateTableDataInput = (input: unknown): TableDataInput => {
     table,
     limit,
     offset,
-    sortColumn,
-    sortOrder,
+    sortRules,
     filters
   }
 }
@@ -277,6 +263,26 @@ const validateFilterCondition = (filter: unknown, index: number): TableFilterCon
 
   const value = validateFilterScalarValue(filter.value, `filters[${index}].value`)
   return { column, operator, value }
+}
+
+const validateSortRule = (rule: unknown, index: number): TableSortRule => {
+  if (!isObject(rule)) {
+    throw new ValidationError(`Invalid sort rule at index ${index}: expected object`)
+  }
+
+  const column = toNonEmptyString(rule.column, `sortRules[${index}].column`)
+  const directionValue = typeof rule.direction === 'string' ? rule.direction.toUpperCase() : null
+
+  if (directionValue !== 'ASC' && directionValue !== 'DESC') {
+    throw new ValidationError(
+      `Invalid sort rule at index ${index}: direction must be "ASC" or "DESC"`
+    )
+  }
+
+  return {
+    column,
+    direction: directionValue
+  }
 }
 
 const toFilterOperator = (value: unknown, field: string): TableFilterCondition['operator'] => {

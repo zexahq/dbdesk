@@ -20,7 +20,8 @@ export type {
   TableDataOptions,
   TableDataResult,
   TableFilterCondition,
-  TableInfo
+  TableInfo,
+  TableSortRule
 } from './sql'
 
 // MongoDB types
