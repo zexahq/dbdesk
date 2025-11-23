@@ -4,7 +4,8 @@ import type {
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,
-  TableInfo
+  TableInfo,
+  UpdateTableCellResult
 } from '@common/types'
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
@@ -115,6 +116,29 @@ export function useDeleteTableRows(connectionId?: string) {
         throw new Error('Connection ID is required to delete rows')
       }
       return dbdeskClient.deleteTableRows(connectionId, schema, table, rows)
+    }
+  })
+}
+
+export function useUpdateTableCell(connectionId?: string) {
+  return useMutation({
+    mutationFn: ({
+      schema,
+      table,
+      columnToUpdate,
+      newValue,
+      row
+    }: {
+      schema: string
+      table: string
+      columnToUpdate: string
+      newValue: unknown
+      row: QueryResultRow
+    }): Promise<UpdateTableCellResult> => {
+      if (!connectionId) {
+        throw new Error('Connection ID is required to update cell')
+      }
+      return dbdeskClient.updateTableCell(connectionId, schema, table, columnToUpdate, newValue, row)
     }
   })
 }

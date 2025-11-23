@@ -7,7 +7,8 @@ import type {
   SQLAdapter,
   TableDataOptions,
   TableDataResult,
-  TableInfo
+  TableInfo,
+  UpdateTableCellResult
 } from '@common/types'
 import { ipcMain } from 'electron'
 import { randomUUID } from 'node:crypto'
@@ -22,6 +23,7 @@ import {
   validateQueryInput,
   validateSchemaInput,
   validateTableDataInput,
+  validateUpdateCellInput,
   validateUpdateConnectionInput
 } from './utils/validation'
 
@@ -261,6 +263,20 @@ export const registerIpcHandlers = (): void => {
       schema,
       table,
       rows
+    })
+  })
+
+  safeHandle('table:updateCell', async (payload): Promise<UpdateTableCellResult> => {
+    const { connectionId, schema, table, columnToUpdate, newValue, row } =
+      validateUpdateCellInput(payload)
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    return adapter.updateTableCell({
+      schema,
+      table,
+      columnToUpdate,
+      newValue,
+      row
     })
   })
 }

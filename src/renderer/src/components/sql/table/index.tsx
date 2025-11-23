@@ -1,4 +1,4 @@
-import { TableDataResult } from '@renderer/api/client'
+import { QueryResultRow, TableDataResult } from '@renderer/api/client'
 import { getColumns } from './columns'
 import { DataTable } from './data-table'
 
@@ -6,9 +6,10 @@ interface SqlTableProps {
   isLoading: boolean
   error: Error | null
   tableData?: TableDataResult
+  onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
 }
 
-export const SqlTable = ({ isLoading, error, tableData }: SqlTableProps) => {
+export const SqlTable = ({ isLoading, error, tableData, onCellUpdate }: SqlTableProps) => {
   if (isLoading) {
     return <div>Loading table data...</div>
   }
@@ -22,7 +23,7 @@ export const SqlTable = ({ isLoading, error, tableData }: SqlTableProps) => {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex-1 overflow-hidden min-h-0">
-        <DataTable columns={columns} data={tableData.rows} />
+        <DataTable columns={columns} data={tableData.rows} onCellUpdate={onCellUpdate} />
       </div>
     </div>
   )

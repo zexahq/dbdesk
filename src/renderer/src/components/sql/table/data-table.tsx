@@ -2,6 +2,7 @@
 
 import { type ColumnDef, flexRender } from '@tanstack/react-table'
 
+import { QueryResultRow } from '@renderer/api/client'
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@renderer/components/ui/table'
 import { useDataTable } from '@renderer/hooks/use-data-table'
 import { cn } from '@renderer/lib/utils'
@@ -12,13 +13,13 @@ import { DataTableKeyboardShortcuts } from './data-table-keyboard-shortcuts'
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
-  onDataChange?: (data: TData[]) => void
+  onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
-  onDataChange
+  onCellUpdate
 }: DataTableProps<TData, TValue>) {
   const {
     table,
@@ -38,7 +39,7 @@ export function DataTable<TData, TValue>({
   } = useDataTable({
     columns,
     data,
-    onDataChange
+    onCellUpdate
   })
 
   const rowModel = table.getRowModel()

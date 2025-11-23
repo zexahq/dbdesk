@@ -8,7 +8,8 @@ import type {
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,
-  TableInfo
+  TableInfo,
+  UpdateTableCellResult
 } from '@common/types'
 import { ipcRenderer } from 'electron'
 
@@ -273,6 +274,43 @@ export const dbdeskAPI = {
       schema: schema.trim(),
       table: table.trim(),
       rows
+    })
+  },
+
+  /**
+   * Update a single cell in a table using primary keys to identify the row
+   */
+  async updateTableCell(
+    connectionId: string,
+    schema: string,
+    table: string,
+    columnToUpdate: string,
+    newValue: unknown,
+    row: QueryResultRow
+  ): Promise<UpdateTableCellResult> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!schema || typeof schema !== 'string' || schema.trim() === '') {
+      throw new Error('Schema name is required')
+    }
+    if (!table || typeof table !== 'string' || table.trim() === '') {
+      throw new Error('Table name is required')
+    }
+    if (!columnToUpdate || typeof columnToUpdate !== 'string' || columnToUpdate.trim() === '') {
+      throw new Error('Column to update is required')
+    }
+    if (!row || typeof row !== 'object') {
+      throw new Error('Row data is required')
+    }
+
+    return ipcRenderer.invoke('table:updateCell', {
+      connectionId: connectionId.trim(),
+      schema: schema.trim(),
+      table: table.trim(),
+      columnToUpdate: columnToUpdate.trim(),
+      newValue,
+      row
     })
   }
 }

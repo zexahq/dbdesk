@@ -21,7 +21,9 @@ export type {
   TableDataResult,
   TableFilterCondition,
   TableInfo,
-  TableSortRule
+  TableSortRule,
+  UpdateTableCellOptions,
+  UpdateTableCellResult
 } from './sql'
 
 // MongoDB types

@@ -209,3 +209,40 @@ export function buildTableCountQuery(
 
   return { query, params }
 }
+
+/**
+ * Build an UPDATE query for updating a single cell in a table
+ */
+export function buildUpdateCellQuery(options: {
+  schema: string
+  table: string
+  columnToUpdate: string
+  newValue: unknown
+  primaryKeyColumns: string[]
+  primaryKeyValues: Record<string, unknown>
+}): {
+  query: string
+  params: SqlParameter[]
+} {
+  const { schema, table, columnToUpdate, newValue, primaryKeyColumns, primaryKeyValues } = options
+
+  const params: SqlParameter[] = []
+
+  // Build SET clause
+  const setClause = `${quoteIdentifier(columnToUpdate)} = $1`
+  params.push(newValue as SqlParameter)
+
+  // Build WHERE clause using primary keys
+  const whereConditions = primaryKeyColumns.map((pkColumn, index) => {
+    const value = primaryKeyValues[pkColumn]
+    params.push(value as SqlParameter)
+    return `${quoteIdentifier(pkColumn)} = $${index + 2}`
+  })
+
+  const whereClause = whereConditions.join(' AND ')
+
+  const query = `UPDATE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} SET ${setClause} WHERE ${whereClause}`
+
+  return { query, params }
+}
+

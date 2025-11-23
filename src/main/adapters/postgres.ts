@@ -4,14 +4,21 @@ import type {
   QueryResult,
   SQLAdapter,
   SQLConnectionOptions,
-  TableInfo
+  TableInfo,
+  UpdateTableCellOptions,
+  UpdateTableCellResult
 } from '@common/types'
 import { performance } from 'node:perf_hooks'
 import { Pool, type QueryResult as PgQueryResult } from 'pg'
 
 import type { SchemaWithTables, TableDataOptions, TableDataResult } from '@common/types/sql'
 import type { QueryResultRow } from 'pg'
-import { QUERIES, buildTableCountQuery, buildTableDataQuery } from '../lib/postgers/queries'
+import {
+  QUERIES,
+  buildTableCountQuery,
+  buildTableDataQuery,
+  buildUpdateCellQuery
+} from '../lib/postgers/queries'
 import { parsePostgresArray, quoteIdentifier } from '../lib/postgers/utils'
 
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -208,6 +215,70 @@ export class PostgresAdapter implements SQLAdapter {
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {})
       throw error
+    } finally {
+      client.release()
+    }
+  }
+
+  public async updateTableCell(options: UpdateTableCellOptions): Promise<UpdateTableCellResult> {
+    const pool = this.ensurePool()
+    const { schema, table, columnToUpdate, newValue, row } = options
+
+    // Get column metadata to find primary keys
+    const columns = await this.queryColumns(pool, schema, table)
+    const primaryKeyColumns = columns
+      .filter((column) => column.isPrimaryKey)
+      .map((column) => column.name)
+
+    if (primaryKeyColumns.length === 0) {
+      throw new Error(
+        `Table "${schema}.${table}" does not have a primary key. Add a primary key to update rows safely.`
+      )
+    }
+
+    // Extract primary key values from the row
+    const primaryKeyValues: Record<string, unknown> = {}
+    for (const pkColumn of primaryKeyColumns) {
+      if (!(pkColumn in row)) {
+        throw new Error(`Row is missing value for primary key column "${pkColumn}".`)
+      }
+      const value = row[pkColumn as keyof typeof row]
+      if (value === undefined) {
+        throw new Error(`Primary key column "${pkColumn}" is undefined for the row.`)
+      }
+      primaryKeyValues[pkColumn] = value
+    }
+
+    // Build the UPDATE query
+    const { query, params } = buildUpdateCellQuery({
+      schema,
+      table,
+      columnToUpdate,
+      newValue,
+      primaryKeyColumns,
+      primaryKeyValues
+    })
+
+    const client = await pool.connect()
+
+    try {
+      await client.query('BEGIN')
+
+      const result = await client.query(query, params)
+
+      await client.query('COMMIT')
+
+      return {
+        updatedRowCount: result.rowCount ?? 0,
+        query
+      }
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {})
+
+      // Attach the query to the error for frontend display
+      const errorWithQuery = error as Error & { query?: string }
+      errorWithQuery.query = query
+      throw errorWithQuery
     } finally {
       client.release()
     }

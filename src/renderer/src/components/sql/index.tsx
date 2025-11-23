@@ -7,7 +7,8 @@ import type {
 import {
   useDeleteTableRows,
   useSchemasWithTables,
-  useTableData
+  useTableData,
+  useUpdateTableCell
 } from '@renderer/api/queries/schema'
 import {
   ResizableHandle,
@@ -21,6 +22,7 @@ import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import { UpdateErrorDialog } from './dialogs/update-error-dialog'
 import { SqlBottombar } from './sql-bottombar'
 import { DbSidebar } from './sql-sidebar'
 import { SqlStructure } from './sql-structure'
@@ -48,6 +50,8 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
   const [offset, setOffset] = useState(0)
   const [filters, setFilters] = useState<TableFilterCondition[] | undefined>(undefined)
   const [sortRules, setSortRules] = useState<TableSortRule[] | undefined>(undefined)
+  const [updateErrorDialogOpen, setUpdateErrorDialogOpen] = useState(false)
+  const [updateError, setUpdateError] = useState<{ query?: string; error?: string }>({})
 
   // Fetch schemas with tables and sync to store
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
@@ -98,6 +102,7 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
   const { mutateAsync: deleteRowsMutation, isPending: isDeletePending } = useDeleteTableRows(
     profile.id
   )
+  const { mutateAsync: updateCellMutation } = useUpdateTableCell(profile.id)
 
   const refreshTableData = () => {
     if (selectedSchema && selectedTable) {
@@ -128,6 +133,39 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
       .map(([rowId]) => tableData.rows[Number(rowId)])
       .filter((row): row is QueryResultRow => Boolean(row))
   }, [rowSelection, tableData])
+
+  const handleCellUpdate = useCallback(
+    async (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => {
+      if (!selectedSchema || !selectedTable || !tableData) {
+        return
+      }
+
+      if (!tableData.primaryKeyColumns || tableData.primaryKeyColumns.length === 0) {
+        toast.error('Please add a primary key column to update rows.')
+        return
+      }
+
+      try {
+        await updateCellMutation({
+          schema: selectedSchema,
+          table: selectedTable,
+          columnToUpdate,
+          newValue,
+          row
+        })
+        toast.success('Cell updated successfully.')
+        refreshTableData()
+      } catch (error) {
+        const err = error as Error & { query?: string }
+        setUpdateError({
+          query: err.query,
+          error: err.message
+        })
+        setUpdateErrorDialogOpen(true)
+      }
+    },
+    [selectedSchema, selectedTable, tableData, updateCellMutation, refreshTableData]
+  )
 
   const handleDeleteSelectedRows = useCallback(async () => {
     if (!selectedSchema || !selectedTable || !tableData) {
@@ -201,7 +239,12 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
             />
             <div className="flex-1 overflow-hidden">
               {view === 'tables' && (
-                <SqlTable isLoading={isLoadingTableData} error={error} tableData={tableData} />
+                <SqlTable
+                  isLoading={isLoadingTableData}
+                  error={error}
+                  tableData={tableData}
+                  onCellUpdate={handleCellUpdate}
+                />
               )}
               {view === 'structure' && (
                 <SqlStructure
@@ -223,6 +266,12 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
           </SidebarInset>
         </ResizablePanel>
       </ResizablePanelGroup>
+      <UpdateErrorDialog
+        open={updateErrorDialogOpen}
+        onOpenChange={setUpdateErrorDialogOpen}
+        query={updateError.query}
+        error={updateError.error}
+      />
     </SidebarProvider>
   )
 }

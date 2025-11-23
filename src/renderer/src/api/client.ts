@@ -8,7 +8,8 @@ import type {
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,
-  TableInfo
+  TableInfo,
+  UpdateTableCellResult
 } from '@common/types'
 
 function getDbdesk() {
@@ -98,6 +99,17 @@ export const dbdeskClient = {
     rows: QueryResultRow[]
   ): Promise<DeleteTableRowsResult> {
     return getDbdesk().deleteTableRows(connectionId, schema, table, rows)
+  },
+
+  async updateTableCell(
+    connectionId: string,
+    schema: string,
+    table: string,
+    columnToUpdate: string,
+    newValue: unknown,
+    row: QueryResultRow
+  ): Promise<UpdateTableCellResult> {
+    return getDbdesk().updateTableCell(connectionId, schema, table, columnToUpdate, newValue, row)
   }
 }
 
@@ -111,5 +123,6 @@ export type {
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,
-  TableInfo
+  TableInfo,
+  UpdateTableCellResult
 } from '@common/types'

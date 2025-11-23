@@ -47,6 +47,13 @@ export type TableDeleteRowsInput = SchemaIntrospectInput & {
   rows: Array<Record<string, unknown>>
 }
 
+export type TableUpdateCellInput = SchemaIntrospectInput & {
+  columnToUpdate: string
+  newValue: unknown
+  row: Record<string, unknown>
+}
+
+
 export const validateCreateConnectionInput = (input: unknown): CreateConnectionInput => {
   if (!isObject(input)) {
     throw new ValidationError('Invalid payload: expected object for connection details')
@@ -228,6 +235,37 @@ export const validateDeleteRowsInput = (input: unknown): TableDeleteRowsInput =>
     schema,
     table,
     rows
+  }
+}
+
+export const validateUpdateCellInput = (input: unknown): TableUpdateCellInput => {
+  if (!isObject(input)) {
+    throw new ValidationError('Invalid update cell payload: expected object')
+  }
+
+  const { connectionId, schema, table } = validateSchemaInput(input, {
+    requireSchema: true,
+    requireTable: true
+  }) as SchemaIntrospectInput
+
+  const columnToUpdate = toNonEmptyString(input.columnToUpdate, 'columnToUpdate')
+
+  // newValue can be any type including null/undefined
+  const newValue = input.newValue
+
+  if (!isObject(input.row)) {
+    throw new ValidationError('Invalid value for "row": expected object')
+  }
+
+  const row = input.row
+
+  return {
+    connectionId,
+    schema,
+    table,
+    columnToUpdate,
+    newValue,
+    row
   }
 }
 

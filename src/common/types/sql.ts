@@ -164,6 +164,25 @@ export interface DeleteTableRowsResult {
 }
 
 /**
+ * Options for updating a single cell in a table
+ */
+export interface UpdateTableCellOptions {
+  schema: string
+  table: string
+  columnToUpdate: string
+  newValue: unknown
+  row: QueryResultRow
+}
+
+/**
+ * Result of updating a table cell
+ */
+export interface UpdateTableCellResult {
+  updatedRowCount: number
+  query?: string // For error reporting
+}
+
+/**
  * Schema with its tables
  */
 export interface SchemaWithTables {
@@ -204,4 +223,9 @@ export interface SQLAdapter extends BaseAdapter {
    * Delete rows from a table using their primary keys
    */
   deleteTableRows(options: DeleteTableRowsOptions): Promise<DeleteTableRowsResult>
+
+  /**
+   * Update a single cell in a table using primary keys to identify the row
+   */
+  updateTableCell(options: UpdateTableCellOptions): Promise<UpdateTableCellResult>
 }

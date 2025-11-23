@@ -13,11 +13,13 @@ import {
 } from '@tanstack/react-table'
 import * as React from 'react'
 
+import type { QueryResultRow } from '@renderer/api/client'
+
 interface UseDataTableProps<TData, TValue = unknown>
   extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
-  onDataChange?: (data: TData[]) => void
+  onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
@@ -25,7 +27,7 @@ const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
 export function useDataTable<TData, TValue = unknown>({
   columns,
   data,
-  onDataChange,
+  onCellUpdate,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = React.useRef<HTMLDivElement>(null)
@@ -512,42 +514,20 @@ export function useDataTable<TData, TValue = unknown>({
       // Store updates in pendingUpdates for future UI
       setPendingUpdates((prev) => [...prev, ...updateArray])
 
-      // If onDataChange is provided, apply updates immediately
-      if (onDataChange) {
+      // If onCellUpdate is provided and this is a single cell update, call it
+      if (onCellUpdate && updateArray.length === 1) {
+        const update = updateArray[0]
         const rows = table.getRowModel().rows
-        const rowUpdatesMap = new Map<number, Array<Omit<UpdateCell, 'rowIndex'>>>()
-
-        for (const update of updateArray) {
-          const row = rows[update.rowIndex]
-          if (!row) continue
-
-          const originalData = row.original
-          const originalRowIndex = data.indexOf(originalData)
-          if (originalRowIndex === -1) continue
-
-          const existingUpdates = rowUpdatesMap.get(originalRowIndex) ?? []
-          existingUpdates.push({
-            columnId: update.columnId,
-            value: update.value
+        const row = rows[update.rowIndex]
+        if (row) {
+          const originalData = row.original as QueryResultRow
+          onCellUpdate(update.columnId, update.value, originalData).catch((error) => {
+            console.error('Failed to update cell:', error)
           })
-          rowUpdatesMap.set(originalRowIndex, existingUpdates)
         }
-
-        const newData = data.map((row, index) => {
-          const updates = rowUpdatesMap.get(index)
-          if (!updates) return row
-
-          const updatedRow = { ...row } as Record<string, unknown>
-          for (const { columnId, value } of updates) {
-            updatedRow[columnId] = value
-          }
-          return updatedRow as TData
-        })
-
-        onDataChange(newData)
       }
     },
-    [data, onDataChange, table]
+    [onCellUpdate, table]
   )
 
   // Handle cell click
