@@ -24,7 +24,7 @@ export function UpdateErrorDialog({
 }: UpdateErrorDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-2xl">
+      <AlertDialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
         <AlertDialogHeader>
           <AlertDialogTitle>Update Failed</AlertDialogTitle>
           <AlertDialogDescription>
@@ -32,12 +32,12 @@ export function UpdateErrorDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 min-h-0 space-y-4 overflow-y-auto">
           {query && (
-            <div>
-              <h4 className="mb-2 text-sm font-semibold">Query:</h4>
-              <div className="h-24 overflow-auto rounded border bg-muted p-3">
-                <pre className="text-xs">
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">Query:</h4>
+              <div className="rounded-md border bg-muted p-3">
+                <pre className="text-xs font-mono whitespace-pre-wrap break-words">
                   <code>{query}</code>
                 </pre>
               </div>
@@ -45,10 +45,10 @@ export function UpdateErrorDialog({
           )}
 
           {error && (
-            <div>
-              <h4 className="mb-2 text-sm font-semibold">Error:</h4>
-              <div className="max-h-48 overflow-auto rounded border bg-destructive/10 p-3">
-                <pre className="text-xs text-destructive">
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">Error:</h4>
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3">
+                <pre className="text-xs font-mono text-destructive whitespace-pre-wrap break-words leading-relaxed">
                   <code>{error}</code>
                 </pre>
               </div>
@@ -56,7 +56,7 @@ export function UpdateErrorDialog({
           )}
         </div>
 
-        <AlertDialogFooter>
+        <AlertDialogFooter className="mt-4">
           <AlertDialogCancel>Close</AlertDialogCancel>
           <AlertDialogAction disabled>Open failed in SQL</AlertDialogAction>
         </AlertDialogFooter>

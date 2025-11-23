@@ -57,6 +57,32 @@ app.whenReady().then(() => {
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
+    // Custom zoom handling - allow Ctrl+= and Ctrl+- for zoom
+    window.webContents.on('before-input-event', (event, input) => {
+      if (input.control || input.meta) {
+        const key = input.key.toLowerCase()
+        const webContents = window.webContents
+        
+        // Zoom in with Ctrl+= or Ctrl++
+        if (key === '=' || key === '+') {
+          event.preventDefault()
+          const currentZoom = webContents.getZoomLevel()
+          webContents.setZoomLevel(currentZoom + 0.5)
+        }
+        // Zoom out with Ctrl+-
+        else if (key === '-' || key === '_') {
+          event.preventDefault()
+          const currentZoom = webContents.getZoomLevel()
+          webContents.setZoomLevel(currentZoom - 0.5)
+        }
+        // Reset zoom with Ctrl+0
+        else if (key === '0') {
+          event.preventDefault()
+          webContents.setZoomLevel(0)
+        }
+      }
+    })
+    
     optimizer.watchWindowShortcuts(window)
   })
 

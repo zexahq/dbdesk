@@ -1,12 +1,11 @@
 'use client'
 
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@renderer/components/ui/select'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@renderer/components/ui/dropdown-menu'
 import { TableCell } from '@renderer/components/ui/table'
 import { cn } from '@renderer/lib/utils'
 import * as React from 'react'
@@ -18,15 +17,12 @@ type ColumnMeta = {
   enumValues?: string[]
 }
 
-const NULL_VALUE = '__null__'
-
 export function EnumDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
   const {
     tableCellProps,
     isSelectColumn,
     isEditing,
     renderedCell,
-    cellValue,
     rowIndex,
     columnId,
     tableContainerRef
@@ -35,11 +31,8 @@ export function EnumDataTableCell<TData, TValue>(props: DataTableCellProps<TData
   const columnMeta = (props.cell.column.columnDef.meta as ColumnMeta | undefined) ?? {}
   const enumValues = columnMeta.enumValues ?? []
 
-  const [selectedValue, setSelectedValue] = React.useState<string>(
-    cellValue === null ? NULL_VALUE : String(cellValue)
-  )
   const [open, setOpen] = React.useState(false)
-  const isCommittingRef = React.useRef(false)
+  const triggerRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
     setOpen(isEditing)
@@ -52,16 +45,14 @@ export function EnumDataTableCell<TData, TValue>(props: DataTableCellProps<TData
   }, [tableContainerRef])
 
   const handleValueChange = React.useCallback(
-    (value: string) => {
-      isCommittingRef.current = true
-      setSelectedValue(value)
-      const parsedValue = value === NULL_VALUE ? null : value
+    (value: string | null) => {
       props.onDataUpdate({
         rowIndex,
         columnId,
-        value: parsedValue
+        value
       })
       props.onCellEditingStop()
+      setOpen(false)
       restoreFocus()
     },
     [props, rowIndex, columnId, restoreFocus]
@@ -70,10 +61,6 @@ export function EnumDataTableCell<TData, TValue>(props: DataTableCellProps<TData
   const handleOpenChange = React.useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen)
-      if (isCommittingRef.current) {
-        isCommittingRef.current = false
-        return
-      }
       if (!isOpen && isEditing) {
         props.onCellEditingStop()
         restoreFocus()
@@ -85,28 +72,33 @@ export function EnumDataTableCell<TData, TValue>(props: DataTableCellProps<TData
   return (
     <TableCell {...tableCellProps} className={cn(tableCellProps.className, 'cursor-pointer', isEditing && 'p-0!')}>
       {isEditing && !isSelectColumn ? (
-        <Select
-          value={selectedValue}
-          open={open}
-          onOpenChange={handleOpenChange}
-          onValueChange={handleValueChange}
-          defaultValue={cellValue === null ? NULL_VALUE : String(cellValue)}
-        >
-          <SelectTrigger
-            size="sm"
-            className="w-full justify-start border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 data-placeholder:text-muted-foreground [&_svg]:hidden px-2"
+        <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+          <DropdownMenuTrigger asChild>
+            <div ref={triggerRef} className="w-full h-full px-2 py-1.5 text-sm cursor-pointer" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent 
+            align="start" 
+            className="rounded-none p-0" 
+            sideOffset={15}
+            style={{ width: triggerRef.current?.offsetWidth }}
           >
-            <SelectValue placeholder="Select value" />
-          </SelectTrigger>
-          <SelectContent align="start" className="rounded-none p-0" sideOffset={0}>
-            <SelectItem value={NULL_VALUE} className="cursor-pointer rounded-none">NULL</SelectItem>
+            <DropdownMenuItem
+              className="cursor-pointer rounded-none"
+              onSelect={() => handleValueChange(null)}
+            >
+              NULL
+            </DropdownMenuItem>
             {enumValues.map((enumValue) => (
-              <SelectItem key={enumValue} value={enumValue} className="cursor-pointer rounded-none">
+              <DropdownMenuItem
+                key={enumValue}
+                className="cursor-pointer rounded-none"
+                onSelect={() => handleValueChange(enumValue)}
+              >
                 {enumValue}
-              </SelectItem>
+              </DropdownMenuItem>
             ))}
-          </SelectContent>
-        </Select>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : (
         renderedCell
       )}

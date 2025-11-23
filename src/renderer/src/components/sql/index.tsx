@@ -157,9 +157,16 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
         refreshTableData()
       } catch (error) {
         const err = error as Error & { query?: string }
+        
+        // Strip "Error invoking remote method 'xxx':" prefix from error message
+        const cleanErrorMessage = (message: string): string => {
+          const match = message.match(/^Error invoking remote method '[^']+': (.+)$/)
+          return match ? match[1] : message
+        }
+        
         setUpdateError({
           query: err.query,
-          error: err.message
+          error: cleanErrorMessage(err.message)
         })
         setUpdateErrorDialogOpen(true)
       }

@@ -1,12 +1,11 @@
 'use client'
 
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@renderer/components/ui/select'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@renderer/components/ui/dropdown-menu'
 import { TableCell } from '@renderer/components/ui/table'
 import { cn } from '@renderer/lib/utils'
 import * as React from 'react'
@@ -14,24 +13,7 @@ import * as React from 'react'
 import type { DataTableCellProps } from '../data-table-cell.types'
 import { useDataTableCellContext } from './base'
 
-type BooleanStringValue = 'true' | 'false' | 'null'
-
-function normalizeBoolean(value: unknown): BooleanStringValue {
-  if (value === null || value === undefined) return 'null'
-  if (typeof value === 'boolean') return value ? 'true' : 'false'
-  if (typeof value === 'number') {
-    if (value === 0) return 'false'
-    if (value === 1) return 'true'
-  }
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase()
-    if (['true', 't', '1', 'yes'].includes(normalized)) return 'true'
-    if (['false', 'f', '0', 'no'].includes(normalized)) return 'false'
-  }
-  return 'null'
-}
-
-function parseBooleanString(value: BooleanStringValue): boolean | null {
+function parseBooleanString(value: 'true' | 'false' | 'null'): boolean | null {
   if (value === 'null') return null
   return value === 'true'
 }
@@ -43,13 +25,11 @@ export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TD
     isEditing,
     rowIndex,
     columnId,
-    tableContainerRef,
-    cellValue
+    tableContainerRef
   } = useDataTableCellContext(props)
 
-  const [value, setValue] = React.useState<BooleanStringValue>(normalizeBoolean(cellValue))
   const [open, setOpen] = React.useState(false)
-  const isCommittingRef = React.useRef(false)
+  const triggerRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
     setOpen(isEditing)
@@ -62,15 +42,14 @@ export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TD
   }, [tableContainerRef])
 
   const handleValueChange = React.useCallback(
-    (nextValue: BooleanStringValue) => {
-      isCommittingRef.current = true
-      setValue(nextValue)
+    (value: 'true' | 'false' | 'null') => {
       props.onDataUpdate({
         rowIndex,
         columnId,
-        value: parseBooleanString(nextValue)
+        value: parseBooleanString(value)
       })
       props.onCellEditingStop()
+      setOpen(false)
       restoreFocus()
     },
     [props, rowIndex, columnId, restoreFocus]
@@ -79,10 +58,6 @@ export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TD
   const handleOpenChange = React.useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen)
-      if (isCommittingRef.current) {
-        isCommittingRef.current = false
-        return
-      }
       if (!isOpen && isEditing) {
         props.onCellEditingStop()
         restoreFocus()
@@ -91,32 +66,41 @@ export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TD
     [isEditing, props, restoreFocus]
   )
 
-  const displayLabel = value === 'null' ? '' : value === 'true' ? 'True' : 'False'
-
   return (
     <TableCell {...tableCellProps} className={cn(tableCellProps.className, 'cursor-pointer', isEditing && 'p-0!')}>
       {isEditing ? (
-        <Select
-          value={value}
-          open={open}
-          onOpenChange={handleOpenChange}
-          onValueChange={(v) => handleValueChange(v as BooleanStringValue)}
-          defaultValue={normalizeBoolean(cellValue)}
-        >
-          <SelectTrigger
-            size="sm"
-            className="w-full justify-start border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 data-placeholder:text-muted-foreground [&_svg]:hidden px-2"
+        <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+          <DropdownMenuTrigger asChild>
+            <div ref={triggerRef} className="w-full h-full px-2 py-1.5 text-sm cursor-pointer" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent 
+            align="start" 
+            className="rounded-none p-0" 
+            sideOffset={15}
+            style={{ width: triggerRef.current?.offsetWidth }}
           >
-            <SelectValue placeholder="Select value" />
-          </SelectTrigger>
-          <SelectContent align="start" className="rounded-none p-0" sideOffset={0}>
-            <SelectItem value="true" className="cursor-pointer rounded-none">true</SelectItem>
-            <SelectItem value="false" className="cursor-pointer rounded-none">false</SelectItem>
-            <SelectItem value="null" className="cursor-pointer rounded-none">null</SelectItem>
-          </SelectContent>
-        </Select>
+            <DropdownMenuItem
+              className="cursor-pointer rounded-none"
+              onSelect={() => handleValueChange('true')}
+            >
+              true
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer rounded-none"
+              onSelect={() => handleValueChange('false')}
+            >
+              false
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer rounded-none"
+              onSelect={() => handleValueChange('null')}
+            >
+              null
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : (
-        (renderedCell ?? <span className="text-sm">{displayLabel}</span>)
+        renderedCell
       )}
     </TableCell>
   )
