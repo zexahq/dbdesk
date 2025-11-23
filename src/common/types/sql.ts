@@ -22,6 +22,7 @@ export interface ColumnInfo {
   nullable: boolean
   defaultValue?: unknown
   isPrimaryKey?: boolean
+  enumValues?: string[]
   foreignKey?: ForeignKeyInfo
 }
 
@@ -43,6 +44,7 @@ export interface TableDataColumn {
   name: string
   dataType: string
   isPrimaryKey?: boolean
+  enumValues?: string[]
   foreignKey?: ForeignKeyInfo
 }
 

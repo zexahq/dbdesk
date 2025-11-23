@@ -43,6 +43,7 @@ export const QUERIES = {
       c.ordinal_position,
       c.column_name,
       c.data_type,
+      c.udt_name,
       c.is_nullable,
       c.column_default,
       BOOL_OR(tc.constraint_type = 'PRIMARY KEY') AS is_primary_key,
@@ -51,7 +52,12 @@ export const QUERIES = {
       MAX(fk_ref.table_name) AS referenced_table_name,
       MAX(fk_ref.column_name) AS referenced_column_name,
       MAX(rc.delete_rule) AS delete_rule,
-      MAX(rc.update_rule) AS update_rule
+      MAX(rc.update_rule) AS update_rule,
+      CASE
+        WHEN c.data_type = 'USER-DEFINED' THEN
+          array_agg(e.enumlabel ORDER BY e.enumsortorder)
+        ELSE NULL
+      END AS enum_values
     FROM information_schema.columns c
     LEFT JOIN information_schema.key_column_usage kcu
       ON c.table_schema = kcu.table_schema
@@ -78,12 +84,17 @@ export const QUERIES = {
       ON rc.unique_constraint_name = fk_ref.constraint_name
       AND rc.unique_constraint_schema = fk_ref.table_schema
       AND fk.ordinal_position = fk_ref.ordinal_position
+    LEFT JOIN pg_type t
+      ON c.udt_name = t.typname
+    LEFT JOIN pg_enum e
+      ON t.oid = e.enumtypid
     WHERE c.table_schema = $1
       AND c.table_name = $2
     GROUP BY
       c.ordinal_position,
       c.column_name,
       c.data_type,
+      c.udt_name,
       c.is_nullable,
       c.column_default
     ORDER BY c.ordinal_position

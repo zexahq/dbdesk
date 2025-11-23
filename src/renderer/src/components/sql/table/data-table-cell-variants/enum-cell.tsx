@@ -14,40 +14,30 @@ import * as React from 'react'
 import type { DataTableCellProps } from '../data-table-cell.types'
 import { useDataTableCellContext } from './base'
 
-type BooleanStringValue = 'true' | 'false' | 'null'
-
-function normalizeBoolean(value: unknown): BooleanStringValue {
-  if (value === null || value === undefined) return 'null'
-  if (typeof value === 'boolean') return value ? 'true' : 'false'
-  if (typeof value === 'number') {
-    if (value === 0) return 'false'
-    if (value === 1) return 'true'
-  }
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase()
-    if (['true', 't', '1', 'yes'].includes(normalized)) return 'true'
-    if (['false', 'f', '0', 'no'].includes(normalized)) return 'false'
-  }
-  return 'null'
+type ColumnMeta = {
+  enumValues?: string[]
 }
 
-function parseBooleanString(value: BooleanStringValue): boolean | null {
-  if (value === 'null') return null
-  return value === 'true'
-}
+const NULL_VALUE = '__null__'
 
-export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
+export function EnumDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
   const {
     tableCellProps,
-    renderedCell,
+    isSelectColumn,
     isEditing,
+    renderedCell,
+    cellValue,
     rowIndex,
     columnId,
-    tableContainerRef,
-    cellValue
+    tableContainerRef
   } = useDataTableCellContext(props)
 
-  const [value, setValue] = React.useState<BooleanStringValue>(normalizeBoolean(cellValue))
+  const columnMeta = (props.cell.column.columnDef.meta as ColumnMeta | undefined) ?? {}
+  const enumValues = columnMeta.enumValues ?? []
+
+  const [selectedValue, setSelectedValue] = React.useState<string>(
+    cellValue === null ? NULL_VALUE : String(cellValue)
+  )
   const [open, setOpen] = React.useState(false)
   const isCommittingRef = React.useRef(false)
 
@@ -62,13 +52,14 @@ export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TD
   }, [tableContainerRef])
 
   const handleValueChange = React.useCallback(
-    (nextValue: BooleanStringValue) => {
+    (value: string) => {
       isCommittingRef.current = true
-      setValue(nextValue)
+      setSelectedValue(value)
+      const parsedValue = value === NULL_VALUE ? null : value
       props.onDataUpdate({
         rowIndex,
         columnId,
-        value: parseBooleanString(nextValue)
+        value: parsedValue
       })
       props.onCellEditingStop()
       restoreFocus()
@@ -91,17 +82,15 @@ export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TD
     [isEditing, props, restoreFocus]
   )
 
-  const displayLabel = value === 'null' ? '' : value === 'true' ? 'True' : 'False'
-
   return (
     <TableCell {...tableCellProps} className={cn(tableCellProps.className, 'cursor-pointer', isEditing && 'p-0!')}>
-      {isEditing ? (
+      {isEditing && !isSelectColumn ? (
         <Select
-          value={value}
+          value={selectedValue}
           open={open}
           onOpenChange={handleOpenChange}
-          onValueChange={(v) => handleValueChange(v as BooleanStringValue)}
-          defaultValue={normalizeBoolean(cellValue)}
+          onValueChange={handleValueChange}
+          defaultValue={cellValue === null ? NULL_VALUE : String(cellValue)}
         >
           <SelectTrigger
             size="sm"
@@ -110,13 +99,16 @@ export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TD
             <SelectValue placeholder="Select value" />
           </SelectTrigger>
           <SelectContent align="start" className="rounded-none p-0" sideOffset={0}>
-            <SelectItem value="true" className="cursor-pointer rounded-none">true</SelectItem>
-            <SelectItem value="false" className="cursor-pointer rounded-none">false</SelectItem>
-            <SelectItem value="null" className="cursor-pointer rounded-none">null</SelectItem>
+            <SelectItem value={NULL_VALUE} className="cursor-pointer rounded-none">NULL</SelectItem>
+            {enumValues.map((enumValue) => (
+              <SelectItem key={enumValue} value={enumValue} className="cursor-pointer rounded-none">
+                {enumValue}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       ) : (
-        (renderedCell ?? <span className="text-sm">{displayLabel}</span>)
+        renderedCell
       )}
     </TableCell>
   )

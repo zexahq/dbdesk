@@ -1,10 +1,28 @@
 import type { SqlParameter, TableFilterCondition, TableFilterIsValue } from '@common/types/sql'
 
 /**
- * Quote a PostgreSQL identifier to prevent SQL injection and handle special characters
+ * Escapes and quotes an identifier for safe use in SQL queries
  */
 export function quoteIdentifier(identifier: string): string {
   return `"${identifier.replace(/"/g, '""')}"`
+}
+
+/**
+ * Parses a PostgreSQL array string into a JavaScript array
+ * @param pgArray - PostgreSQL array string (e.g., "{value1,value2,value3}")
+ * @returns Parsed array of strings, or empty array if input is null/empty
+ */
+export function parsePostgresArray(pgArray: string | null | undefined): string[] {
+  if (!pgArray || pgArray === '{}') {
+    return []
+  }
+
+  const arrayContent = pgArray.slice(1, -1) // Remove '{' and '}'
+  if (!arrayContent.trim()) {
+    return []
+  }
+
+  return arrayContent.split(',').map((v) => v.trim())
 }
 
 /**

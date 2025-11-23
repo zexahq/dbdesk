@@ -98,8 +98,9 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
       meta: {
         dataType: column.dataType,
         name: column.name,
-        variant: getCellVariant(column.dataType),
+        variant: getCellVariant(column.dataType, column.enumValues),
         isPrimaryKey: column.isPrimaryKey ?? false,
+        enumValues: column.enumValues,
         foreignKey: column.foreignKey
       },
       size: DEFAULT_COLUMN_WIDTH,

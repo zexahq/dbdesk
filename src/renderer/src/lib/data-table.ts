@@ -63,7 +63,7 @@ export function formatCellValue(value: unknown, dataType?: string): string {
   return String(value)
 }
 
-export type DataTableCellVariant = 'text' | 'numeric' | 'json' | 'boolean' | 'date'
+export type DataTableCellVariant = 'text' | 'numeric' | 'json' | 'boolean' | 'date' | 'enum'
 
 const JSON_TYPES = new Set(['json', 'jsonb'])
 const BOOLEAN_TYPES = new Set(['boolean', 'bool'])
@@ -102,7 +102,14 @@ const DATE_TYPES = new Set([
   'interval'
 ])
 
-export function getCellVariant(dataType: string | undefined): DataTableCellVariant {
+export function getCellVariant(
+  dataType: string | undefined,
+  enumValues?: string[]
+): DataTableCellVariant {
+  if (enumValues && enumValues.length > 0) {
+    return 'enum'
+  }
+
   if (!dataType) return 'text'
   const normalizedType = dataType.trim().toLowerCase()
 

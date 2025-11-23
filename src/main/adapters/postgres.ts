@@ -12,7 +12,7 @@ import { Pool, type QueryResult as PgQueryResult } from 'pg'
 import type { SchemaWithTables, TableDataOptions, TableDataResult } from '@common/types/sql'
 import type { QueryResultRow } from 'pg'
 import { QUERIES, buildTableCountQuery, buildTableDataQuery } from '../lib/postgers/queries'
-import { quoteIdentifier } from '../lib/postgers/utils'
+import { parsePostgresArray, quoteIdentifier } from '../lib/postgers/utils'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -96,19 +96,10 @@ export class PostgresAdapter implements SQLAdapter {
       QUERIES.LIST_SCHEMAS_WITH_TABLES
     )
 
-    return result.rows.map((row) => {
-      let tables: string[] = []
-      if (row.tables && row.tables !== '{}') {
-        const arrayContent = row.tables.slice(1, -1) // Remove '{' and '}'
-        if (arrayContent.trim()) {
-          tables = arrayContent.split(',').map((t) => t.trim())
-        }
-      }
-      return {
-        schema: row.schema_name,
-        tables
-      }
-    })
+    return result.rows.map((row) => ({
+      schema: row.schema_name,
+      tables: parsePostgresArray(row.tables)
+    }))
   }
 
   public async introspectTable(schema: string, table: string): Promise<TableInfo> {
@@ -149,6 +140,7 @@ export class PostgresAdapter implements SQLAdapter {
       name: column.name,
       dataType: column.type,
       isPrimaryKey: column.isPrimaryKey ?? false,
+      enumValues: column.enumValues,
       foreignKey: column.foreignKey
     }))
     const primaryKeyColumns = columnInfo.filter((column) => column.isPrimaryKey).map((c) => c.name)
@@ -247,6 +239,7 @@ export class PostgresAdapter implements SQLAdapter {
     const result = await pool.query<{
       column_name: string
       data_type: string
+      udt_name: string
       is_nullable: 'YES' | 'NO'
       column_default: unknown
       is_primary_key: boolean
@@ -256,38 +249,44 @@ export class PostgresAdapter implements SQLAdapter {
       referenced_column_name: string | null
       delete_rule: string | null
       update_rule: string | null
+      enum_values: string | null
     }>(QUERIES.LIST_COLUMNS, [schema, table])
 
-    return result.rows.map((row) => ({
-      name: row.column_name,
-      type: row.data_type,
-      nullable: row.is_nullable === 'YES',
-      defaultValue: row.column_default ?? undefined,
-      isPrimaryKey: row.is_primary_key,
-      foreignKey:
-        row.fk_constraint_name &&
-        row.referenced_table_schema &&
-        row.referenced_table_name &&
-        row.referenced_column_name
-          ? {
-              referencedSchema: row.referenced_table_schema,
-              referencedTable: row.referenced_table_name,
-              referencedColumn: row.referenced_column_name,
-              onDelete: (row.delete_rule || 'NO ACTION') as
-                | 'CASCADE'
-                | 'RESTRICT'
-                | 'SET NULL'
-                | 'SET DEFAULT'
-                | 'NO ACTION',
-              onUpdate: (row.update_rule || 'NO ACTION') as
-                | 'CASCADE'
-                | 'RESTRICT'
-                | 'SET NULL'
-                | 'SET DEFAULT'
-                | 'NO ACTION'
-            }
-          : undefined
-    }))
+    return result.rows.map((row) => {
+      const enumValues = parsePostgresArray(row.enum_values)
+
+      return {
+        name: row.column_name,
+        type: row.data_type === 'USER-DEFINED' ? row.udt_name : row.data_type,
+        nullable: row.is_nullable === 'YES',
+        defaultValue: row.column_default ?? undefined,
+        isPrimaryKey: row.is_primary_key,
+        enumValues: enumValues.length > 0 ? enumValues : undefined,
+        foreignKey:
+          row.fk_constraint_name &&
+          row.referenced_table_schema &&
+          row.referenced_table_name &&
+          row.referenced_column_name
+            ? {
+                referencedSchema: row.referenced_table_schema,
+                referencedTable: row.referenced_table_name,
+                referencedColumn: row.referenced_column_name,
+                onDelete: (row.delete_rule || 'NO ACTION') as
+                  | 'CASCADE'
+                  | 'RESTRICT'
+                  | 'SET NULL'
+                  | 'SET DEFAULT'
+                  | 'NO ACTION',
+                onUpdate: (row.update_rule || 'NO ACTION') as
+                  | 'CASCADE'
+                  | 'RESTRICT'
+                  | 'SET NULL'
+                  | 'SET DEFAULT'
+                  | 'NO ACTION'
+              }
+            : undefined
+      }
+    })
   }
 
   private async queryConstraints(pool: Pool, schema: string, table: string) {
