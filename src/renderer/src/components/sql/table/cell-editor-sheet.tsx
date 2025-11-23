@@ -2,7 +2,7 @@
 
 import { BasicEditor } from '@renderer/components/editor/basic-editor'
 import { Button } from '@renderer/components/ui/button'
-import { Sheet, SheetContent } from '@renderer/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle } from '@renderer/components/ui/sheet'
 
 interface CellEditorSheetProps {
   open: boolean
@@ -27,9 +27,11 @@ export function CellEditorSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0">
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between border-b px-6 py-4">
-            <h2 className="text-lg font-semibold">Edit Cell</h2>
-          </div>
+          <SheetTitle>
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <h2 className="text-lg font-semibold">Edit Cell</h2>
+            </div>
+          </SheetTitle>
           <div className="flex-1 min-h-0 overflow-hidden">
             <BasicEditor
               value={value}

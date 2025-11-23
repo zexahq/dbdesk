@@ -15,8 +15,13 @@ files:
   - '!**/*.test.ts'
   - '!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}'
 compression: maximum
+# Optimize ASAR packaging
+asar: true
 asarUnpack:
   - resources/**
+electronLanguages: "en"
+# Remove unnecessary Electron files
+removePackageKeywords: true
 win:
   executableName: dbdesk
 nsis:

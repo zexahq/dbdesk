@@ -99,8 +99,8 @@ export function TableColumnVisibilityDropdown({
             variant="ghost"
             size="sm"
             className={cn(
-              'h-8 gap-2',
-              (someVisible || !allVisible) && 'bg-accent text-accent-foreground'
+              'h-8 gap-2 cursor-pointer',
+              (someVisible || !allVisible) && 'bg-accent text-accent-foreground '
             )}
           >
             <SlidersHorizontal className="size-4" />

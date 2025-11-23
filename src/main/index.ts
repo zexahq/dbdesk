@@ -1,10 +1,12 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import { app, BrowserWindow, protocol, shell } from 'electron'
 import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import './adapters'
-import { registerIpcHandlers } from './ipc-handlers'
 import { connectionManager } from './connectionManager'
+import { registerIpcHandlers } from './ipc-handlers'
+import { AssetServer } from './protocols/asset-server'
+import { AssetUrl } from './protocols/asset-url'
 
 function createWindow(): void {
   // Create the browser window.
@@ -46,12 +48,35 @@ function createWindow(): void {
   }
 }
 
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app-asset',
+    privileges: {
+      standard: true,
+      supportFetchAPI: true,
+      bypassCSP: true
+    }
+  }
+])
+
+const server = new AssetServer()
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  protocol.handle('app-asset', (request) => {
+    const asset = new AssetUrl(request.url)
+
+    if (asset.isNodeModule) {
+      return server.fromNodeModules(asset.relativeUrl)
+    } else {
+      return server.fromPublic(asset.relativeUrl)
+    }
+  })
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -62,7 +87,7 @@ app.whenReady().then(() => {
       if (input.control || input.meta) {
         const key = input.key.toLowerCase()
         const webContents = window.webContents
-        
+
         // Zoom in with Ctrl+= or Ctrl++
         if (key === '=' || key === '+') {
           event.preventDefault()
@@ -82,7 +107,7 @@ app.whenReady().then(() => {
         }
       }
     })
-    
+
     optimizer.watchWindowShortcuts(window)
   })
 

@@ -32,8 +32,9 @@ export const DeleteConfirmationDialog = ({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogTrigger asChild>
         <Button
+          size="sm"
           variant="destructive"
-          className={cn('cursor-pointer', selectedRowsCount === 0 && 'hidden')}
+          className={cn('cursor-pointer h-8', selectedRowsCount === 0 && 'hidden')}
           disabled={selectedRowsCount === 0}
         >
           <Trash className="size-4" />

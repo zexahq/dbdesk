@@ -1,7 +1,6 @@
 import './styles/main.css'
 
 import loader from '@monaco-editor/loader'
-import * as monaco from 'monaco-editor'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 
@@ -26,7 +25,17 @@ window.MonacoEnvironment = {
   }
 }
 
-loader.config({ monaco })
+// Configure Monaco to only load English locale (reduces bundle size)
+loader.config({
+  paths: {
+    vs: 'app-asset://dbdesk/node_modules/monaco-editor/min/vs'
+  },
+  'vs/nls': {
+    availableLanguages: {
+      '*': 'en' // Only load English locale, exclude all other language packs
+    }
+  }
+})
 
 // Create a new router instance
 const router = createRouter({

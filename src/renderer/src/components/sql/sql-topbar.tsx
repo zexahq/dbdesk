@@ -90,9 +90,6 @@ export function SqlTopbar({
               onApply={handleSortRulesChange}
             />
           )}
-          {tab.view === 'tables' && <TableColumnVisibilityDropdown tabId={tabId} columns={columns} />}
-        </div>
-        <div className="flex items-center gap-2 pt-1.5">
           <DeleteConfirmationDialog
             open={open}
             onOpenChange={setOpen}
@@ -100,6 +97,11 @@ export function SqlTopbar({
             selectedRowsCount={selectedRowsCount}
             isPending={isDeletePending}
           />
+        </div>
+        <div className="flex items-center gap-2 pt-1.5">
+          {tab.view === 'tables' && (
+            <TableColumnVisibilityDropdown tabId={tabId} columns={columns} />
+          )}
           <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
             <RefreshCcw className={cn('size-4 cursor-pointer', isLoading && 'animate-spin')} />
           </Button>
