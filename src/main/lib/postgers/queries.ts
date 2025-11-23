@@ -12,6 +12,8 @@ export const QUERIES = {
     SELECT schema_name
     FROM information_schema.schemata
     WHERE schema_name NOT IN ('pg_catalog', 'information_schema')
+      AND schema_name NOT LIKE 'pg_temp_%'
+      AND schema_name NOT LIKE 'pg_toast%'
     ORDER BY schema_name
   `,
 
@@ -33,6 +35,8 @@ export const QUERIES = {
       ON s.schema_name = t.table_schema
       AND t.table_type = 'BASE TABLE'
     WHERE s.schema_name NOT IN ('pg_catalog', 'information_schema')
+      AND s.schema_name NOT LIKE 'pg_temp_%'
+      AND s.schema_name NOT LIKE 'pg_toast%'
     GROUP BY s.schema_name
     ORDER BY s.schema_name
   `,
