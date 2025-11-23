@@ -22,8 +22,8 @@ import {
 import { DatabaseIcon, SearchIcon, Table2Icon, RefreshCcw } from 'lucide-react'
 import type { SQLConnectionProfile } from '@common/types'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { useTabStore } from '@renderer/store/tab-store'
 import { Button } from '../ui/button'
-import { useDataTableStore } from '@renderer/store/data-table-store'
 
 type DbSidebarProps = {
   profile: SQLConnectionProfile
@@ -32,10 +32,11 @@ type DbSidebarProps = {
 
 export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
   const [search, setSearch] = React.useState('')
+  const [selectedSchema, setSelectedSchema] = React.useState<string | null>(null)
 
-  const { selectedSchema, selectedTable, setSelectedSchema, setSelectedTable, schemasWithTables } =
-    useSqlWorkspaceStore()
-  const { reset } = useDataTableStore()
+  const { schemasWithTables } = useSqlWorkspaceStore()
+  const { addTab, getActiveTab } = useTabStore()
+  const activeTab = getActiveTab()
 
   const schemas = schemasWithTables.map((s) => s.schema)
   const tables = selectedSchema
@@ -48,6 +49,24 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
     return tables.filter((t) => t.toLowerCase().includes(q))
   }, [tables, search])
 
+  // Auto-select schema on mount or when schemas change
+  React.useEffect(() => {
+    if (schemasWithTables.length > 0 && !selectedSchema) {
+      // Find "public" schema or use first schema
+      const publicSchema = schemasWithTables.find((s) => s.schema === 'public')
+      const targetSchema = publicSchema || schemasWithTables[0]
+      if (targetSchema) {
+        setSelectedSchema(targetSchema.schema)
+      }
+    }
+  }, [schemasWithTables, selectedSchema])
+
+  const handleTableClick = (table: string) => {
+    if (!selectedSchema) return
+    // This will create a new tab or switch to existing tab
+    addTab(selectedSchema, table)
+  }
+
   return (
     <Sidebar className="border-r w-full h-full" collapsible="none">
       <SidebarHeader>
@@ -59,8 +78,6 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
               value={selectedSchema || ''}
               onValueChange={(v) => {
                 setSelectedSchema(v)
-                setSelectedTable(null)
-                reset()
               }}
               disabled={schemas.length === 0}
             >
@@ -107,21 +124,22 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
                   <SidebarMenuButton aria-disabled>No tables</SidebarMenuButton>
                 </SidebarMenuItem>
               ) : (
-                filteredTables.map((table) => (
-                  <SidebarMenuItem key={table}>
-                    <SidebarMenuButton
-                      onClick={() => {
-                        setSelectedTable(table)
-                        reset()
-                      }}
-                      className="cursor-pointer"
-                      isActive={selectedTable === table ? true : false}
-                    >
-                      <Table2Icon className="size-4" />
-                      <span>{table}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))
+                filteredTables.map((table) => {
+                  const isActive =
+                    activeTab?.schema === selectedSchema && activeTab?.table === table
+                  return (
+                    <SidebarMenuItem key={table}>
+                      <SidebarMenuButton
+                        onClick={() => handleTableClick(table)}
+                        className="cursor-pointer"
+                        isActive={isActive}
+                      >
+                        <Table2Icon className="size-4" />
+                        <span>{table}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })
               )}
             </SidebarMenu>
           </SidebarGroupContent>

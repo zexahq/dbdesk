@@ -1,9 +1,4 @@
-import type {
-  QueryResultRow,
-  SQLConnectionProfile,
-  TableFilterCondition,
-  TableSortRule
-} from '@common/types'
+import type { QueryResultRow, SQLConnectionProfile } from '@common/types'
 import {
   useDeleteTableRows,
   useSchemasWithTables,
@@ -17,16 +12,18 @@ import {
 } from '@renderer/components/ui/resizable'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import { cn } from '@renderer/lib/utils'
-import { useDataTableStore } from '@renderer/store/data-table-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { useTabStore } from '@renderer/store/tab-store'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { UpdateErrorDialog } from './dialogs/update-error-dialog'
+import { MainTopbar } from './main-topbar'
 import { SqlBottombar } from './sql-bottombar'
 import { DbSidebar } from './sql-sidebar'
 import { SqlStructure } from './sql-structure'
 import { SqlTopbar } from './sql-topbar'
+import { TabNavigation } from './tab-navigation'
 import { SqlTable } from './table'
 
 interface SqlWorkspaceProps {
@@ -34,22 +31,11 @@ interface SqlWorkspaceProps {
 }
 
 export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
-  const {
-    selectedSchema,
-    selectedTable,
-    setSelectedSchema,
-    setSelectedTable,
-    setSchemasWithTables
-  } = useSqlWorkspaceStore()
-  const rowSelection = useDataTableStore((state) => state.rowSelection)
-  const setRowSelection = useDataTableStore((state) => state.setRowSelection)
+  const { setSchemasWithTables } = useSqlWorkspaceStore()
+  const { getActiveTab, updateTabState } = useTabStore()
+  const activeTab = getActiveTab()
 
-  const [view, setView] = useState<'tables' | 'structure'>('tables')
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [limit, setLimit] = useState(50)
-  const [offset, setOffset] = useState(0)
-  const [filters, setFilters] = useState<TableFilterCondition[] | undefined>(undefined)
-  const [sortRules, setSortRules] = useState<TableSortRule[] | undefined>(undefined)
   const [updateErrorDialogOpen, setUpdateErrorDialogOpen] = useState(false)
   const [updateError, setUpdateError] = useState<{ query?: string; error?: string }>({})
 
@@ -63,52 +49,36 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
     }
   }, [schemasWithTables, setSchemasWithTables])
 
-  // Auto-select schema and table after data loads
-  useEffect(() => {
-    if (schemasWithTables && schemasWithTables.length > 0 && !selectedSchema) {
-      // Find "public" schema or use first schema
-      const publicSchema = schemasWithTables.find((s) => s.schema === 'public')
-      const targetSchema = publicSchema || schemasWithTables[0]
-
-      if (targetSchema) {
-        setSelectedSchema(targetSchema.schema)
-        // Select first table if available
-        if (targetSchema.tables.length > 0) {
-          setSelectedTable(targetSchema.tables[0])
-        }
-      }
-    }
-  }, [schemasWithTables, selectedSchema, setSelectedSchema, setSelectedTable])
-
-  // Reset offset and filters when table changes
-  useEffect(() => {
-    setOffset(0)
-    setFilters(undefined)
-    setSortRules(undefined)
-  }, [selectedTable])
-
   const queryClient = useQueryClient()
 
   const {
     data: tableData,
     isLoading: isLoadingTableData,
     error
-  } = useTableData(profile.id, selectedSchema || undefined, selectedTable || undefined, {
-    limit,
-    offset,
-    filters,
-    sortRules
-  })
+  } = useTableData(
+    profile.id,
+    activeTab?.schema,
+    activeTab?.table,
+    activeTab
+      ? {
+          limit: activeTab.limit,
+          offset: activeTab.offset,
+          filters: activeTab.filters,
+          sortRules: activeTab.sortRules
+        }
+      : undefined
+  )
+
   const { mutateAsync: deleteRowsMutation, isPending: isDeletePending } = useDeleteTableRows(
     profile.id
   )
   const { mutateAsync: updateCellMutation } = useUpdateTableCell(profile.id)
 
   const refreshTableData = () => {
-    if (selectedSchema && selectedTable) {
+    if (activeTab) {
       // Invalidate all table data queries for this connection, schema, and table
       queryClient.invalidateQueries({
-        queryKey: ['table-data', profile.id, selectedSchema, selectedTable]
+        queryKey: ['table-data', profile.id, activeTab.schema, activeTab.table]
       })
     }
   }
@@ -119,24 +89,19 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
     })
   }
 
-  useEffect(() => {
-    setRowSelection({})
-    useDataTableStore.getState().setColumnVisibility({})
-  }, [selectedTable, setRowSelection])
-
   const selectedRows = useMemo<QueryResultRow[]>(() => {
-    if (!tableData) {
+    if (!tableData || !activeTab) {
       return []
     }
-    return Object.entries(rowSelection)
+    return Object.entries(activeTab.rowSelection)
       .filter(([, isSelected]) => Boolean(isSelected))
       .map(([rowId]) => tableData.rows[Number(rowId)])
       .filter((row): row is QueryResultRow => Boolean(row))
-  }, [rowSelection, tableData])
+  }, [activeTab, tableData])
 
   const handleCellUpdate = useCallback(
     async (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => {
-      if (!selectedSchema || !selectedTable || !tableData) {
+      if (!activeTab || !tableData) {
         return
       }
 
@@ -147,8 +112,8 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
 
       try {
         await updateCellMutation({
-          schema: selectedSchema,
-          table: selectedTable,
+          schema: activeTab.schema,
+          table: activeTab.table,
           columnToUpdate,
           newValue,
           row
@@ -157,13 +122,13 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
         refreshTableData()
       } catch (error) {
         const err = error as Error & { query?: string }
-        
+
         // Strip "Error invoking remote method 'xxx':" prefix from error message
         const cleanErrorMessage = (message: string): string => {
           const match = message.match(/^Error invoking remote method '[^']+': (.+)$/)
           return match ? match[1] : message
         }
-        
+
         setUpdateError({
           query: err.query,
           error: cleanErrorMessage(err.message)
@@ -171,11 +136,11 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
         setUpdateErrorDialogOpen(true)
       }
     },
-    [selectedSchema, selectedTable, tableData, updateCellMutation, refreshTableData]
+    [activeTab, tableData, updateCellMutation, refreshTableData]
   )
 
   const handleDeleteSelectedRows = useCallback(async () => {
-    if (!selectedSchema || !selectedTable || !tableData) {
+    if (!activeTab || !tableData) {
       return
     }
 
@@ -191,31 +156,43 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
 
     try {
       const result = await deleteRowsMutation({
-        schema: selectedSchema,
-        table: selectedTable,
+        schema: activeTab.schema,
+        table: activeTab.table,
         rows: selectedRows
       })
       toast.success(
         `Deleted ${result.deletedRowCount} row${result.deletedRowCount === 1 ? '' : 's'}.`
       )
-      setRowSelection({})
+      // Clear row selection for this tab
+      updateTabState(activeTab.id, { rowSelection: {} })
       refreshTableData()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete rows.'
       toast.error(message)
     }
-  }, [
-    deleteRowsMutation,
-    refreshTableData,
-    selectedRows,
-    selectedSchema,
-    selectedTable,
-    setRowSelection,
-    tableData
-  ])
+  }, [deleteRowsMutation, refreshTableData, selectedRows, activeTab, tableData, updateTabState])
+
+  const handleLimitChange = useCallback(
+    (limit: number) => {
+      if (activeTab) {
+        updateTabState(activeTab.id, { limit, offset: 0 })
+      }
+    },
+    [activeTab, updateTabState]
+  )
+
+  const handleOffsetChange = useCallback(
+    (offset: number) => {
+      if (activeTab) {
+        updateTabState(activeTab.id, { offset })
+      }
+    },
+    [activeTab, updateTabState]
+  )
 
   return (
     <SidebarProvider className="h-full">
+      <TabNavigation />
       <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
         <ResizablePanel
           defaultSize={16}
@@ -228,47 +205,56 @@ export function SqlWorkspace({ profile }: SqlWorkspaceProps) {
         <ResizableHandle withHandle className={cn(!isSidebarOpen && 'hidden')} />
         <ResizablePanel>
           <SidebarInset className="flex h-full flex-col overflow-hidden">
-            <SqlTopbar
-              view={view}
-              onViewChange={setView}
+            <MainTopbar
+              profile={profile}
               isSidebarOpen={isSidebarOpen}
               onSidebarOpenChange={setIsSidebarOpen}
-              onRefresh={refreshTableData}
-              isLoading={isLoadingTableData}
-              connectionId={profile.id}
-              columns={tableData?.columns}
-              filters={filters}
-              onFiltersChange={setFilters}
-              sortRules={sortRules}
-              onSortRulesChange={setSortRules}
-              onDeleteRows={handleDeleteSelectedRows}
-              isDeletePending={isDeletePending}
             />
-            <div className="flex-1 overflow-hidden">
-              {view === 'tables' && (
-                <SqlTable
+            {activeTab ? (
+              <>
+                <SqlTopbar
+                  tabId={activeTab.id}
+                  onRefresh={refreshTableData}
                   isLoading={isLoadingTableData}
-                  error={error}
-                  tableData={tableData}
-                  onCellUpdate={handleCellUpdate}
+                  columns={tableData?.columns}
+                  onDeleteRows={handleDeleteSelectedRows}
+                  isDeletePending={isDeletePending}
                 />
-              )}
-              {view === 'structure' && (
-                <SqlStructure
-                  connectionId={profile.id}
-                  schema={selectedSchema || ''}
-                  table={selectedTable || ''}
-                />
-              )}
-            </div>
-            {tableData && (
-              <SqlBottombar
-                tableData={tableData}
-                limit={limit}
-                offset={offset}
-                onLimitChange={setLimit}
-                onOffsetChange={setOffset}
-              />
+                <div className="flex-1 overflow-hidden">
+                  {activeTab.view === 'tables' && (
+                    <SqlTable
+                      tabId={activeTab.id}
+                      isLoading={isLoadingTableData}
+                      error={error}
+                      tableData={tableData}
+                      onCellUpdate={handleCellUpdate}
+                    />
+                  )}
+                  {activeTab.view === 'structure' && (
+                    <SqlStructure
+                      connectionId={profile.id}
+                      schema={activeTab.schema}
+                      table={activeTab.table}
+                    />
+                  )}
+                </div>
+                {tableData && (
+                  <SqlBottombar
+                    tableData={tableData}
+                    limit={activeTab.limit}
+                    offset={activeTab.offset}
+                    onLimitChange={handleLimitChange}
+                    onOffsetChange={handleOffsetChange}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="flex flex-1 items-center justify-center">
+                <div className="text-center text-muted-foreground">
+                  <p className="text-lg font-medium">No table selected</p>
+                  <p className="text-sm">Select a table from the sidebar to get started</p>
+                </div>
+              </div>
             )}
           </SidebarInset>
         </ResizablePanel>

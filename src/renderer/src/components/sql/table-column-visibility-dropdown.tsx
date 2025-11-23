@@ -10,20 +10,36 @@ import {
 } from '@renderer/components/ui/dropdown-menu'
 import { Input } from '@renderer/components/ui/input'
 import { cn } from '@renderer/lib/utils'
-import { useDataTableStore } from '@renderer/store/data-table-store'
+import { useTabStore } from '@renderer/store/tab-store'
 import { AlertCircle, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 interface TableColumnVisibilityDropdownProps {
+  tabId: string
   columns?: TableDataColumn[]
 }
 
 export function TableColumnVisibilityDropdown({
+  tabId,
   columns = []
 }: TableColumnVisibilityDropdownProps) {
-  const columnVisibility = useDataTableStore((state) => state.columnVisibility)
-  const setColumnVisibility = useDataTableStore((state) => state.setColumnVisibility)
+  const tab = useTabStore((state) => state.tabs.find((t) => t.id === tabId))
+  const updateTabState = useTabStore((state) => state.updateTabState)
   const [searchQuery, setSearchQuery] = useState('')
+
+  if (!tab) return null
+
+  const columnVisibility = tab.columnVisibility
+
+  const setColumnVisibility = (
+    visibility:
+      | typeof columnVisibility
+      | ((prev: typeof columnVisibility) => typeof columnVisibility)
+  ) => {
+    updateTabState(tabId, {
+      columnVisibility: typeof visibility === 'function' ? visibility(columnVisibility) : visibility
+    })
+  }
 
   // Filter columns based on search query
   const filteredColumns = useMemo(() => {

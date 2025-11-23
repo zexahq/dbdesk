@@ -13,27 +13,17 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
     cell,
     columnId,
     rowIndex,
-    isRowSelected,
     focusedCell,
     editingCell,
-    getIsCellSelected,
-    getCellEdgeClasses,
     tableContainerRef,
     onCellClick,
-    onCellDoubleClick,
-    onCellMouseDown,
-    onCellMouseEnter,
-    onCellMouseUp
+    onCellDoubleClick
   } = props
 
   const cellRef = React.useRef<HTMLTableCellElement>(null)
   const isSelectColumn = columnId === 'select'
   const isFocused = focusedCell?.rowIndex === rowIndex && focusedCell?.columnId === columnId
   const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.columnId === columnId
-  const isSelected = getIsCellSelected(rowIndex, columnId)
-
-  const { edgeClasses, isEdgeCell, isInSelection } = getCellEdgeClasses(rowIndex, columnId)
-  const hasSelectionBorder = isEdgeCell || isInSelection
 
   const cellValue = cell.getValue()
   const dataType = (cell.column.columnDef.meta as { dataType?: string } | undefined)?.dataType
@@ -49,12 +39,10 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
     ref: cellRef,
     'data-column-id': columnId,
     className: cn(
-      !isInSelection && 'border-border border-x first:border-l last:border-r',
+      'border-border border-x first:border-l last:border-r',
       'truncate bg-accent/50',
       !isSelectColumn && 'cursor-pointer',
-      isFocused && !hasSelectionBorder && 'outline-2 outline-ring outline-offset-0',
-      isSelected && !isFocused && !isRowSelected && 'bg-selected-cell',
-      edgeClasses
+      isFocused && 'outline-2 outline-ring outline-offset-0'
     ),
     style: {
       width: cell.column.getSize(),
@@ -65,10 +53,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
     onClick: allowCellInteraction ? (e) => onCellClick(rowIndex, columnId, e) : undefined,
     onDoubleClick: allowCellInteraction
       ? (e) => onCellDoubleClick(rowIndex, columnId, e)
-      : undefined,
-    onMouseDown: allowCellInteraction ? (e) => onCellMouseDown(rowIndex, columnId, e) : undefined,
-    onMouseEnter: allowCellInteraction ? (e) => onCellMouseEnter(rowIndex, columnId, e) : undefined,
-    onMouseUp: allowCellInteraction ? onCellMouseUp : undefined
+      : undefined
   }
 
   return {
@@ -81,8 +66,6 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
     isSelectColumn,
     isFocused,
     isEditing,
-    isSelected,
-    hasSelectionBorder,
     tableCellProps,
     rowIndex,
     columnId,

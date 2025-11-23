@@ -12,7 +12,7 @@ import {
 } from '@renderer/components/ui/command'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useTheme } from '@renderer/hooks/use-theme'
-import { useDataTableStore } from '@renderer/store/data-table-store'
+import { useTabStore } from '@renderer/store/tab-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useNavigate } from '@tanstack/react-router'
 import { Database, Moon, Search, Sun, Table2Icon, Unplug } from 'lucide-react'
@@ -22,15 +22,9 @@ import { Button } from './ui/button'
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
-  const {
-    setSelectedSchema,
-    setSelectedTable,
-    schemasWithTables,
-    currentConnectionId,
-    setCurrentConnection
-  } = useSqlWorkspaceStore()
+  const { schemasWithTables, currentConnectionId, setCurrentConnection } = useSqlWorkspaceStore()
 
-  const { reset } = useDataTableStore()
+  const { addTab, reset: resetTabs } = useTabStore()
   const { theme, toggleTheme } = useTheme()
 
   const { data: connections } = useConnections()
@@ -51,9 +45,8 @@ export function QuickPanel() {
   }, [])
 
   const handleTableSelect = (schema: string, table: string) => {
-    setSelectedSchema(schema)
-    setSelectedTable(table)
-    reset()
+    // Create or switch to tab for this table
+    addTab(schema, table)
     setOpen(false)
   }
 
@@ -61,6 +54,7 @@ export function QuickPanel() {
     try {
       await connect(connectionId)
       setCurrentConnection(connectionId)
+      resetTabs() // Clear tabs from previous connection
       navigate({
         to: '/connections/$connectionId',
         params: { connectionId }

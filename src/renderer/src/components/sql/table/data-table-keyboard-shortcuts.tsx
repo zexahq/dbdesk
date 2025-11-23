@@ -1,7 +1,5 @@
 'use client'
 
-import { SearchIcon, XIcon } from 'lucide-react'
-import * as React from 'react'
 import { Button } from '@renderer/components/ui/button'
 import {
   Dialog,
@@ -14,6 +12,8 @@ import {
 import { Input } from '@renderer/components/ui/input'
 import { Kbd, KbdGroup } from '@renderer/components/ui/kbd'
 import { Separator } from '@renderer/components/ui/separator'
+import { SearchIcon, XIcon } from 'lucide-react'
+import * as React from 'react'
 
 const SHORTCUT_KEY = '/'
 
@@ -97,31 +97,6 @@ function DataTableKeyboardShortcutsImpl() {
         ]
       },
       {
-        title: 'Selection',
-        shortcuts: [
-          {
-            keys: ['Shift', '↑↓←→'],
-            description: 'Extend selection'
-          },
-          {
-            keys: [modKey, 'A'],
-            description: 'Select all cells'
-          },
-          {
-            keys: [modKey, 'Click'],
-            description: 'Toggle cell selection'
-          },
-          {
-            keys: ['Shift', 'Click'],
-            description: 'Select range'
-          },
-          {
-            keys: ['Esc'],
-            description: 'Clear cell selection'
-          }
-        ]
-      },
-      {
         title: 'Editing',
         shortcuts: [
           {
@@ -134,11 +109,15 @@ function DataTableKeyboardShortcutsImpl() {
           },
           {
             keys: ['Delete'],
-            description: 'Clear selected cells'
+            description: 'Clear focused cell'
           },
           {
             keys: ['Backspace'],
-            description: 'Clear selected cells'
+            description: 'Clear focused cell'
+          },
+          {
+            keys: ['Esc'],
+            description: 'Cancel editing / Clear focus'
           }
         ]
       },

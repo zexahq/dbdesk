@@ -1,7 +1,6 @@
 'use client'
 
-import { getCellKey, parseCellKey } from '@renderer/lib/data-table'
-import { useDataTableStore } from '@renderer/store/data-table-store'
+import { useTabStore } from '@renderer/store/tab-store'
 import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/types/data-table'
 import {
   type ColumnDef,
@@ -17,6 +16,7 @@ import type { QueryResultRow } from '@renderer/api/client'
 
 interface UseDataTableProps<TData, TValue = unknown>
   extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
+  tabId: string
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
@@ -25,6 +25,7 @@ interface UseDataTableProps<TData, TValue = unknown>
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
 
 export function useDataTable<TData, TValue = unknown>({
+  tabId,
   columns,
   data,
   onCellUpdate,
@@ -34,34 +35,72 @@ export function useDataTable<TData, TValue = unknown>({
   const tableRef = React.useRef<ReturnType<typeof useReactTable<TData>>>(null)
   const rowMapRef = React.useRef<Map<number, HTMLTableRowElement>>(new Map())
 
-  // Zustand store
-  const {
-    focusedCell,
-    editingCell,
-    selectionState,
-    rowSelection,
-    columnSizing,
-    columnVisibility,
-    pendingUpdates,
-    shiftAnchor,
-    setFocusedCell,
-    setEditingCell,
-    setSelectionState,
-    setRowSelection,
-    setShiftAnchor,
-    setColumnSizing,
-    setColumnVisibility,
-    setPendingUpdates,
-    clearSelection
-  } = useDataTableStore()
+  // Get tab-specific state from tab store
+  const tab = useTabStore((state) => state.tabs.find((t) => t.id === tabId))
+  const updateTabState = useTabStore((state) => state.updateTabState)
 
-  // Initialize rowSelection from tableOptions if provided
-  React.useEffect(() => {
-    if (tableOptions.initialState?.rowSelection) {
-      setRowSelection(tableOptions.initialState.rowSelection)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run once on mount
+  if (!tab) {
+    throw new Error(`Tab with id ${tabId} not found`)
+  }
+
+  const { focusedCell, editingCell, rowSelection, columnSizing, columnVisibility, pendingUpdates } =
+    tab
+
+  // Setters that update tab state
+  const setFocusedCell = React.useCallback(
+    (cell: CellPosition | null) => {
+      updateTabState(tabId, { focusedCell: cell })
+    },
+    [tabId, updateTabState]
+  )
+
+  const setEditingCell = React.useCallback(
+    (cell: CellPosition | null) => {
+      updateTabState(tabId, { editingCell: cell })
+    },
+    [tabId, updateTabState]
+  )
+
+  const setRowSelection = React.useCallback(
+    (selection: RowSelectionState | ((prev: RowSelectionState) => RowSelectionState)) => {
+      updateTabState(tabId, {
+        rowSelection: typeof selection === 'function' ? selection(rowSelection) : selection
+      })
+    },
+    [tabId, updateTabState, rowSelection]
+  )
+
+  const setColumnSizing = React.useCallback(
+    (sizing: typeof columnSizing | ((prev: typeof columnSizing) => typeof columnSizing)) => {
+      updateTabState(tabId, {
+        columnSizing: typeof sizing === 'function' ? sizing(columnSizing) : sizing
+      })
+    },
+    [tabId, updateTabState, columnSizing]
+  )
+
+  const setColumnVisibility = React.useCallback(
+    (
+      visibility:
+        | typeof columnVisibility
+        | ((prev: typeof columnVisibility) => typeof columnVisibility)
+    ) => {
+      updateTabState(tabId, {
+        columnVisibility:
+          typeof visibility === 'function' ? visibility(columnVisibility) : visibility
+      })
+    },
+    [tabId, updateTabState, columnVisibility]
+  )
+
+  const setPendingUpdates = React.useCallback(
+    (updates: UpdateCell[] | ((prev: UpdateCell[]) => UpdateCell[])) => {
+      updateTabState(tabId, {
+        pendingUpdates: typeof updates === 'function' ? updates(pendingUpdates) : updates
+      })
+    },
+    [tabId, updateTabState, pendingUpdates]
+  )
 
   // Get column IDs
   const columnIds = React.useMemo(() => {
@@ -113,149 +152,6 @@ export function useDataTable<TData, TValue = unknown>({
   if (!tableRef.current) {
     tableRef.current = table
   }
-
-  // Helper to check if cell is selected
-  const getIsCellSelected = React.useCallback(
-    (rowIndex: number, columnId: string) => {
-      return selectionState.selectedCells.has(getCellKey(rowIndex, columnId))
-    },
-    [selectionState.selectedCells]
-  )
-
-  // Helper to determine if a cell is at the edge of the selection
-  const getCellEdgeClasses = React.useCallback(
-    (rowIndex: number, columnId: string) => {
-      if (!selectionState.selectionRange || selectionState.selectedCells.size === 0) {
-        return { edgeClasses: '', isEdgeCell: false, isInSelection: false }
-      }
-
-      const { start, end } = selectionState.selectionRange
-      const startColIndex = columnIds.indexOf(start.columnId)
-      const endColIndex = columnIds.indexOf(end.columnId)
-      const currentColIndex = columnIds.indexOf(columnId)
-
-      const minRow = Math.min(start.rowIndex, end.rowIndex)
-      const maxRow = Math.max(start.rowIndex, end.rowIndex)
-      const minCol = Math.min(startColIndex, endColIndex)
-      const maxCol = Math.max(startColIndex, endColIndex)
-
-      // Check if this cell is part of the selection
-      const isInSelection =
-        rowIndex >= minRow &&
-        rowIndex <= maxRow &&
-        currentColIndex >= minCol &&
-        currentColIndex <= maxCol
-
-      if (!isInSelection) {
-        return { edgeClasses: '', isEdgeCell: false, isInSelection: false }
-      }
-
-      const isTopEdge = rowIndex === minRow
-      const isBottomEdge = rowIndex === maxRow
-      const isLeftEdge = currentColIndex === minCol
-      const isRightEdge = currentColIndex === maxCol
-      const isEdgeCell = isTopEdge || isBottomEdge || isLeftEdge || isRightEdge
-
-      const edgeClasses: string[] = []
-
-      // Top border: thick for top edge, regular for all other cells in selection
-      if (isTopEdge) {
-        edgeClasses.push('border-t-2 border-t-ring')
-      } else {
-        edgeClasses.push('border-t border-t-border')
-      }
-
-      // Bottom border: thick for bottom edge, regular for all other cells in selection
-      if (isBottomEdge) {
-        edgeClasses.push('border-b-2 border-b-ring')
-      } else {
-        edgeClasses.push('border-b border-b-border')
-      }
-
-      // Left border: thick for left edge, regular for all other cells in selection
-      if (isLeftEdge) {
-        edgeClasses.push('border-l-2 border-l-ring')
-      } else {
-        edgeClasses.push('border-l border-l-border')
-      }
-
-      // Right border: thick for right edge, regular for all other cells in selection
-      if (isRightEdge) {
-        edgeClasses.push('border-r-2 border-r-ring')
-      } else {
-        edgeClasses.push('border-r border-r-border')
-      }
-
-      edgeClasses.push('bg-ring/5')
-
-      return { edgeClasses: edgeClasses.join(' '), isEdgeCell, isInSelection: true }
-    },
-    [selectionState, columnIds]
-  )
-
-  // Clear selection wrapper (only clears cell selection, not row selection)
-  const clearCellSelection = React.useCallback(() => {
-    clearSelection()
-  }, [clearSelection])
-
-  // Select all cells
-  const selectAll = React.useCallback(() => {
-    const rows = table.getRowModel().rows
-    const rowCount = rows.length
-    const allCells = new Set<string>()
-
-    for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
-      for (const columnId of columnIds) {
-        allCells.add(getCellKey(rowIndex, columnId))
-      }
-    }
-
-    const firstColumnId = columnIds[0]
-    const lastColumnId = columnIds[columnIds.length - 1]
-
-    setSelectionState({
-      selectedCells: allCells,
-      selectionRange:
-        columnIds.length > 0 && rowCount > 0 && firstColumnId && lastColumnId
-          ? {
-              start: { rowIndex: 0, columnId: firstColumnId },
-              end: { rowIndex: rowCount - 1, columnId: lastColumnId }
-            }
-          : null,
-      isSelecting: false
-    })
-  }, [table, columnIds])
-
-  // Select range
-  const selectRange = React.useCallback(
-    (start: CellPosition, end: CellPosition, isSelecting = false) => {
-      const startColIndex = columnIds.indexOf(start.columnId)
-      const endColIndex = columnIds.indexOf(end.columnId)
-
-      const minRow = Math.min(start.rowIndex, end.rowIndex)
-      const maxRow = Math.max(start.rowIndex, end.rowIndex)
-      const minCol = Math.min(startColIndex, endColIndex)
-      const maxCol = Math.max(startColIndex, endColIndex)
-
-      const selectedCells = new Set<string>()
-
-      for (let rowIndex = minRow; rowIndex <= maxRow; rowIndex++) {
-        for (let colIndex = minCol; colIndex <= maxCol; colIndex++) {
-          const columnId = columnIds[colIndex]
-          if (columnId) {
-            selectedCells.add(getCellKey(rowIndex, columnId))
-          }
-        }
-      }
-
-      setSelectionState({
-        selectedCells,
-        selectionRange: { start, end },
-        isSelecting
-      })
-    },
-    [columnIds]
-  )
 
   // Scroll cell into view
   const scrollCellIntoView = React.useCallback(
@@ -530,7 +426,7 @@ export function useDataTable<TData, TValue = unknown>({
     [onCellUpdate, table]
   )
 
-  // Handle cell click
+  // Handle cell click - only focuses, never starts editing
   const onCellClick = React.useCallback(
     (rowIndex: number, columnId: string, event?: React.MouseEvent) => {
       // Ignore right-click
@@ -543,72 +439,13 @@ export function useDataTable<TData, TValue = unknown>({
         return
       }
 
-      const cellKey = getCellKey(rowIndex, columnId)
-
-      if (event) {
-        if (event.ctrlKey || event.metaKey) {
-          event.preventDefault()
-          const newSelectedCells = new Set(selectionState.selectedCells)
-
-          if (newSelectedCells.has(cellKey)) {
-            newSelectedCells.delete(cellKey)
-          } else {
-            newSelectedCells.add(cellKey)
-          }
-
-          setSelectionState({
-            selectedCells: newSelectedCells,
-            selectionRange: null,
-            isSelecting: false
-          })
-          focusCell(rowIndex, columnId)
-          return
-        }
-
-        if (event.shiftKey && focusedCell) {
-          event.preventDefault()
-          selectRange(focusedCell, { rowIndex, columnId })
-          return
-        }
-      }
-
-      // Clear shift anchor when clicking (Shift is not held for mouse clicks)
-      if (shiftAnchor) {
-        setShiftAnchor(null)
-      }
-
-      // Clear cell selection if clicking elsewhere (but keep row selection)
-      const hasSelectedCells = selectionState.selectedCells.size > 0
-
-      if (hasSelectedCells && !selectionState.isSelecting) {
-        const isClickingSelectedCell = selectionState.selectedCells.has(cellKey)
-
-        if (!isClickingSelectedCell) {
-          clearCellSelection()
-        } else {
-          focusCell(rowIndex, columnId)
-          return
-        }
-      }
-
-      if (focusedCell?.rowIndex === rowIndex && focusedCell?.columnId === columnId) {
-        onCellEditingStart(rowIndex, columnId)
-      } else {
-        focusCell(rowIndex, columnId)
-      }
+      // Always just focus on single click, never start editing
+      focusCell(rowIndex, columnId)
     },
-    [
-      selectionState,
-      shiftAnchor,
-      focusedCell,
-      focusCell,
-      onCellEditingStart,
-      selectRange,
-      clearSelection
-    ]
+    [focusCell]
   )
 
-  // Handle cell double click
+  // Handle cell double click - starts editing
   const onCellDoubleClick = React.useCallback(
     (rowIndex: number, columnId: string, event?: React.MouseEvent) => {
       if (event?.defaultPrevented) return
@@ -616,53 +453,6 @@ export function useDataTable<TData, TValue = unknown>({
     },
     [onCellEditingStart]
   )
-
-  // Handle cell mouse down (for drag selection)
-  const onCellMouseDown = React.useCallback(
-    (rowIndex: number, columnId: string, event: React.MouseEvent) => {
-      if (event.button === 2) {
-        return
-      }
-
-      event.preventDefault()
-
-      if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
-        setSelectionState({
-          selectedCells: new Set(),
-          selectionRange: {
-            start: { rowIndex, columnId },
-            end: { rowIndex, columnId }
-          },
-          isSelecting: true
-        })
-      }
-    },
-    []
-  )
-
-  // Handle cell mouse enter (for drag selection)
-  const onCellMouseEnter = React.useCallback(
-    (rowIndex: number, columnId: string, _event: React.MouseEvent) => {
-      if (selectionState.isSelecting && selectionState.selectionRange) {
-        const start = selectionState.selectionRange.start
-
-        if (focusedCell?.rowIndex !== start.rowIndex || focusedCell?.columnId !== start.columnId) {
-          focusCell(start.rowIndex, start.columnId)
-        }
-
-        selectRange(start, { rowIndex, columnId }, true)
-      }
-    },
-    [selectionState, focusedCell, selectRange, focusCell]
-  )
-
-  // Handle cell mouse up
-  const onCellMouseUp = React.useCallback(() => {
-    setSelectionState((prev) => ({
-      ...prev,
-      isSelecting: false
-    }))
-  }, [])
 
   // Handle keyboard events
   const onKeyDown = React.useCallback(
@@ -676,26 +466,15 @@ export function useDataTable<TData, TValue = unknown>({
 
       let direction: NavigationDirection | null = null
 
-      // Select all
-      if (isCtrlPressed && key === 'a') {
-        event.preventDefault()
-        selectAll()
-        return
-      }
-
-      // Delete/Backspace to clear selected cells
+      // Delete/Backspace to clear focused cell
       if (key === 'Delete' || key === 'Backspace') {
-        if (selectionState.selectedCells.size > 0) {
+        if (focusedCell) {
           event.preventDefault()
-          const updates: UpdateCell[] = []
-
-          selectionState.selectedCells.forEach((cellKey) => {
-            const { rowIndex, columnId } = parseCellKey(cellKey)
-            updates.push({ rowIndex, columnId, value: '' })
+          onDataUpdate({
+            rowIndex: focusedCell.rowIndex,
+            columnId: focusedCell.columnId,
+            value: ''
           })
-
-          onDataUpdate(updates)
-          clearCellSelection()
         }
         return
       }
@@ -728,12 +507,8 @@ export function useDataTable<TData, TValue = unknown>({
           break
         case 'Escape':
           event.preventDefault()
-          if (selectionState.selectedCells.size > 0) {
-            clearCellSelection()
-          } else {
-            setFocusedCell(null)
-            setEditingCell(null)
-          }
+          setFocusedCell(null)
+          setEditingCell(null)
           return
         case 'Tab':
           event.preventDefault()
@@ -749,75 +524,18 @@ export function useDataTable<TData, TValue = unknown>({
 
       if (direction) {
         event.preventDefault()
-
-        // Shift+Arrow for range selection
-        if (shiftKey && key !== 'Tab' && focusedCell) {
-          // If there's no shift anchor yet, set it to the currently focused cell
-          // This captures the cell that was focused when Shift was first pressed
-          const currentShiftAnchor = shiftAnchor || focusedCell
-          if (!shiftAnchor) {
-            setShiftAnchor(focusedCell)
-          }
-
-          const currentColIndex = navigableColumnIds.indexOf(focusedCell.columnId)
-          let newRowIndex = focusedCell.rowIndex
-          let newColumnId = focusedCell.columnId
-
-          switch (direction) {
-            case 'up':
-              newRowIndex = Math.max(0, focusedCell.rowIndex - 1)
-              break
-            case 'down':
-              newRowIndex = Math.min(table.getRowModel().rows.length - 1, focusedCell.rowIndex + 1)
-              break
-            case 'left':
-              if (currentColIndex > 0) {
-                const prevColumnId = navigableColumnIds[currentColIndex - 1]
-                if (prevColumnId) newColumnId = prevColumnId
-              }
-              break
-            case 'right':
-              if (currentColIndex < navigableColumnIds.length - 1) {
-                const nextColumnId = navigableColumnIds[currentColIndex + 1]
-                if (nextColumnId) newColumnId = nextColumnId
-              }
-              break
-          }
-
-          // Always use the shift anchor as the selection start
-          selectRange(currentShiftAnchor, {
-            rowIndex: newRowIndex,
-            columnId: newColumnId
-          })
-
-          focusCell(newRowIndex, newColumnId)
-        } else {
-          // Clear shift anchor when arrow keys are pressed without Shift
-          if (shiftAnchor) {
-            setShiftAnchor(null)
-          }
-          if (selectionState.selectedCells.size > 0) {
-            clearCellSelection()
-          }
-          navigateCell(direction)
-        }
+        navigateCell(direction)
       }
     },
     [
       editingCell,
       focusedCell,
-      selectionState,
-      shiftAnchor,
       navigableColumnIds,
       table,
-      selectAll,
       onDataUpdate,
-      clearCellSelection,
       navigateCell,
-      selectRange,
       focusCell,
       onCellEditingStart,
-      setShiftAnchor,
       setFocusedCell,
       setEditingCell
     ]
@@ -830,38 +548,10 @@ export function useDataTable<TData, TValue = unknown>({
 
     container.addEventListener('keydown', onKeyDown)
 
-    // Clear shift anchor when Shift key is released
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (event.key === 'Shift' && shiftAnchor) {
-        setShiftAnchor(null)
-      }
-    }
-
-    window.addEventListener('keyup', onKeyUp)
     return () => {
       container.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('keyup', onKeyUp)
     }
-  }, [onKeyDown, shiftAnchor])
-
-  // Prevent text selection during drag selection
-  React.useEffect(() => {
-    function preventSelection(event: Event) {
-      if (selectionState.isSelecting) {
-        event.preventDefault()
-      }
-    }
-
-    if (selectionState.isSelecting) {
-      document.addEventListener('selectstart', preventSelection)
-      document.body.style.userSelect = 'none'
-    }
-
-    return () => {
-      document.removeEventListener('selectstart', preventSelection)
-      document.body.style.userSelect = ''
-    }
-  }, [selectionState.isSelecting])
+  }, [onKeyDown])
 
   return {
     table,
@@ -869,21 +559,14 @@ export function useDataTable<TData, TValue = unknown>({
     rowMapRef,
     focusedCell,
     editingCell,
-    selectionState,
     columnSizing,
     columnVisibility,
     pendingUpdates,
     columnIds,
-    getIsCellSelected,
-    getCellEdgeClasses,
     onCellClick,
     onCellDoubleClick,
-    onCellMouseDown,
-    onCellMouseEnter,
-    onCellMouseUp,
     onCellEditingStart,
     onCellEditingStop,
-    onDataUpdate,
-    clearSelection: clearCellSelection
+    onDataUpdate
   }
 }

@@ -1,4 +1,6 @@
 import { useTableIntrospection } from '@renderer/api/queries/schema'
+import { Badge } from '@renderer/components/ui/badge'
+import { Button } from '@renderer/components/ui/button'
 import {
   Card,
   CardAction,
@@ -7,8 +9,6 @@ import {
   CardHeader,
   CardTitle
 } from '@renderer/components/ui/card'
-import { Badge } from '@renderer/components/ui/badge'
-import { Button } from '@renderer/components/ui/button'
 import { Separator } from '@renderer/components/ui/separator'
 
 interface SqlStructureProps {
@@ -25,11 +25,23 @@ export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps)
   } = useTableIntrospection(connectionId, schema, table)
 
   if (isLoadingTableInfo) {
-    return <div>Loading structure info...</div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <p className="text-lg font-medium">Loading structure info...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!structureInfo || error) {
-    return <div>Structure not found</div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <p className="text-lg font-medium">Structure not found</p>
+        </div>
+      </div>
+    )
   }
 
   const formatDefaultValue = (value: unknown) => {

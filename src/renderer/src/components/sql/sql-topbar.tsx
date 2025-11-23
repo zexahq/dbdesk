@@ -1,12 +1,9 @@
 import type { TableDataColumn, TableFilterCondition, TableSortRule } from '@common/types'
-import { useDisconnect } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@renderer/components/ui/toggle-group'
 import { cn } from '@renderer/lib/utils'
-import { useDataTableStore } from '@renderer/store/data-table-store'
-import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
-import { useRouter } from '@tanstack/react-router'
-import { Layers, PanelLeftClose, PanelLeftOpen, RefreshCcw, Table, Unplug } from 'lucide-react'
+import { useTabStore } from '@renderer/store/tab-store'
+import { Layers, RefreshCcw, Table } from 'lucide-react'
 import { useState } from 'react'
 import { DeleteConfirmationDialog } from './dialogs/delete-confirmation-dialog'
 import { TableColumnVisibilityDropdown } from './table-column-visibility-dropdown'
@@ -14,43 +11,29 @@ import { TableFilterPopover } from './table-filter-popover'
 import { TableSortPopover } from './table-sort-popover'
 
 interface SqlTopbarProps {
+  tabId: string
   onRefresh: () => void
-  isSidebarOpen: boolean
   isLoading: boolean
-  view: 'tables' | 'structure'
-  onSidebarOpenChange: (open: boolean) => void
-  onViewChange: (view: 'tables' | 'structure') => void
-  connectionId: string
   columns?: TableDataColumn[]
-  filters?: TableFilterCondition[]
-  onFiltersChange: (filters: TableFilterCondition[] | undefined) => void
-  sortRules?: TableSortRule[]
-  onSortRulesChange: (rules: TableSortRule[] | undefined) => void
   onDeleteRows: () => Promise<void> | void
   isDeletePending: boolean
 }
 
 export function SqlTopbar({
-  view,
-  onViewChange,
-  isSidebarOpen,
-  onSidebarOpenChange,
+  tabId,
   onRefresh,
   isLoading,
-  connectionId,
   columns = [],
-  filters,
-  onFiltersChange,
-  sortRules,
-  onSortRulesChange,
   onDeleteRows,
   isDeletePending
 }: SqlTopbarProps) {
-  const router = useRouter()
   const [open, setOpen] = useState(false)
-  const { mutate: disconnect, isPending: isDisconnecting } = useDisconnect()
-  const { reset } = useSqlWorkspaceStore()
-  const selectedRowsCount = useDataTableStore((state) => Object.keys(state.rowSelection).length)
+  const tab = useTabStore((state) => state.tabs.find((t) => t.id === tabId))
+  const updateTabState = useTabStore((state) => state.updateTabState)
+
+  if (!tab) return null
+
+  const selectedRowsCount = Object.keys(tab.rowSelection).length
 
   const handleDelete = async () => {
     try {
@@ -60,37 +43,29 @@ export function SqlTopbar({
     }
   }
 
-  const handleDisconnect = () => {
-    disconnect(connectionId, {
-      onSuccess: () => {
-        reset()
-        router.navigate({ to: '/' })
-      }
-    })
+  const handleViewChange = (value: string) => {
+    if (value === 'tables' || value === 'structure') {
+      updateTabState(tabId, { view: value })
+    }
+  }
+
+  const handleFiltersChange = (filters: TableFilterCondition[] | undefined) => {
+    updateTabState(tabId, { filters, offset: 0 })
+  }
+
+  const handleSortRulesChange = (sortRules: TableSortRule[] | undefined) => {
+    updateTabState(tabId, { sortRules, offset: 0 })
   }
 
   return (
     <div className="border-b">
       <div className="flex items-center justify-between gap-2 p-2">
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="cursor-pointer"
-            onClick={() => onSidebarOpenChange(!isSidebarOpen)}
-          >
-            {isSidebarOpen ? (
-              <PanelLeftClose className="size-4" />
-            ) : (
-              <PanelLeftOpen className="size-4" />
-            )}
-            <span className="sr-only">Toggle sidebar</span>
-          </Button>
           <ToggleGroup
             type="single"
             aria-label="Toggle view"
-            defaultValue={view}
-            onValueChange={onViewChange}
+            value={tab.view}
+            onValueChange={handleViewChange}
           >
             <ToggleGroupItem value="tables" aria-label="Toggle tables view">
               <Table className="size-4" />
@@ -101,21 +76,21 @@ export function SqlTopbar({
               <span className="sr-only">Layers</span>
             </ToggleGroupItem>
           </ToggleGroup>
-          {view === 'tables' && (
+          {tab.view === 'tables' && (
             <TableFilterPopover
               columns={columns}
-              activeFilters={filters}
-              onApply={onFiltersChange}
+              activeFilters={tab.filters}
+              onApply={handleFiltersChange}
             />
           )}
-          {view === 'tables' && (
+          {tab.view === 'tables' && (
             <TableSortPopover
               columns={columns}
-              activeSorts={sortRules}
-              onApply={onSortRulesChange}
+              activeSorts={tab.sortRules}
+              onApply={handleSortRulesChange}
             />
           )}
-          {view === 'tables' && <TableColumnVisibilityDropdown columns={columns} />}
+          {tab.view === 'tables' && <TableColumnVisibilityDropdown tabId={tabId} columns={columns} />}
         </div>
         <div className="flex items-center gap-2 pt-1.5">
           <DeleteConfirmationDialog
@@ -127,15 +102,6 @@ export function SqlTopbar({
           />
           <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
             <RefreshCcw className={cn('size-4 cursor-pointer', isLoading && 'animate-spin')} />
-          </Button>
-          <Button
-            variant="destructive"
-            size="icon"
-            className="cursor-pointer"
-            onClick={handleDisconnect}
-            disabled={isDisconnecting}
-          >
-            <Unplug className="size-4" />
           </Button>
         </div>
       </div>

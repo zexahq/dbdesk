@@ -7,18 +7,6 @@ export interface CellPosition {
 }
 
 /**
- * Represents the selection state of cells in the table
- */
-export interface SelectionState {
-  selectedCells: Set<string>
-  selectionRange: {
-    start: CellPosition
-    end: CellPosition
-  } | null
-  isSelecting: boolean
-}
-
-/**
  * Represents an update to a cell value
  */
 export interface UpdateCell {

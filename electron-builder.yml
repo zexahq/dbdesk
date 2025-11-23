@@ -9,6 +9,12 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!**/*.map'
+  - '!**/*.d.ts'
+  - '!**/*.spec.ts'
+  - '!**/*.test.ts'
+  - '!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}'
+compression: maximum
 asarUnpack:
   - resources/**
 win:

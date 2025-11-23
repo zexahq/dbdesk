@@ -11,12 +11,14 @@ import { DataTableCell } from './data-table-cell'
 import { DataTableKeyboardShortcuts } from './data-table-keyboard-shortcuts'
 
 interface DataTableProps<TData, TValue> {
+  tabId: string
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
 }
 
 export function DataTable<TData, TValue>({
+  tabId,
   columns,
   data,
   onCellUpdate
@@ -27,16 +29,12 @@ export function DataTable<TData, TValue>({
     rowMapRef,
     focusedCell,
     editingCell,
-    getIsCellSelected,
-    getCellEdgeClasses,
     onCellClick,
     onCellDoubleClick,
-    onCellMouseDown,
-    onCellMouseEnter,
-    onCellMouseUp,
     onCellEditingStop,
     onDataUpdate
   } = useDataTable({
+    tabId,
     columns,
     data,
     onCellUpdate
@@ -112,16 +110,10 @@ export function DataTable<TData, TValue>({
                                 cell={cell}
                                 rowIndex={rowIndex}
                                 columnId={columnId}
-                                isRowSelected={isRowSelected}
                                 focusedCell={focusedCell}
                                 editingCell={editingCell}
-                                getIsCellSelected={getIsCellSelected}
-                                getCellEdgeClasses={getCellEdgeClasses}
                                 onCellClick={onCellClick}
                                 onCellDoubleClick={onCellDoubleClick}
-                                onCellMouseDown={onCellMouseDown}
-                                onCellMouseEnter={onCellMouseEnter}
-                                onCellMouseUp={onCellMouseUp}
                                 onCellEditingStop={onCellEditingStop}
                                 onDataUpdate={onDataUpdate}
                                 tableContainerRef={tableContainerRef}
