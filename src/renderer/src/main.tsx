@@ -12,6 +12,7 @@ import { queryClient } from './lib/query-client'
 import { routeTree } from './routeTree.gen'
 
 // Import Monaco Editor workers
+import * as monaco from 'monaco-editor'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 
@@ -27,8 +28,9 @@ window.MonacoEnvironment = {
 
 // Configure Monaco to only load English locale (reduces bundle size)
 loader.config({
+  monaco,
   paths: {
-    vs: 'app-asset://dbdesk/node_modules/monaco-editor/min/vs'
+    vs: 'app-asset://node_modules/monaco-editor/min/vs'
   },
   'vs/nls': {
     availableLanguages: {
