@@ -65,7 +65,9 @@ export function MainTopbar({ profile, isSidebarOpen, onSidebarOpenChange }: Main
                   : 'text-muted-foreground border-t-2 border-t-transparent pt-0.5'
               )}
             >
-              <span className="truncate flex-1 text-left">{tab.table}</span>
+              <span className={cn('truncate flex-1 text-left', tab.isTemporary && 'italic')}>
+                {tab.table}
+              </span>
               <div
                 role="button"
                 onClick={(e) => handleCloseTab(tab.id, e)}

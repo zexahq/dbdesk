@@ -7,6 +7,7 @@ export interface Tab {
   id: string // unique tab identifier
   schema: string
   table: string
+  isTemporary: boolean // whether this tab is temporary (will be replaced on next table click)
 
   // Tab-specific state
   view: 'tables' | 'structure'
@@ -33,15 +34,17 @@ interface TabStore {
   removeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
   updateTabState: (tabId: string, updates: Partial<Tab>) => void
+  makeTabPermanent: (tabId: string) => void
   getTabBySchemaTable: (schema: string, table: string) => Tab | undefined
   getActiveTab: () => Tab | undefined
   reset: () => void
 }
 
-const createDefaultTab = (schema: string, table: string): Tab => ({
+const createDefaultTab = (schema: string, table: string, isTemporary = true): Tab => ({
   id: `${schema}.${table}`,
   schema,
   table,
+  isTemporary,
   view: 'tables',
   limit: 50,
   offset: 0,
@@ -69,8 +72,21 @@ export const useTabStore = create<TabStore>((set, get) => ({
       return tabId
     }
 
-    // Create new tab
-    const newTab = createDefaultTab(schema, table)
+    // Find any existing temporary tab
+    const temporaryTab = get().tabs.find((t) => t.isTemporary)
+
+    if (temporaryTab) {
+      // Replace the temporary tab with the new table
+      const newTab = createDefaultTab(schema, table, true)
+      set((state) => ({
+        tabs: state.tabs.map((t) => (t.id === temporaryTab.id ? newTab : t)),
+        activeTabId: tabId
+      }))
+      return tabId
+    }
+
+    // No temporary tab exists, create new temporary tab
+    const newTab = createDefaultTab(schema, table, true)
     set((state) => ({
       tabs: [...state.tabs, newTab],
       activeTabId: tabId
@@ -112,8 +128,17 @@ export const useTabStore = create<TabStore>((set, get) => ({
   },
 
   updateTabState: (tabId: string, updates: Partial<Tab>) => {
+    // Any update to tab state makes it permanent
+    get().makeTabPermanent(tabId)
+    
     set((state) => ({
       tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, ...updates } : tab))
+    }))
+  },
+
+  makeTabPermanent: (tabId: string) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, isTemporary: false } : tab))
     }))
   },
 

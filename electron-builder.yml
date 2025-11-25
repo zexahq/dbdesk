@@ -46,6 +46,8 @@ linux:
     - deb
   maintainer: electronjs.org
   category: Utility
+deb:
+  afterInstall: build/linux/after-install.sh
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
