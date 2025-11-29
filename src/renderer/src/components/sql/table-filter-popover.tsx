@@ -216,7 +216,7 @@ export function TableFilterPopover({
                   value={row.column ?? undefined}
                   onValueChange={(value) => updateFilterRow(row.id, { column: value })}
                 >
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-[200px] h-8">
                     <SelectValue placeholder="Select column">
                       {row.column ? (
                         <span className="text-left">{row.column}</span>
@@ -225,12 +225,16 @@ export function TableFilterPopover({
                       )}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent align="start">
+                  <SelectContent align="start" className="max-h-[300px] w-[250px]">
                     {columns.map((column) => (
-                      <SelectItem key={column.name} value={column.name}>
-                        <span className="flex flex-row items-center gap-2 text-left">
-                          <span className="font-medium text-foreground">{column.name}</span>
-                          <span className="text-xs text-muted-foreground">{column.dataType}</span>
+                      <SelectItem key={column.name} value={column.name} className="min-w-max">
+                        <span className="flex flex-col justify-center text-left w-full">
+                          <span className="font-medium text-xs text-foreground whitespace-nowrap">
+                            {column.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                            {column.dataType}
+                          </span>
                         </span>
                       </SelectItem>
                     ))}
@@ -245,7 +249,7 @@ export function TableFilterPopover({
                     })
                   }
                 >
-                  <SelectTrigger className="w-[60px]">
+                  <SelectTrigger className="w-[70px] h-8">
                     <SelectValue placeholder="Operator">
                       {row.operator
                         ? (TABLE_FILTER_OPERATORS.find((op) => op.value === row.operator)
@@ -257,7 +261,7 @@ export function TableFilterPopover({
                     {TABLE_FILTER_OPERATORS.map((operator) => (
                       <SelectItem key={operator.value} value={operator.value}>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm">{operator.shortLabel}</span>
+                          <span className="font-mono text-xs">{operator.shortLabel}</span>
                           <span className="text-xs text-muted-foreground">{operator.label}</span>
                         </div>
                       </SelectItem>
@@ -269,7 +273,7 @@ export function TableFilterPopover({
                     value={row.value}
                     onValueChange={(value) => updateFilterRow(row.id, { value })}
                   >
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger className="flex-1 h-8">
                       <SelectValue placeholder="Select value" />
                     </SelectTrigger>
                     <SelectContent>
@@ -282,7 +286,7 @@ export function TableFilterPopover({
                   </Select>
                 ) : (
                   <Input
-                    className="flex-1"
+                    className="flex-1 h-8"
                     placeholder={
                       row.operator === 'IN' ? 'Enter values separated by commas' : 'Enter a value'
                     }

@@ -140,6 +140,7 @@ export function TableColumnVisibilityDropdown({
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
               className="h-8 pl-8 pr-8"
             />
             {searchQuery && (
@@ -164,6 +165,7 @@ export function TableColumnVisibilityDropdown({
                   key={column.name}
                   checked={isVisible}
                   onCheckedChange={(checked) => handleToggleColumn(column.name, checked)}
+                  onSelect={(e) => e.preventDefault()}
                 >
                   {column.name}
                 </DropdownMenuCheckboxItem>
