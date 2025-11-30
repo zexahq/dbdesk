@@ -1,6 +1,6 @@
+import type { QueryResult } from '@common/types'
 import { useMutation } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
-import type { QueryResult } from '@common/types'
 
 export function useRunQuery(connectionId: string) {
   return useMutation({

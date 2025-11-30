@@ -1,7 +1,7 @@
-import type { SQLAdapter } from './sql'
+import type { QueryResultRow } from 'pg'
 import type { MongoDBAdapter } from './mongodb'
 import type { RedisAdapter } from './redis'
-import type { QueryResultRow } from 'pg'
+import type { SQLAdapter } from './sql'
 
 /**
  * Interface for query execution results

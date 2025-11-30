@@ -53,7 +53,6 @@ export type TableUpdateCellInput = SchemaIntrospectInput & {
   row: Record<string, unknown>
 }
 
-
 export const validateCreateConnectionInput = (input: unknown): CreateConnectionInput => {
   if (!isObject(input)) {
     throw new ValidationError('Invalid payload: expected object for connection details')

@@ -11,6 +11,7 @@ import {
 } from '@renderer/components/ui/table'
 import { formatCellValue } from '@renderer/lib/data-table'
 import { cn } from '@renderer/lib/utils'
+import type { CellPosition } from '@renderer/types/data-table'
 import {
   type ColumnDef,
   type ColumnSizingState,
@@ -53,6 +54,7 @@ function getSimpleColumns(columnNames: string[]): ColumnDef<QueryResultRow>[] {
 export function SimpleTable({ columns, data }: SimpleTableProps) {
   const tableColumns = getSimpleColumns(columns)
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
+  const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
 
   const table = useReactTable({
     data,
@@ -78,13 +80,13 @@ export function SimpleTable({ columns, data }: SimpleTableProps) {
             className="border-collapse table-fixed w-full!"
             style={{ width: table.getTotalSize() }}
           >
-            <TableHeader className="sticky top-0 z-10">
+            <TableHeader className="sticky top-0 z-10 shadow-sm">
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="bg-background">
+                <TableRow key={headerGroup.id} className="bg-muted">
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
-                      className="relative border-border border-x border-b-2 first:border-l last:border-r truncate bg-background"
+                      className="relative border-border border-x border-b-2 first:border-l last:border-r truncate bg-muted"
                       style={{
                         width: header.getSize(),
                         maxWidth: header.getSize()
@@ -102,20 +104,29 @@ export function SimpleTable({ columns, data }: SimpleTableProps) {
             </TableHeader>
             <TableBody className="[&_tr:last-child]:border-b">
               {hasRows
-                ? rows.map((row) => (
+                ? rows.map((row, rowIndex) => (
                     <TableRow key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          className="border-border border-x truncate"
-                          style={{
-                            width: cell.column.getSize(),
-                            maxWidth: cell.column.getSize()
-                          }}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
+                      {row.getVisibleCells().map((cell) => {
+                        const columnId = cell.column.id
+                        const isFocused =
+                          focusedCell?.rowIndex === rowIndex && focusedCell?.columnId === columnId
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={cn(
+                              'border-border border-x truncate cursor-pointer',
+                              isFocused && 'outline-2 outline-ring outline-offset-0'
+                            )}
+                            style={{
+                              width: cell.column.getSize(),
+                              maxWidth: cell.column.getSize()
+                            }}
+                            onClick={() => setFocusedCell({ rowIndex, columnId })}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        )
+                      })}
                     </TableRow>
                   ))
                 : null}
