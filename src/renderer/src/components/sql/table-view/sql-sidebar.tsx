@@ -1,4 +1,11 @@
-import * as React from 'react'
+import type { SQLConnectionProfile } from '@common/types'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@renderer/components/ui/select'
 import {
   Sidebar,
   SidebarContent,
@@ -12,18 +19,11 @@ import {
   SidebarMenuItem,
   SidebarSeparator
 } from '@renderer/components/ui/sidebar'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@renderer/components/ui/select'
-import { DatabaseIcon, SearchIcon, Table2Icon, RefreshCcw } from 'lucide-react'
-import type { SQLConnectionProfile } from '@common/types'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useTabStore } from '@renderer/store/tab-store'
-import { Button } from '../ui/button'
+import { DatabaseIcon, RefreshCcw, SearchIcon, Table2Icon } from 'lucide-react'
+import * as React from 'react'
+import { Button } from '../../ui/button'
 
 type DbSidebarProps = {
   profile: SQLConnectionProfile

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { TableDataResult } from '@renderer/api/client'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
-import { TableDataResult } from '@renderer/api/client'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select'
 
 interface SqlBottombarProps {
   tableData: TableDataResult

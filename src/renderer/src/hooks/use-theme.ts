@@ -1,40 +1,9 @@
-import { useEffect, useState } from 'react'
-
-type Theme = 'light' | 'dark'
+import { useThemeStore } from '@renderer/store/theme-store'
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    // Check localStorage first
-    const stored = localStorage.getItem('theme') as Theme | null
-    if (stored === 'light' || stored === 'dark') {
-      return stored
-    }
-    // Fallback to system preference
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark'
-    }
-    return 'light'
-  })
-
-  useEffect(() => {
-    const root = document.documentElement
-    const body = document.body
-
-    if (theme === 'dark') {
-      body.classList.add('dark')
-      root.classList.add('dark')
-    } else {
-      body.classList.remove('dark')
-      root.classList.remove('dark')
-    }
-
-    // Persist to localStorage
-    localStorage.setItem('theme', theme)
-  }, [theme])
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
-  }
+  const theme = useThemeStore((state) => state.theme)
+  const setTheme = useThemeStore((state) => state.setTheme)
+  const toggleTheme = useThemeStore((state) => state.toggleTheme)
 
   return { theme, setTheme, toggleTheme }
 }

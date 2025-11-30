@@ -16,13 +16,15 @@ interface MainTopbarProps {
 export function MainTopbar({ profile, isSidebarOpen, onSidebarOpenChange }: MainTopbarProps) {
   const router = useRouter()
   const { mutate: disconnect, isPending: isDisconnecting } = useDisconnect()
-  const { reset: resetWorkspace } = useSqlWorkspaceStore()
-  const { tabs, activeTabId, setActiveTab, removeTab } = useTabStore()
+  const { reset: resetWorkspace, setView } = useSqlWorkspaceStore()
+  const { reset: resetTabs, tabs, activeTabId, setActiveTab, removeTab } = useTabStore()
 
   const handleDisconnect = () => {
     disconnect(profile.id, {
       onSuccess: () => {
         resetWorkspace()
+        setView('table')
+        resetTabs()
         router.navigate({ to: '/' })
       }
     })

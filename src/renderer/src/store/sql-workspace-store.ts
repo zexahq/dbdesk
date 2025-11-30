@@ -1,46 +1,39 @@
-import { create } from 'zustand'
 import type { SchemaWithTables } from '@common/types'
+import { create } from 'zustand'
 
 interface SqlWorkspaceStore {
   // Current selection
-  selectedSchema: string | null
-  selectedTable: string | null
   currentConnectionId: string | null
+  view: 'table' | 'query'
 
   // Data storage
   schemasWithTables: SchemaWithTables[] // schemas for the current connection
 
   // Actions
-  setSelectedSchema: (schema: string | null) => void
-  setSelectedTable: (table: string | null) => void
   setCurrentConnection: (connectionId: string | null) => void
   setSchemasWithTables: (schemas: SchemaWithTables[]) => void
+  setView: (view: 'table' | 'query') => void
   reset: () => void
 }
 
 export const useSqlWorkspaceStore = create<SqlWorkspaceStore>((set) => ({
   // Initial state
-  selectedSchema: null,
-  selectedTable: null,
   currentConnectionId: null,
+  view: 'table',
   schemasWithTables: [],
 
   // Actions
-  setSelectedSchema: (schema) => set({ selectedSchema: schema }),
-  setSelectedTable: (table) => set({ selectedTable: table }),
   setCurrentConnection: (connectionId) =>
     set({
       currentConnectionId: connectionId,
-      selectedSchema: null,
-      selectedTable: null,
       schemasWithTables: []
     }),
   setSchemasWithTables: (schemas) => set({ schemasWithTables: schemas }),
+  setView: (view) => set({ view }),
   reset: () =>
     set({
-      selectedSchema: null,
-      selectedTable: null,
       currentConnectionId: null,
+      view: 'table',
       schemasWithTables: []
     })
 }))

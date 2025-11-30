@@ -12,17 +12,18 @@ import {
 } from '@renderer/components/ui/command'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useTheme } from '@renderer/hooks/use-theme'
-import { useTabStore } from '@renderer/store/tab-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { useTabStore } from '@renderer/store/tab-store'
 import { useNavigate } from '@tanstack/react-router'
-import { Database, Moon, Search, Sun, Table2Icon, Unplug } from 'lucide-react'
+import { CodeIcon, Database, Moon, Search, Sun, Table2Icon, Unplug } from 'lucide-react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { Button } from './ui/button'
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
-  const { schemasWithTables, currentConnectionId, setCurrentConnection } = useSqlWorkspaceStore()
+  const { schemasWithTables, currentConnectionId, setCurrentConnection, view, setView } =
+    useSqlWorkspaceStore()
 
   const { addTab, reset: resetTabs } = useTabStore()
   const { theme, toggleTheme } = useTheme()
@@ -69,12 +70,19 @@ export function QuickPanel() {
     if (!currentConnectionId) return
     await disconnect(currentConnectionId)
     setCurrentConnection(null)
+    setView('table')
+    resetTabs()
     navigate({ to: '/' })
     setOpen(false)
   }
 
   const handleThemeToggle = () => {
     toggleTheme()
+    setOpen(false)
+  }
+
+  const handleViewToggle = () => {
+    setView(view === 'table' ? 'query' : 'table')
     setOpen(false)
   }
 
@@ -122,6 +130,12 @@ export function QuickPanel() {
               <CommandItem onSelect={handleDisconnect} className="py-2!">
                 <Unplug className="size-4 mr-2" />
                 <span className="text-sm">Disconnect</span>
+              </CommandItem>
+              <CommandItem onSelect={handleViewToggle} className="py-2!">
+                {view === 'table' ? <Table2Icon /> : <CodeIcon />}
+                <span className="text-sm">
+                  {view === 'table' ? 'Switch to Query View' : 'Switch to Table View'}
+                </span>
               </CommandItem>
             </CommandGroup>
           )}
