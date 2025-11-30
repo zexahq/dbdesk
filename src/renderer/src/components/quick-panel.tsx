@@ -12,6 +12,7 @@ import {
 } from '@renderer/components/ui/command'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useTheme } from '@renderer/hooks/use-theme'
+import { useQueryTabStore } from '@renderer/store/query-tab-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useNavigate } from '@tanstack/react-router'
@@ -26,6 +27,7 @@ export function QuickPanel() {
     useSqlWorkspaceStore()
 
   const { addTab, reset: resetTabs } = useTabStore()
+  const { reset: resetQueryTabs } = useQueryTabStore()
   const { theme, toggleTheme } = useTheme()
 
   const { data: connections } = useConnections()
@@ -72,6 +74,7 @@ export function QuickPanel() {
     setCurrentConnection(null)
     setView('table')
     resetTabs()
+    resetQueryTabs()
     navigate({ to: '/' })
     setOpen(false)
   }
@@ -132,7 +135,7 @@ export function QuickPanel() {
                 <span className="text-sm">Disconnect</span>
               </CommandItem>
               <CommandItem onSelect={handleViewToggle} className="py-2!">
-                {view === 'table' ? <Table2Icon /> : <CodeIcon />}
+                {view === 'table' ? <CodeIcon /> : <Table2Icon />}
                 <span className="text-sm">
                   {view === 'table' ? 'Switch to Query View' : 'Switch to Table View'}
                 </span>

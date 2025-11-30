@@ -10,8 +10,9 @@ import {
   CardHeader,
   CardTitle
 } from '@renderer/components/ui/card'
-import { useTabStore } from '@renderer/store/tab-store'
+import { useQueryTabStore } from '@renderer/store/query-tab-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
+import { useTabStore } from '@renderer/store/tab-store'
 import { useNavigate } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo } from 'react'
@@ -34,8 +35,9 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
   const { mutateAsync: connect, isPending: isConnecting } = useConnect()
   const { mutateAsync: deleteConnection, isPending: isDeleting } = useDeleteConnection()
   const navigate = useNavigate()
-  const { setCurrentConnection } = useSqlWorkspaceStore()
+  const { setCurrentConnection, setView } = useSqlWorkspaceStore()
   const { reset: resetTabs } = useTabStore()
+  const { reset: resetQueryTabs } = useQueryTabStore()
 
   const isBusy = isConnecting || isDeleting
 
@@ -49,6 +51,8 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
       onSuccess: () => {
         setCurrentConnection(profile.id)
         resetTabs() // Clear tabs from previous connection
+        resetQueryTabs()
+        setView('table')
         navigate({
           to: '/connections/$connectionId',
           params: { connectionId: profile.id }

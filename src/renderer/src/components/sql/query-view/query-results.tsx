@@ -1,11 +1,72 @@
-export function QueryResults() {
+import type { QueryResult } from '@common/types'
+import { Button } from '@renderer/components/ui/button'
+import { Play } from 'lucide-react'
+import { SimpleTable } from './simple-table'
+
+interface QueryResultsProps {
+  queryResults?: QueryResult
+  isLoading?: boolean
+  error?: Error | null
+  onRun: () => void
+}
+
+export function QueryResults({ queryResults, isLoading, error, onRun }: QueryResultsProps) {
   return (
-    <div className="flex h-full w-full items-center justify-center border-t">
-      <div className="text-center text-muted-foreground">
-        <p className="text-lg font-medium">Query Results</p>
-        <p className="text-sm">Execute a query to see results here</p>
+    <div className="flex h-full w-full flex-col border-t">
+      <div className="flex items-center justify-between border-b p-2">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {queryResults && (
+            <>
+              <span>
+                {queryResults.rowCount} row{queryResults.rowCount === 1 ? '' : 's'}
+              </span>
+              {queryResults.executionTime !== undefined && (
+                <>
+                  <span>•</span>
+                  <span>{`${queryResults.executionTime.toFixed(2)} ms`}</span>
+                </>
+              )}
+            </>
+          )}
+        </div>
+        <Button
+          size="sm"
+          className="h-8 text-xs cursor-pointer"
+          onClick={onRun}
+          disabled={isLoading}
+        >
+          <Play className="size-4" />
+          RUN
+        </Button>
+      </div>
+      <div className="flex flex-1 overflow-hidden">
+        {isLoading ? (
+          <div className="flex w-full items-center justify-center text-center text-muted-foreground">
+            <div>
+              <p className="text-lg font-medium">Executing query...</p>
+              <p className="text-sm">Please wait</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex w-full items-center justify-center text-center text-destructive">
+            <div>
+              <p className="text-lg font-medium">Error</p>
+              <p className="text-sm">{error.message}</p>
+            </div>
+          </div>
+        ) : queryResults ? (
+          <div className="w-full h-full">
+            <SimpleTable columns={queryResults.columns} data={queryResults.rows} />
+          </div>
+        ) : (
+          <div className="flex w-full items-center justify-center text-center text-muted-foreground">
+            <div>
+              <p className="text-lg font-medium">Query Results</p>
+              <p className="text-sm">Execute a query to see results here</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
 }
-
