@@ -1,5 +1,6 @@
 import type { ConnectionProfile, DatabaseType } from '@common/types'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
+import { MySQLConnectionForm } from './connection-forms/mysql/mysql-connection-form'
 import { PostgresConnectionForm } from './connection-forms/postgres/postgres-connection-form'
 
 interface ConnectionDialogProps {
@@ -31,6 +32,9 @@ export function ConnectionDialog({
         {!type && <div className="flex flex-col gap-2">Select a database type to continue.</div>}
         {type === 'postgres' && (
           <PostgresConnectionForm connection={connection} onSuccess={() => onOpenChange(false)} />
+        )}
+        {type === 'mysql' && (
+          <MySQLConnectionForm connection={connection} onSuccess={() => onOpenChange(false)} />
         )}
       </DialogContent>
     </Dialog>

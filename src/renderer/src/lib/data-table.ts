@@ -71,6 +71,7 @@ const NUMERIC_TYPES = new Set([
   'smallint',
   'integer',
   'bigint',
+  'int',
   'int2',
   'int4',
   'int8',

@@ -72,27 +72,29 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
       <SidebarHeader>
         <SidebarGroupLabel>{profile.name}</SidebarGroupLabel>
         <SidebarGroup className="flex flex-col gap-2">
-          <div className="relative">
-            <DatabaseIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Select
-              value={selectedSchema || ''}
-              onValueChange={(v) => {
-                setSelectedSchema(v)
-              }}
-              disabled={schemas.length === 0}
-            >
-              <SelectTrigger className="w-full h-10 pl-8 py-5">
-                <SelectValue placeholder="Select schema" />
-              </SelectTrigger>
-              <SelectContent>
-                {schemas.map((schema) => (
-                  <SelectItem key={schema} value={schema}>
-                    {schema}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {profile.type === 'postgres' && (
+            <div className="relative">
+              <DatabaseIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              <Select
+                value={selectedSchema || ''}
+                onValueChange={(v) => {
+                  setSelectedSchema(v)
+                }}
+                disabled={schemas.length === 0}
+              >
+                <SelectTrigger className="w-full h-10 pl-8 py-5">
+                  <SelectValue placeholder="Select schema" />
+                </SelectTrigger>
+                <SelectContent>
+                  {schemas.map((schema) => (
+                    <SelectItem key={schema} value={schema}>
+                      {schema}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <div className="relative w-full">
               <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />

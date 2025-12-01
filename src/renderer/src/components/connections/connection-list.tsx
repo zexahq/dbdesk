@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
 import type { ConnectionProfile, DatabaseType } from '@common/types'
 import { useConnections } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { Skeleton } from '@renderer/components/ui/skeleton'
 import { ChevronDown } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { ConnectionCard } from './connection-card'
 import { ConnectionDialog } from './connection-dialog'
 
@@ -80,8 +80,9 @@ export function ConnectionList() {
                   </button>
                   <button
                     className="w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => {}}
-                    disabled
+                    onClick={() => {
+                      handleNewConnection('mysql')
+                    }}
                   >
                     MySQL
                   </button>

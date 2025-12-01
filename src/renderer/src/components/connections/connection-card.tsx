@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle
 } from '@renderer/components/ui/card'
+import { cn } from '@renderer/lib/utils'
 import { useQueryTabStore } from '@renderer/store/query-tab-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useTabStore } from '@renderer/store/tab-store'
@@ -17,6 +18,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo } from 'react'
 import toast from 'react-hot-toast'
+import mysqlImage from '../../assets/mysql.svg'
 import postgresImage from '../../assets/postgres.svg'
 
 interface ConnectionCardProps {
@@ -26,7 +28,7 @@ interface ConnectionCardProps {
 
 const typeLabelMap: Record<ConnectionProfile['type'], { label: string; image: string }> = {
   postgres: { label: 'PostgreSQL', image: postgresImage },
-  mysql: { label: 'MySQL', image: '' },
+  mysql: { label: 'MySQL', image: mysqlImage },
   mongodb: { label: 'MongoDB', image: '' },
   redis: { label: 'Redis', image: '' }
 }
@@ -80,7 +82,7 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
             <img
               src={typeLabelMap[profile.type].image}
               alt={typeLabelMap[profile.type].label}
-              className="size-5 mr-2"
+              className={cn('size-5 mr-2', profile.type === 'mysql' && 'bg-white rounded-lg')}
             />
             {typeLabelMap[profile.type].label}
           </Badge>

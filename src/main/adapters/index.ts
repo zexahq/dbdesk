@@ -1,12 +1,15 @@
 import type { DBConnectionOptions, DatabaseType } from '@common/types'
-import { adapterRegistry } from './registry'
+import { createMySQLAdapter } from './mysql'
 import { createPostgresAdapter } from './postgres'
+import { adapterRegistry } from './registry'
 
 // Register core adapters on module load.
 adapterRegistry.registerAdapter('postgres', createPostgresAdapter)
+adapterRegistry.registerAdapter('mysql', createMySQLAdapter)
 
-export { adapterRegistry } from './registry'
+export { MySQLAdapter, createMySQLAdapter } from './mysql'
 export { PostgresAdapter, createPostgresAdapter } from './postgres'
+export { adapterRegistry } from './registry'
 
 export const registerAdapter = adapterRegistry.registerAdapter.bind(adapterRegistry)
 
