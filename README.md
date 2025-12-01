@@ -1,34 +1,71 @@
 # dbdesk
 
-An Electron application with React and TypeScript
+**The cleanest database management tool you've been waiting for.**
 
-## Recommended IDE Setup
+A fast, intuitive, and privacy-focused desktop application for managing your databases. Built for developers who want a simple yet powerful interface without the bloat.
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+Currently supports **PostgreSQL** and **MySQL**, with more SQL databases coming soon—and NoSQL support on the roadmap.
 
-## Project Setup
+## ✨ Features
 
-### Install
+- **🔒 Local-First Security** — Your data never leaves your machine. Connect to databases securely with connection info stored locally.
+- **⌨️ Keyboard-First** — Designed for power users who prefer staying on the keyboard.
+- **📑 Multi-Tab Interface** — Open dozens of tables and queries simultaneously.
+- **📝 SQL Editor** — Write and execute queries with Monaco Editor (autocompletion coming soon).
+- **🌗 Dark & Light Mode** — Switch themes to match your preference.
+- **✏️ Inline Editing** — Edit data directly like a spreadsheet.
+- **🚀 Quick Panel** — Fast navigation with `Ctrl+K`.
+- **⚡ Blazing Fast** — Opens instantly, tables load in milliseconds.
+
+## 🛠️ Tech Stack
+
+- [Electron](https://www.electronjs.org/) — Cross-platform desktop app
+- [React](https://react.dev/) — UI framework
+- [TanStack Router](https://tanstack.com/router) — Type-safe routing
+- [TanStack Query](https://tanstack.com/query) — Data fetching & caching
+- [TanStack Table](https://tanstack.com/table) — Powerful table UI
+- [Zustand](https://zustand.docs.pmnd.rs/) — State management
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/) — Code editor
+- [Tailwind CSS](https://tailwindcss.com/) — Styling
+
+## 📦 Local Development
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18+)
+- [pnpm](https://pnpm.io/)
+
+### Setup
 
 ```bash
-$ pnpm install
-```
+# Clone the repository
+git clone https://github.com/zexahq/dbdesk.git
+cd dbdesk
 
-### Development
+# Install dependencies
+pnpm install
 
-```bash
-$ pnpm dev
+# Start development server
+pnpm dev
 ```
 
 ### Build
 
 ```bash
-# For windows
-$ pnpm build:win
+# Windows
+pnpm build:win
 
-# For macOS
-$ pnpm build:mac
+# macOS
+pnpm build:mac
 
-# For Linux
-$ pnpm build:linux
+# Linux
+pnpm build:linux
 ```
+
+## 🔗 Connect
+
+Follow us on X: [@dbdesk](https://x.com/dbdesk)
+
+## 📄 License
+
+MIT
