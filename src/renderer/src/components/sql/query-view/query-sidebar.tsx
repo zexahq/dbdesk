@@ -10,10 +10,9 @@ import {
 
 type QuerySidebarProps = {
   profile: SQLConnectionProfile
-  onRefresh?: () => void
 }
 
-export function QuerySidebar({ profile, onRefresh }: QuerySidebarProps) {
+export function QuerySidebar({ profile }: QuerySidebarProps) {
   return (
     <Sidebar className="border-r w-full h-full" collapsible="none">
       <SidebarHeader>

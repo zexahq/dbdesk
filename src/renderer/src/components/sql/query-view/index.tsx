@@ -63,10 +63,6 @@ export default function SqlQueryView({ profile }: SqlQueryViewProps) {
     }
   }
 
-  const handleRefresh = () => {
-    // Will be implemented later for refreshing saved queries
-  }
-
   return (
     <SidebarProvider className="h-full">
       <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
@@ -76,7 +72,7 @@ export default function SqlQueryView({ profile }: SqlQueryViewProps) {
           maxSize={32}
           className={cn(!isSidebarOpen && 'hidden')}
         >
-          <QuerySidebar profile={profile} onRefresh={handleRefresh} />
+          <QuerySidebar profile={profile} />
         </ResizablePanel>
         <ResizableHandle withHandle className={cn(!isSidebarOpen && 'hidden')} />
         <ResizablePanel>
