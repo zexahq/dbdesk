@@ -246,17 +246,25 @@ function SortableSortRow({
         <span className="sr-only">Reorder</span>
       </Button>
       <Select value={row.column ?? undefined} onValueChange={onColumnChange}>
-        <SelectTrigger className="w-[200px]">
+        <SelectTrigger className="w-[200px] h-8">
           <SelectValue placeholder="Select column">
-            {row.column ? <span className="text-left">{row.column}</span> : 'Select column'}
+            {row.column ? (
+              <span className="text-left">{row.column}</span>
+            ) : (
+              'Select column'
+            )}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent align="start">
+        <SelectContent align="start" className="max-h-[300px] w-[250px]">
           {columns.map((column) => (
-            <SelectItem key={column.name} value={column.name}>
-              <span className="flex flex-row items-center gap-2 text-left">
-                <span className="font-medium text-foreground">{column.name}</span>
-                <span className="text-xs text-muted-foreground">{column.dataType}</span>
+            <SelectItem key={column.name} value={column.name} className="min-w-max">
+              <span className="flex flex-col justify-center text-left w-full">
+                <span className="font-medium text-xs text-foreground whitespace-nowrap">
+                  {column.name}
+                </span>
+                <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                  {column.dataType}
+                </span>
               </span>
             </SelectItem>
           ))}

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import type { PostgreSQLSslMode } from '@common/types/sql'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
 import { Zap } from 'lucide-react'
+import { useState } from 'react'
 
 interface PostgresQuickConnectProps {
   onSuccess: (values: {
@@ -11,7 +12,7 @@ interface PostgresQuickConnectProps {
     database: string
     user: string
     password: string
-    ssl: boolean
+    sslMode: PostgreSQLSslMode
   }) => void
 }
 
@@ -43,12 +44,11 @@ export function PostgresQuickConnect({ onSuccess }: PostgresQuickConnectProps) {
       const name = database
 
       // Parse SSL mode from query parameters
-      const sslMode = url.searchParams.get('sslmode') || url.searchParams.get('ssl-mode')
-      const sslEnabled =
-        sslMode === 'require' ||
-        sslMode === 'prefer' ||
-        sslMode === 'verify-full' ||
-        sslMode === 'verify-ca'
+      const sslModeParam = url.searchParams.get('sslmode') || url.searchParams.get('ssl-mode')
+      const validSslModes: PostgreSQLSslMode[] = ['disable', 'allow', 'prefer', 'require']
+      const sslMode: PostgreSQLSslMode = validSslModes.includes(sslModeParam as PostgreSQLSslMode)
+        ? (sslModeParam as PostgreSQLSslMode)
+        : 'disable'
 
       onSuccess({
         name,
@@ -57,7 +57,7 @@ export function PostgresQuickConnect({ onSuccess }: PostgresQuickConnectProps) {
         database,
         user: decodeURIComponent(url.username),
         password: decodeURIComponent(url.password),
-        ssl: sslEnabled
+        sslMode
       })
       setDsn('')
     } catch {

@@ -7,6 +7,7 @@ import type {
   TableFilterCondition,
   TableSortRule
 } from '@common/types'
+import type { PostgreSQLSslMode } from '@common/types/sql'
 import { ValidationError } from './errors'
 
 type CreateConnectionInput = {
@@ -113,6 +114,7 @@ const validateSQLConnectionOptions = (options: unknown): SQLConnectionOptions =>
   const user = toNonEmptyString(options.user, 'user')
   const password = toNonEmptyString(options.password, 'password')
   const port = toPort(options.port)
+  const sslMode = toOptionalSslMode(options.sslMode)
 
   return {
     host,
@@ -120,7 +122,7 @@ const validateSQLConnectionOptions = (options: unknown): SQLConnectionOptions =>
     user,
     password,
     port,
-    ssl: options.ssl
+    sslMode
   }
 }
 
@@ -405,6 +407,25 @@ const toPort = (value: unknown): number => {
   }
 
   return portValue
+}
+
+const toOptionalSslMode = (value: unknown): PostgreSQLSslMode | undefined => {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+
+  if (typeof value !== 'string') {
+    throw new ValidationError('Invalid value for "sslMode": expected string or undefined')
+  }
+
+  const validModes: PostgreSQLSslMode[] = ['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full']
+  if (!validModes.includes(value as PostgreSQLSslMode)) {
+    throw new ValidationError(
+      `Invalid value for "sslMode": expected one of ${validModes.join(', ')}`
+    )
+  }
+
+  return value as PostgreSQLSslMode
 }
 
 const toOptionalInteger = (

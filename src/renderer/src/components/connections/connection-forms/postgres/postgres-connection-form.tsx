@@ -1,15 +1,24 @@
-import { useMemo, useState } from 'react'
-import { useForm } from '@tanstack/react-form'
-import * as z from 'zod'
 import type { ConnectionProfile, DBConnectionOptions } from '@common/types'
-import { Button } from '@renderer/components/ui/button'
-import { Input } from '@renderer/components/ui/input'
-import { Field as UIField, FieldError, FieldGroup, FieldLabel } from '@renderer/components/ui/field'
-import { Checkbox } from '@renderer/components/ui/checkbox'
-import { Separator } from '@renderer/components/ui/separator'
-import { Eye, EyeOff } from 'lucide-react'
+import type { PostgreSQLSslMode } from '@common/types/sql'
 import { useCreateConnection, useUpdateConnection } from '@renderer/api/queries/connections'
+import { Button } from '@renderer/components/ui/button'
+import { FieldError, FieldGroup, FieldLabel, Field as UIField } from '@renderer/components/ui/field'
+import { Input } from '@renderer/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@renderer/components/ui/select'
+import { Separator } from '@renderer/components/ui/separator'
+import { useForm } from '@tanstack/react-form'
+import { Eye, EyeOff } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import * as z from 'zod'
 import { PostgresQuickConnect } from './postgres-quick-connect'
+
+const SSL_MODE_OPTIONS: PostgreSQLSslMode[] = ['disable', 'allow', 'prefer', 'require']
 
 const baseSchema = z.object({
   name: z.string().min(1, 'Name is required')
@@ -21,7 +30,7 @@ const sqlSchema = z.object({
   database: z.string().min(1, 'Database is required'),
   user: z.string().min(1, 'User is required'),
   password: z.string(),
-  ssl: z.boolean()
+  sslMode: z.enum(['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full']).optional()
 })
 
 type SQLFormValues = z.infer<typeof sqlSchema>
@@ -42,7 +51,7 @@ function toDefaults(connection?: ConnectionProfile | null): {
     database: string
     user: string
     password: string
-    ssl: boolean
+    sslMode: PostgreSQLSslMode
   }>
 
   return {
@@ -53,7 +62,7 @@ function toDefaults(connection?: ConnectionProfile | null): {
       database: opts.database ?? '',
       user: opts.user ?? '',
       password: opts.password ?? '',
-      ssl: Boolean(opts.ssl)
+      sslMode: opts.sslMode ?? 'disable'
     }
   }
 }
@@ -76,7 +85,7 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
       database: '',
       user: '',
       password: '',
-      ssl: false
+      sslMode: 'disable'
     }
   )
 
@@ -92,7 +101,7 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
     onSubmit: async ({ value }) => {
       const { name } = value
 
-      const { host, port, database, user, password, ssl } = sqlFormValues
+      const { host, port, database, user, password, sslMode } = sqlFormValues
 
       // When updating, if password is empty, preserve the original password
       let finalPassword = password ?? ''
@@ -107,7 +116,7 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
         database,
         user,
         password: finalPassword,
-        ssl
+        sslMode
       }
 
       let profile: ConnectionProfile
@@ -157,7 +166,7 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
                 database: values.database,
                 user: values.user,
                 password: values.password || '',
-                ssl: values.ssl
+                sslMode: values.sslMode as PostgreSQLSslMode | undefined
               })
             }}
           />
@@ -264,7 +273,7 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
         </UIField>
       </FieldGroup>
 
-      <FieldGroup>
+      <FieldGroup className="grid grid-cols-2 gap-4">
         <UIField>
           <FieldLabel htmlFor="password">Password</FieldLabel>
           <div className="relative">
@@ -294,22 +303,27 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
         </UIField>
 
         <UIField>
-          <FieldLabel htmlFor="ssl">SSL</FieldLabel>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="ssl"
-              checked={sqlFormValues.ssl}
-              onCheckedChange={(v) => {
-                setSqlFormValues((prev) => ({
-                  ...prev,
-                  ssl: Boolean(v)
-                }))
-              }}
-            />
-            <label htmlFor="ssl" className="text-sm text-muted-foreground select-none">
-              Enable SSL
-            </label>
-          </div>
+          <FieldLabel htmlFor="sslMode">SSL Mode</FieldLabel>
+          <Select
+            value={sqlFormValues.sslMode ?? 'prefer'}
+            onValueChange={(value) => {
+              setSqlFormValues((prev) => ({
+                ...prev,
+                sslMode: value as PostgreSQLSslMode
+              }))
+            }}
+          >
+            <SelectTrigger id="sslMode">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SSL_MODE_OPTIONS.map((mode) => (
+                <SelectItem key={mode} value={mode}>
+                  {mode}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </UIField>
       </FieldGroup>
 

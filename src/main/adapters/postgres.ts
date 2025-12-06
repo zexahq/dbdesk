@@ -8,6 +8,7 @@ import type {
   UpdateTableCellOptions,
   UpdateTableCellResult
 } from '@common/types'
+import type { PostgreSQLSslMode } from '@common/types/sql'
 import { performance } from 'node:perf_hooks'
 import { Pool, type QueryResult as PgQueryResult } from 'pg'
 
@@ -22,6 +23,28 @@ import {
 import { parsePostgresArray, quoteIdentifier } from '../lib/postgers/utils'
 
 const DEFAULT_TIMEOUT_MS = 30_000
+
+/**
+ * Convert PostgreSQL SSL mode to pg client SSL configuration
+ */
+function getSslConfig(sslMode?: PostgreSQLSslMode): boolean | object {
+  switch (sslMode) {
+    case 'disable':
+      return false
+    case 'allow':
+      return false
+    case 'prefer':
+      return { rejectUnauthorized: false }
+    case 'require':
+      return { rejectUnauthorized: false }
+    case 'verify-ca':
+      return true
+    case 'verify-full':
+      return true
+    default:
+      return false
+  }
+}
 
 export class PostgresAdapter implements SQLAdapter {
   private pool: Pool | null = null
@@ -39,7 +62,7 @@ export class PostgresAdapter implements SQLAdapter {
       database: this.options.database,
       user: this.options.user,
       password: this.options.password,
-      ssl: this.options.ssl,
+      ssl: getSslConfig(this.options.sslMode),
       max: 10,
       idleTimeoutMillis: DEFAULT_TIMEOUT_MS,
       connectionTimeoutMillis: DEFAULT_TIMEOUT_MS

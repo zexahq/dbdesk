@@ -2,6 +2,11 @@ import type { QueryResultRow } from 'pg'
 import type { BaseAdapter } from './adapter'
 
 /**
+ * PostgreSQL SSL mode
+ */
+export type PostgreSQLSslMode = 'disable' | 'allow' | 'prefer' | 'require' | 'verify-ca' | 'verify-full'
+
+/**
  * SQL database connection options (PostgreSQL, MySQL)
  */
 export interface SQLConnectionOptions {
@@ -10,7 +15,7 @@ export interface SQLConnectionOptions {
   database: string
   user: string
   password: string
-  ssl?: boolean | object
+  sslMode?: PostgreSQLSslMode
 }
 
 /**
