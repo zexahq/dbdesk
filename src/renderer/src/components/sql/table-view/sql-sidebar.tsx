@@ -21,7 +21,7 @@ import {
 } from '@renderer/components/ui/sidebar'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useTabStore } from '@renderer/store/tab-store'
-import { DatabaseIcon, RefreshCcw, SearchIcon, Table2Icon } from 'lucide-react'
+import { CodeIcon, DatabaseIcon, RefreshCcw, SearchIcon, Table2Icon } from 'lucide-react'
 import * as React from 'react'
 import { Button } from '../../ui/button'
 
@@ -34,7 +34,7 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
   const [search, setSearch] = React.useState('')
   const [selectedSchema, setSelectedSchema] = React.useState<string | null>(null)
 
-  const { schemasWithTables } = useSqlWorkspaceStore()
+  const { schemasWithTables, setView } = useSqlWorkspaceStore()
   const { addTab, getActiveTab } = useTabStore()
   const activeTab = getActiveTab()
 
@@ -72,6 +72,14 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
       <SidebarHeader>
         <SidebarGroupLabel>{profile.name}</SidebarGroupLabel>
         <SidebarGroup className="flex flex-col gap-2">
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 cursor-pointer"
+            onClick={() => setView('query')}
+          >
+            <CodeIcon className="size-4" />
+            SQL Query Editor
+          </Button>
           {profile.type === 'postgres' && (
             <div className="relative">
               <DatabaseIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />

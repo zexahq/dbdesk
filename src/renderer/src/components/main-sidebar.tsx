@@ -23,13 +23,6 @@ export function MainSidebar() {
         </div>
         <div className="flex flex-col gap-2 items-center">
           <ThemeToggle />
-          {!isConnectionPage && (
-            <Button variant="ghost" size="icon" className="cursor-pointer" asChild>
-              <Link to="/about" className="[&.active]:font-bold">
-                <Info className="size-4" />
-              </Link>
-            </Button>
-          )}
         </div>
       </div>
     </div>
