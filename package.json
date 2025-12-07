@@ -5,6 +5,7 @@
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://electron-vite.org",
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
