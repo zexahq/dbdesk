@@ -1,4 +1,4 @@
-import type { TableFilterCondition, TableSortRule } from '@common/types'
+import type { SerializedTab, TableFilterCondition, TableSortRule } from '@common/types'
 import type { CellPosition, UpdateCell } from '@renderer/types/data-table'
 import type { ColumnSizingState, RowSelectionState, VisibilityState } from '@tanstack/react-table'
 import { create } from 'zustand'
@@ -38,6 +38,10 @@ interface TabStore {
   getTabBySchemaTable: (schema: string, table: string) => Tab | undefined
   getActiveTab: () => Tab | undefined
   reset: () => void
+
+  // Persistence methods
+  loadFromSerialized: (serializedTabs: SerializedTab[], activeTabId: string | null) => void
+  serializeState: () => { tabs: SerializedTab[]; activeTabId: string | null }
 }
 
 const createDefaultTab = (schema: string, table: string, isTemporary = true): Tab => ({
@@ -130,7 +134,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
   updateTabState: (tabId: string, updates: Partial<Tab>) => {
     // Any update to tab state makes it permanent
     get().makeTabPermanent(tabId)
-    
+
     set((state) => ({
       tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, ...updates } : tab))
     }))
@@ -157,5 +161,44 @@ export const useTabStore = create<TabStore>((set, get) => ({
       tabs: [],
       activeTabId: null
     })
+  },
+
+  // Persistence methods
+  loadFromSerialized: (serializedTabs: SerializedTab[], activeTabId: string | null) => {
+    // Convert serialized tabs back to full Tab objects with default UI state
+    const tabs = serializedTabs.map((serializedTab) => ({
+      ...serializedTab,
+      // Restore UI state with defaults (these don't persist)
+      rowSelection: {},
+      columnSizing: {},
+      columnVisibility: {},
+      focusedCell: null,
+      editingCell: null,
+      pendingUpdates: []
+    }))
+
+    set({
+      tabs,
+      activeTabId
+    })
+  },
+
+  serializeState: () => {
+    const { tabs, activeTabId } = get()
+
+    // Only serialize the persisted state, exclude UI state
+    const serializedTabs: SerializedTab[] = tabs.map((tab) => ({
+      id: tab.id,
+      schema: tab.schema,
+      table: tab.table,
+      isTemporary: tab.isTemporary,
+      view: tab.view,
+      limit: tab.limit,
+      offset: tab.offset,
+      filters: tab.filters,
+      sortRules: tab.sortRules
+    }))
+
+    return { tabs: serializedTabs, activeTabId }
   }
 }))

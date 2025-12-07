@@ -312,6 +312,39 @@ export const dbdeskAPI = {
       newValue,
       row
     })
+  },
+
+  /**
+   * Load workspace data for a connection
+   */
+  async loadWorkspace(connectionId: string): Promise<unknown> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+
+    return ipcRenderer.invoke('workspace:load', { connectionId: connectionId.trim() })
+  },
+
+  /**
+   * Save workspace data for a connection
+   */
+  async saveWorkspace(workspace: unknown): Promise<void> {
+    if (!workspace || typeof workspace !== 'object') {
+      throw new Error('Workspace data is required')
+    }
+
+    return ipcRenderer.invoke('workspace:save', { workspace })
+  },
+
+  /**
+   * Delete workspace data for a connection
+   */
+  async deleteWorkspace(connectionId: string): Promise<void> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+
+    return ipcRenderer.invoke('workspace:delete', { connectionId: connectionId.trim() })
   }
 }
 

@@ -2,6 +2,7 @@ import type { SQLConnectionProfile } from '@common/types'
 import { useDisconnect } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
+import { saveCurrentWorkspace } from '@renderer/lib/workspace'
 import { useQueryTabStore } from '@renderer/store/query-tab-store'
 import { useRouter } from '@tanstack/react-router'
 import { PanelLeftClose, PanelLeftOpen, Plus, Unplug, X } from 'lucide-react'
@@ -17,7 +18,9 @@ export function QueryTopbar({ profile, isSidebarOpen, onSidebarOpenChange }: Que
   const { mutate: disconnect, isPending: isDisconnecting } = useDisconnect()
   const { tabs, activeTabId, addTab, removeTab, setActiveTab, reset } = useQueryTabStore()
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
+    await saveCurrentWorkspace()
+
     disconnect(profile.id, {
       onSuccess: () => {
         reset()
@@ -97,7 +100,7 @@ export function QueryTopbar({ profile, isSidebarOpen, onSidebarOpenChange }: Que
         variant="ghost"
         size="icon"
         className="h-full w-10 cursor-pointer rounded-none border-l border-border/50 shrink-0 hover:bg-destructive/10 hover:text-destructive"
-        onClick={handleDisconnect}
+        onClick={() => void handleDisconnect()}
         disabled={isDisconnecting}
       >
         <Unplug className="size-4" />

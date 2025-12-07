@@ -9,6 +9,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 
 // Import the generated route tree
 import { queryClient } from './lib/query-client'
+import { registerWorkspaceFlushListener } from './lib/workspace'
 import { routeTree } from './routeTree.gen'
 
 // Import Monaco Editor workers
@@ -38,6 +39,9 @@ loader.config({
     }
   }
 })
+
+// Listen for main-process flush requests (app quit)
+registerWorkspaceFlushListener()
 
 // Create a new router instance
 const router = createRouter({

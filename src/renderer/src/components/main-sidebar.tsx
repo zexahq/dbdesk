@@ -1,5 +1,5 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { Home, Info } from 'lucide-react'
+import { Home } from 'lucide-react'
 import { QuickPanel } from './quick-panel'
 import { ThemeToggle } from './theme-toggle'
 import { Button } from './ui/button'

@@ -1,5 +1,6 @@
 import type {
   ConnectionProfile,
+  ConnectionWorkspace,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableRowsResult,
@@ -110,6 +111,18 @@ export const dbdeskClient = {
     row: QueryResultRow
   ): Promise<UpdateTableCellResult> {
     return getDbdesk().updateTableCell(connectionId, schema, table, columnToUpdate, newValue, row)
+  },
+
+  async loadWorkspace(connectionId: string): Promise<ConnectionWorkspace | undefined> {
+    return getDbdesk().loadWorkspace(connectionId) as Promise<ConnectionWorkspace | undefined>
+  },
+
+  async saveWorkspace(workspace: ConnectionWorkspace): Promise<void> {
+    return getDbdesk().saveWorkspace(workspace)
+  },
+
+  async deleteWorkspace(connectionId: string): Promise<void> {
+    return getDbdesk().deleteWorkspace(connectionId)
   }
 }
 

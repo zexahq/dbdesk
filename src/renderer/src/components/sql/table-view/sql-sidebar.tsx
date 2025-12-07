@@ -77,7 +77,7 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
             className="w-full justify-start gap-2 cursor-pointer"
             onClick={() => setView('query')}
           >
-            <CodeIcon className="size-4" />
+            <CodeIcon className="size-4 text-muted-foreground" />
             SQL Query Editor
           </Button>
           {profile.type === 'postgres' && (

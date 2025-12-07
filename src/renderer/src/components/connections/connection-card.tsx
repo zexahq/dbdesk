@@ -1,4 +1,5 @@
 import type { ConnectionProfile } from '@common/types'
+import { dbdeskClient } from '@renderer/api/client'
 import { useConnect, useDeleteConnection } from '@renderer/api/queries/connections'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
@@ -38,8 +39,8 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
   const { mutateAsync: deleteConnection, isPending: isDeleting } = useDeleteConnection()
   const navigate = useNavigate()
   const { setCurrentConnection, setView } = useSqlWorkspaceStore()
-  const { reset: resetTabs } = useTabStore()
-  const { reset: resetQueryTabs } = useQueryTabStore()
+  const { reset: resetTabs, loadFromSerialized: loadTabs } = useTabStore()
+  const { reset: resetQueryTabs, loadFromSerialized: loadQueryTabs } = useQueryTabStore()
 
   const isBusy = isConnecting || isDeleting
 
@@ -50,11 +51,31 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
 
   const handleConnect = async () => {
     await connect(profile.id, {
-      onSuccess: () => {
+      onSuccess: async () => {
         setCurrentConnection(profile.id)
-        resetTabs() // Clear tabs from previous connection
-        resetQueryTabs()
-        setView('table')
+
+        // Try to restore saved workspace
+        try {
+          const savedWorkspace = await dbdeskClient.loadWorkspace(profile.id)
+          if (savedWorkspace) {
+            // Restore saved state
+            loadTabs(savedWorkspace.tableTabs, savedWorkspace.activeTableTabId)
+            loadQueryTabs(savedWorkspace.queryTabs, savedWorkspace.activeQueryTabId)
+            setView(savedWorkspace.workspaceView)
+          } else {
+            // No saved state, use defaults
+            resetTabs()
+            resetQueryTabs()
+            setView('table')
+          }
+        } catch (error) {
+          // If workspace loading fails, fall back to defaults
+          console.warn('Failed to load workspace, using defaults:', error)
+          resetTabs()
+          resetQueryTabs()
+          setView('table')
+        }
+
         navigate({
           to: '/connections/$connectionId',
           params: { connectionId: profile.id }

@@ -1,9 +1,9 @@
-import type { QueryResult } from '@common/types'
+import type { QueryResult, SerializedQueryTab } from '@common/types'
 import { create } from 'zustand'
 
 export interface QueryTab {
   id: string // unique tab identifier
-  name: string // tab name (e.g., "Query 1", "Query 2")
+  name: string // tab name (e.g., "Untitled Query")
   editorContent: string // SQL query content in the editor
   queryResults?: QueryResult // query results
 }
@@ -19,6 +19,10 @@ interface QueryTabStore {
   updateTab: (tabId: string, updates: Partial<QueryTab>) => void
   getActiveTab: () => QueryTab | undefined
   reset: () => void
+
+  // Persistence methods
+  loadFromSerialized: (serializedTabs: SerializedQueryTab[], activeTabId: string | null) => void
+  serializeState: () => { tabs: SerializedQueryTab[]; activeTabId: string | null }
 }
 
 let tabCounter = 1
@@ -27,7 +31,7 @@ const createDefaultTab = (): QueryTab => {
   const tabNumber = tabCounter++
   return {
     id: `query-${tabNumber}`,
-    name: `Query ${tabNumber}`,
+    name: 'Untitled Query',
     editorContent: '',
     queryResults: undefined
   }
@@ -95,5 +99,43 @@ export const useQueryTabStore = create<QueryTabStore>((set, get) => ({
       tabs: [],
       activeTabId: null
     })
+  },
+
+  // Persistence methods
+  loadFromSerialized: (serializedTabs: SerializedQueryTab[], activeTabId: string | null) => {
+    // Update the tab counter based on existing tabs to avoid ID conflicts
+    const maxTabNumber = serializedTabs.reduce((max, tab) => {
+      const match = tab.id.match(/query-(\d+)/)
+      if (match) {
+        return Math.max(max, parseInt(match[1], 10))
+      }
+      return max
+    }, 0)
+    tabCounter = maxTabNumber + 1
+
+    // Convert serialized tabs back to full QueryTab objects (without results)
+    const tabs = serializedTabs.map((serializedTab) => ({
+      ...serializedTab,
+      queryResults: undefined // Results are not persisted
+    }))
+
+    set({
+      tabs,
+      activeTabId
+    })
+  },
+
+  serializeState: () => {
+    const { tabs, activeTabId } = get()
+
+    // Only serialize the persisted state, exclude query results
+    const serializedTabs: SerializedQueryTab[] = tabs.map((tab) => ({
+      id: tab.id,
+      name: tab.name,
+      editorContent: tab.editorContent
+      // Exclude queryResults as requested
+    }))
+
+    return { tabs: serializedTabs, activeTabId }
   }
 }))

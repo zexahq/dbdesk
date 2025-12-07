@@ -1,5 +1,6 @@
 import type {
   ConnectionProfile,
+  ConnectionWorkspace,
   DatabaseType,
   DeleteTableRowsResult,
   QueryResult,
@@ -24,8 +25,10 @@ import {
   validateSchemaInput,
   validateTableDataInput,
   validateUpdateCellInput,
-  validateUpdateConnectionInput
+  validateUpdateConnectionInput,
+  validateWorkspaceInput
 } from './utils/validation'
+import { deleteWorkspace, loadWorkspace, saveWorkspace } from './workspace-storage'
 
 type SafeIpcHandler<Payload, Result> = (payload: Payload) => Promise<Result> | Result
 
@@ -174,6 +177,7 @@ export const registerIpcHandlers = (): void => {
 
     await connectionManager.closeConnection(connectionId).catch(() => {})
     await deleteProfile(connectionId)
+    await deleteWorkspace(connectionId).catch(() => {}) // Clean up workspace data
 
     return { success: true }
   })
@@ -278,5 +282,21 @@ export const registerIpcHandlers = (): void => {
       newValue,
       row
     })
+  })
+
+  // Workspace handlers
+  safeHandle('workspace:load', async (payload): Promise<ConnectionWorkspace | undefined> => {
+    const { connectionId } = validateConnectionIdentifier(payload)
+    return loadWorkspace(connectionId)
+  })
+
+  safeHandle('workspace:save', async (payload): Promise<void> => {
+    const { workspace } = validateWorkspaceInput(payload)
+    return saveWorkspace(workspace)
+  })
+
+  safeHandle('workspace:delete', async (payload): Promise<void> => {
+    const { connectionId } = validateConnectionIdentifier(payload)
+    return deleteWorkspace(connectionId)
   })
 }

@@ -47,3 +47,11 @@ export type {
   SQLConnectionProfile,
   SQLDatabaseType
 } from './connection'
+
+// Workspace types
+export type {
+  ConnectionWorkspace,
+  SerializedQueryTab,
+  SerializedTab,
+  WorkspaceStorage
+} from './workspace'

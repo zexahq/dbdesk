@@ -2,6 +2,7 @@ import type { SQLConnectionProfile } from '@common/types'
 import { useDisconnect } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
+import { saveCurrentWorkspace } from '@renderer/lib/workspace'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useRouter } from '@tanstack/react-router'
@@ -19,7 +20,9 @@ export function MainTopbar({ profile, isSidebarOpen, onSidebarOpenChange }: Main
   const { reset: resetWorkspace, setView } = useSqlWorkspaceStore()
   const { reset: resetTabs, tabs, activeTabId, setActiveTab, removeTab } = useTabStore()
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
+    await saveCurrentWorkspace()
+
     disconnect(profile.id, {
       onSuccess: () => {
         resetWorkspace()
@@ -91,7 +94,7 @@ export function MainTopbar({ profile, isSidebarOpen, onSidebarOpenChange }: Main
         variant="ghost"
         size="icon"
         className="h-full w-10 cursor-pointer rounded-none border-l border-border/50 shrink-0 hover:bg-destructive/10 hover:text-destructive"
-        onClick={handleDisconnect}
+        onClick={() => void handleDisconnect()}
         disabled={isDisconnecting}
       >
         <Unplug className="size-4" />

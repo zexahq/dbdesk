@@ -1,5 +1,5 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import './adapters'
@@ -60,6 +60,36 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 const server = new AssetServer()
+let workspaceFlushPromise: Promise<void> | null = null
+let workspaceFlushCompleted = false
+
+const requestWorkspaceFlush = async (): Promise<void> => {
+  if (workspaceFlushCompleted) return
+  if (workspaceFlushPromise) return workspaceFlushPromise
+
+  const windows = BrowserWindow.getAllWindows()
+  if (windows.length === 0) return
+
+  workspaceFlushPromise = new Promise<void>((resolve) => {
+    const timeout = setTimeout(resolve, 1000) // best-effort timeout
+
+    ipcMain.once('workspace:flushed', () => {
+      clearTimeout(timeout)
+      resolve()
+    })
+
+    windows.forEach((window) => {
+      window.webContents.send('workspace:flush')
+    })
+  })
+
+  try {
+    await workspaceFlushPromise
+    workspaceFlushCompleted = true
+  } finally {
+    workspaceFlushPromise = null
+  }
+}
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -82,6 +112,28 @@ app.whenReady().then(() => {
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
+    let isFlushingOnClose = false
+
+    window.on('close', (event) => {
+      if (isFlushingOnClose || workspaceFlushCompleted) {
+        return
+      }
+
+      event.preventDefault()
+      isFlushingOnClose = true
+
+      void (async () => {
+        try {
+          await requestWorkspaceFlush()
+        } catch (error) {
+          console.warn('Workspace flush on window close failed:', error)
+        }
+
+        window.removeAllListeners('close')
+        window.close()
+      })()
+    })
+
     // Custom zoom handling - allow Ctrl+= and Ctrl+- for zoom
     window.webContents.on('before-input-event', (event, input) => {
       if (input.control || input.meta) {
@@ -131,8 +183,23 @@ app.on('window-all-closed', () => {
   }
 })
 
-app.on('before-quit', () => {
-  void connectionManager.closeAll()
+app.on('before-quit', (event) => {
+  event.preventDefault()
+  const performQuit = async () => {
+    try {
+      await requestWorkspaceFlush()
+    } catch (error) {
+      console.warn('Workspace flush on quit failed:', error)
+    }
+
+    await connectionManager.closeAll()
+
+    // Remove this handler to avoid recursion and quit again
+    app.removeAllListeners('before-quit')
+    app.quit()
+  }
+
+  void performQuit()
 })
 
 // In this file you can include the rest of your app's specific main process

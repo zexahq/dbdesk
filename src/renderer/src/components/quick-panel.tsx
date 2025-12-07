@@ -12,6 +12,7 @@ import {
 } from '@renderer/components/ui/command'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useTheme } from '@renderer/hooks/use-theme'
+import { saveCurrentWorkspace } from '@renderer/lib/workspace'
 import { useQueryTabStore } from '@renderer/store/query-tab-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useTabStore } from '@renderer/store/tab-store'
@@ -70,6 +71,8 @@ export function QuickPanel() {
 
   const handleDisconnect = async () => {
     if (!currentConnectionId) return
+    await saveCurrentWorkspace()
+
     await disconnect(currentConnectionId)
     setCurrentConnection(null)
     setView('table')

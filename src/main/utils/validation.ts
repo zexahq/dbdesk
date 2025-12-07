@@ -1,5 +1,6 @@
 import type {
   ConnectionProfile,
+  ConnectionWorkspace,
   DBConnectionOptions,
   DatabaseType,
   SQLConnectionOptions,
@@ -52,6 +53,10 @@ export type TableUpdateCellInput = SchemaIntrospectInput & {
   columnToUpdate: string
   newValue: unknown
   row: Record<string, unknown>
+}
+
+export type WorkspaceInput = {
+  workspace: ConnectionWorkspace
 }
 
 export const validateCreateConnectionInput = (input: unknown): CreateConnectionInput => {
@@ -418,7 +423,14 @@ const toOptionalSslMode = (value: unknown): PostgreSQLSslMode | undefined => {
     throw new ValidationError('Invalid value for "sslMode": expected string or undefined')
   }
 
-  const validModes: PostgreSQLSslMode[] = ['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full']
+  const validModes: PostgreSQLSslMode[] = [
+    'disable',
+    'allow',
+    'prefer',
+    'require',
+    'verify-ca',
+    'verify-full'
+  ]
   if (!validModes.includes(value as PostgreSQLSslMode)) {
     throw new ValidationError(
       `Invalid value for "sslMode": expected one of ${validModes.join(', ')}`
@@ -457,4 +469,35 @@ const toOptionalInteger = (
   }
 
   return intValue
+}
+
+export const validateWorkspaceInput = (input: unknown): WorkspaceInput => {
+  if (!isObject(input)) {
+    throw new ValidationError('Invalid workspace payload: expected object')
+  }
+
+  if (!isObject(input.workspace)) {
+    throw new ValidationError('Invalid workspace payload: expected workspace object')
+  }
+
+  const workspace = input.workspace as ConnectionWorkspace
+
+  // Basic validation of workspace structure
+  if (!workspace.connectionId || typeof workspace.connectionId !== 'string') {
+    throw new ValidationError('Invalid workspace: connectionId is required')
+  }
+
+  if (!Array.isArray(workspace.tableTabs)) {
+    throw new ValidationError('Invalid workspace: tableTabs must be an array')
+  }
+
+  if (!Array.isArray(workspace.queryTabs)) {
+    throw new ValidationError('Invalid workspace: queryTabs must be an array')
+  }
+
+  if (workspace.workspaceView !== 'table' && workspace.workspaceView !== 'query') {
+    throw new ValidationError('Invalid workspace: workspaceView must be "table" or "query"')
+  }
+
+  return { workspace }
 }
