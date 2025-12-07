@@ -19,7 +19,7 @@ compression: maximum
 asar: true
 asarUnpack:
   - resources/**
-electronLanguages: "en"
+electronLanguages: 'en'
 # Remove unnecessary Electron files
 removePackageKeywords: true
 win:
@@ -42,7 +42,6 @@ dmg:
 linux:
   target:
     - AppImage
-    - snap
     - deb
   maintainer: electronjs.org
   category: Utility
@@ -51,6 +50,4 @@ deb:
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
-publish:
-  provider: generic
-  url: https://example.com/auto-updates
+publish: never
