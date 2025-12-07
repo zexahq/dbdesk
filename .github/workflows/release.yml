@@ -1,13 +1,16 @@
-name: Build
+name: Build and Release
 
 on:
   push:
-    branches: [main, build-workflow]
+    branches: [main]
+    tags:
+      - 'v*'
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -62,12 +65,38 @@ jobs:
         run: pnpm run build
 
       - name: Package for ${{ matrix.display }}
-        run: pnpm exec electron-builder --${{ matrix.target }} --config electron-builder.yml
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        run: pnpm exec electron-builder --${{ matrix.target }} --config electron-builder.yml --publish never
 
-      - name: Upload artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         with:
           name: dbdesk-${{ matrix.target }}
           path: |
-            dist/**
+            dist/**/*.{AppImage,deb,snap,rpm,zip,dmg,exe,msi,blockmap,yml}
           if-no-files-found: error
+
+  release:
+    name: Publish Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dbdesk-*
+          merge-multiple: true
+          path: artifacts
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: artifacts/**
