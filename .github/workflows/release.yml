@@ -49,7 +49,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pnpm exec electron-vite build
-          pnpm exec electron-builder --linux
+          pnpm exec electron-builder --linux --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -95,7 +95,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pnpm exec electron-vite build
-          pnpm exec electron-builder --win
+          pnpm exec electron-builder --win --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -141,7 +141,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
           pnpm exec electron-vite build
-          pnpm exec electron-builder --mac
+          pnpm exec electron-builder --mac --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
