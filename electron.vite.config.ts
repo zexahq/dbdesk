@@ -18,28 +18,34 @@ const allowedLanguageFolder = ['json']
 function monacoLanguageFilter(): Plugin {
   return {
     name: 'monaco-language-filter',
-    load(id) {
+    resolveId(id) {
       // Check if this is from basic-languages folder
-      const basicLanguagesMatch = id.match(/monaco-editor\/[^/]+\/vs\/basic-languages\/([^/]+)/)
+      const basicLanguagesMatch = id.match(/monaco-editor\/[^/]+\/vs\/basic-languages\/([^/]+)\//)
       if (basicLanguagesMatch) {
         const language = basicLanguagesMatch[1]
-        // Only allow SQL-related languages
+        // Block non-SQL languages by returning a virtual module
         if (language && !allowedBasicLanguages.includes(language)) {
-          return 'export {}'
+          return '\0monaco-blocked:' + id
         }
       }
 
       // Check if this is from language folder (not basic-languages)
-      const languageFolderMatch = id.match(/monaco-editor\/[^/]+\/vs\/language\/([^/]+)/)
+      const languageFolderMatch = id.match(/monaco-editor\/[^/]+\/vs\/language\/([^/]+)\//)
       if (languageFolderMatch) {
         const language = languageFolderMatch[1]
-        // Only allow JSON from language folder
+        // Block non-JSON languages by returning a virtual module
         if (language && !allowedLanguageFolder.includes(language)) {
-          return 'export {}'
+          return '\0monaco-blocked:' + id
         }
       }
 
-      // Return null to use default loading
+      return null
+    },
+    load(id) {
+      // Return empty module for blocked language modules
+      if (id.startsWith('\0monaco-blocked:')) {
+        return 'export {}'
+      }
       return null
     }
   }
