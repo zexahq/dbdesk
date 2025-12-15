@@ -8,13 +8,13 @@
         <key>CFBundleExecutable</key>
         <string>DBDesk</string>
         <key>CFBundleIdentifier</key>
-        <string>com.wails.DBDesk</string>
+        <string>app.zexa.dbdesk</string>
         <key>CFBundleVersion</key>
-        <string>1.0.0</string>
+        <string>0.1.0</string>
         <key>CFBundleGetInfoString</key>
-        <string>Built using Wails (https://wails.io)</string>
+        <string>Built using Electron</string>
         <key>CFBundleShortVersionString</key>
-        <string>1.0.0</string>
+        <string>0.1.0</string>
         <key>CFBundleIconFile</key>
         <string>iconfile</string>
         <key>LSMinimumSystemVersion</key>
@@ -23,7 +23,5 @@
         <string>true</string>
         <key>NSHumanReadableCopyright</key>
         <string>Copyright.........</string>
-        
-        
     </dict>
 </plist>

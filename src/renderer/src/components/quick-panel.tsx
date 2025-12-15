@@ -1,5 +1,6 @@
 'use client'
 
+import { dbdeskClient } from '@renderer/api/client'
 import { useConnect, useConnections, useDisconnect } from '@renderer/api/queries/connections'
 import {
   CommandDialog,
@@ -27,8 +28,8 @@ export function QuickPanel() {
   const { schemasWithTables, currentConnectionId, setCurrentConnection, view, setView } =
     useSqlWorkspaceStore()
 
-  const { addTab, reset: resetTabs } = useTabStore()
-  const { reset: resetQueryTabs } = useQueryTabStore()
+  const { addTab, reset: resetTabs, loadFromSerialized: loadTabs } = useTabStore()
+  const { reset: resetQueryTabs, loadFromSerialized: loadQueryTabs } = useQueryTabStore()
   const { theme, toggleTheme } = useTheme()
 
   const { data: connections } = useConnections()
@@ -38,7 +39,7 @@ export function QuickPanel() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+      if (e.key === 'p' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         setOpen((open) => !open)
       }
@@ -58,7 +59,29 @@ export function QuickPanel() {
     try {
       await connect(connectionId)
       setCurrentConnection(connectionId)
-      resetTabs() // Clear tabs from previous connection
+
+      // Try to restore saved workspace
+      try {
+        const savedWorkspace = await dbdeskClient.loadWorkspace(connectionId)
+        if (savedWorkspace) {
+          // Restore saved state
+          loadTabs(savedWorkspace.tableTabs, savedWorkspace.activeTableTabId)
+          loadQueryTabs(savedWorkspace.queryTabs, savedWorkspace.activeQueryTabId)
+          setView(savedWorkspace.workspaceView)
+        } else {
+          // No saved state, use defaults
+          resetTabs()
+          resetQueryTabs()
+          setView('table')
+        }
+      } catch (error) {
+        // If workspace loading fails, fall back to defaults
+        console.warn('Failed to load workspace, using defaults:', error)
+        resetTabs()
+        resetQueryTabs()
+        setView('table')
+      }
+
       navigate({
         to: '/connections/$connectionId',
         params: { connectionId }

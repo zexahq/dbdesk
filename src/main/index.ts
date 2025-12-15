@@ -140,8 +140,13 @@ app.whenReady().then(() => {
         const key = input.key.toLowerCase()
         const webContents = window.webContents
 
+        // Open new window with Ctrl+Shift+N
+        if (input.shift && key === 'n') {
+          event.preventDefault()
+          createWindow()
+        }
         // Zoom in with Ctrl+= or Ctrl++
-        if (key === '=' || key === '+') {
+        else if (key === '=' || key === '+') {
           event.preventDefault()
           const currentZoom = webContents.getZoomLevel()
           webContents.setZoomLevel(currentZoom + 0.5)
