@@ -1,6 +1,7 @@
 import Editor from '@monaco-editor/react'
 import { useTheme } from '@renderer/hooks/use-theme'
 import type { editor } from 'monaco-editor'
+import { LanguageIdEnum } from 'monaco-sql-languages'
 import { useEffect, useRef, useState } from 'react'
 
 interface SqlEditorProps {
@@ -43,7 +44,7 @@ export default function SqlEditor({ value, onChange }: SqlEditorProps) {
     <div ref={containerRef} className="h-full w-full">
       <Editor
         height={height}
-        language="sql"
+        language={LanguageIdEnum.PG}
         theme={editorTheme}
         value={value}
         onChange={(val) => onChange(val ?? '')}

@@ -74,7 +74,7 @@ export function DbSidebar({ profile, onRefresh }: DbSidebarProps) {
         <SidebarGroup className="flex flex-col gap-2">
           <Button
             variant="outline"
-            className="w-full justify-start gap-2 cursor-pointer"
+            className="w-full justify-start h-10 gap-2 cursor-pointer"
             onClick={() => setView('query')}
           >
             <CodeIcon className="size-4 text-muted-foreground" />
