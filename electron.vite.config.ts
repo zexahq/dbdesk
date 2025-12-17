@@ -18,28 +18,53 @@ const allowedLanguageFolder = ['json']
 function monacoLanguageFilter(): Plugin {
   return {
     name: 'monaco-language-filter',
-    load(id) {
-      // Check if this is from basic-languages folder
-      const basicLanguagesMatch = id.match(/monaco-editor\/[^/]+\/vs\/basic-languages\/([^/]+)/)
+    resolveId(id) {
+      // Filter at resolution time to prevent module from being loaded at all
+      // Check if this is a basic-languages contribution file we don't need
+      const basicLanguagesMatch = id.match(/\/basic-languages\/([^/]+)\//)
       if (basicLanguagesMatch) {
         const language = basicLanguagesMatch[1]
-        // Only allow SQL-related languages
         if (language && !allowedBasicLanguages.includes(language)) {
-          return 'export {}'
+          return '\x00monaco-filtered-language'
         }
       }
 
-      // Check if this is from language folder (not basic-languages)
-      const languageFolderMatch = id.match(/monaco-editor\/[^/]+\/vs\/language\/([^/]+)/)
+      // Check if this is a language folder contribution file we don't need
+      const languageFolderMatch = id.match(/\/language\/([^/]+)\//)
       if (languageFolderMatch) {
         const language = languageFolderMatch[1]
-        // Only allow JSON from language folder
         if (language && !allowedLanguageFolder.includes(language)) {
-          return 'export {}'
+          return '\x00monaco-filtered-language'
         }
       }
 
-      // Return null to use default loading
+      return null
+    },
+    load(id) {
+      if (id === '\x00monaco-filtered-language') {
+        return 'export {}'
+      }
+      return null
+    }
+  }
+}
+
+/**
+ * Plugin to only register allowed Monaco languages
+ * Overrides the default contribution that registers ALL languages
+ */
+function monacoSelectiveLanguageRegistration(): Plugin {
+  return {
+    name: 'monaco-selective-languages',
+    load(id) {
+      // Replace the global contribution file with a selective registration
+      if (id.includes('vs/basic-languages/monaco.contribution.js')) {
+        const imports = [
+          "import '../editor/editor.api.js';",
+          ...allowedBasicLanguages.map((lang) => `import "./${lang}/${lang}.contribution.js";`)
+        ]
+        return imports.join('\n')
+      }
       return null
     }
   }
@@ -60,6 +85,7 @@ export default defineConfig({
       }
     },
     plugins: [
+      monacoSelectiveLanguageRegistration(),
       monacoLanguageFilter(),
       tanstackRouter({
         target: 'react',
