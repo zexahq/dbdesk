@@ -90,6 +90,8 @@ export default function SqlQueryView({ profile }: SqlQueryViewProps) {
                       tabId={activeTab.id}
                       value={activeTab.editorContent}
                       onChange={(value) => updateTab(activeTab.id, { editorContent: value })}
+                      language={profile.type}
+                      onExecute={handleRunQuery}
                     />
                   )}
                 </div>
