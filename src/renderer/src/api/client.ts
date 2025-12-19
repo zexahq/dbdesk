@@ -6,6 +6,7 @@ import type {
   DeleteTableRowsResult,
   QueryResult,
   QueryResultRow,
+  SavedQuery,
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,
@@ -123,6 +124,27 @@ export const dbdeskClient = {
 
   async deleteWorkspace(connectionId: string): Promise<void> {
     return getDbdesk().deleteWorkspace(connectionId)
+  },
+
+  async loadQueries(connectionId: string): Promise<SavedQuery[]> {
+    return getDbdesk().loadQueries(connectionId)
+  },
+
+  async saveQuery(connectionId: string, name: string, content: string): Promise<SavedQuery> {
+    return getDbdesk().saveQuery(connectionId, name, content)
+  },
+
+  async deleteQuery(connectionId: string, queryId: string): Promise<void> {
+    return getDbdesk().deleteQuery(connectionId, queryId)
+  },
+
+  async updateQuery(
+    connectionId: string,
+    queryId: string,
+    name: string,
+    content: string
+  ): Promise<SavedQuery | undefined> {
+    return getDbdesk().updateQuery(connectionId, queryId, name, content)
   }
 }
 
@@ -133,6 +155,7 @@ export type {
   DeleteTableRowsResult,
   QueryResult,
   QueryResultRow,
+  SavedQuery,
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,

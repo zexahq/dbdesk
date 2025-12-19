@@ -6,6 +6,7 @@ export interface QueryTab {
   name: string // tab name (e.g., "Untitled Query")
   editorContent: string // SQL query content in the editor
   queryResults?: QueryResult // query results
+  savedQueryId?: string // ID of the saved query (if opened from saved queries)
 }
 
 interface QueryTabStore {
@@ -13,11 +14,12 @@ interface QueryTabStore {
   activeTabId: string | null
 
   // Actions
-  addTab: () => string // returns tab id
+  addTab: (savedQueryId?: string) => string // returns tab id
   removeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
   updateTab: (tabId: string, updates: Partial<QueryTab>) => void
   getActiveTab: () => QueryTab | undefined
+  findTabBySavedQueryId: (savedQueryId: string) => QueryTab | undefined
   reset: () => void
 
   // Persistence methods
@@ -27,13 +29,14 @@ interface QueryTabStore {
 
 let tabCounter = 1
 
-const createDefaultTab = (): QueryTab => {
+const createDefaultTab = (savedQueryId?: string): QueryTab => {
   const tabNumber = tabCounter++
   return {
     id: `query-${tabNumber}`,
     name: 'Untitled Query',
     editorContent: '',
-    queryResults: undefined
+    queryResults: undefined,
+    savedQueryId
   }
 }
 
@@ -41,8 +44,8 @@ export const useQueryTabStore = create<QueryTabStore>((set, get) => ({
   tabs: [],
   activeTabId: null,
 
-  addTab: () => {
-    const newTab = createDefaultTab()
+  addTab: (savedQueryId?: string) => {
+    const newTab = createDefaultTab(savedQueryId)
     set((state) => ({
       tabs: [...state.tabs, newTab],
       activeTabId: newTab.id
@@ -91,6 +94,11 @@ export const useQueryTabStore = create<QueryTabStore>((set, get) => ({
   getActiveTab: () => {
     const { tabs, activeTabId } = get()
     return tabs.find((t) => t.id === activeTabId)
+  },
+
+  findTabBySavedQueryId: (savedQueryId: string) => {
+    const { tabs } = get()
+    return tabs.find((t) => t.savedQueryId === savedQueryId)
   },
 
   reset: () => {

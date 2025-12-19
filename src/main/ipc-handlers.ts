@@ -4,6 +4,7 @@ import type {
   DatabaseType,
   DeleteTableRowsResult,
   QueryResult,
+  SavedQuery,
   SchemaWithTables,
   SQLAdapter,
   TableDataOptions,
@@ -29,6 +30,13 @@ import {
   validateWorkspaceInput
 } from './utils/validation'
 import { deleteWorkspace, loadWorkspace, saveWorkspace } from './workspace-storage'
+import {
+  deleteQuery,
+  deleteAllQueriesForConnection,
+  loadQueries,
+  saveQuery,
+  updateQuery
+} from './saved-queries-storage'
 
 type SafeIpcHandler<Payload, Result> = (payload: Payload) => Promise<Result> | Result
 
@@ -178,6 +186,7 @@ export const registerIpcHandlers = (): void => {
     await connectionManager.closeConnection(connectionId).catch(() => {})
     await deleteProfile(connectionId)
     await deleteWorkspace(connectionId).catch(() => {}) // Clean up workspace data
+    await deleteAllQueriesForConnection(connectionId).catch(() => {}) // Clean up saved queries
 
     return { success: true }
   })
@@ -298,5 +307,71 @@ export const registerIpcHandlers = (): void => {
   safeHandle('workspace:delete', async (payload): Promise<void> => {
     const { connectionId } = validateConnectionIdentifier(payload)
     return deleteWorkspace(connectionId)
+  })
+
+  // Saved queries handlers
+  safeHandle(
+    'queries:save',
+    async (payload): Promise<SavedQuery> => {
+      const { connectionId, name, content } = payload as {
+        connectionId: string
+        name: string
+        content: string
+      }
+
+      if (!connectionId || typeof connectionId !== 'string') {
+        throw new ValidationError('connectionId is required')
+      }
+      if (!name || typeof name !== 'string') {
+        throw new ValidationError('Query name is required')
+      }
+      if (!content || typeof content !== 'string') {
+        throw new ValidationError('Query content is required')
+      }
+
+      return saveQuery(connectionId, name, content)
+    }
+  )
+
+  safeHandle('queries:load', async (payload): Promise<SavedQuery[]> => {
+    const { connectionId } = validateConnectionIdentifier(payload)
+    return loadQueries(connectionId)
+  })
+
+  safeHandle('queries:delete', async (payload): Promise<void> => {
+    const { connectionId, queryId } = payload as { connectionId: string; queryId: string }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!queryId || typeof queryId !== 'string') {
+      throw new ValidationError('queryId is required')
+    }
+
+    return deleteQuery(connectionId, queryId)
+  })
+
+  safeHandle('queries:update', async (payload): Promise<SavedQuery | undefined> => {
+    const { connectionId, queryId, name, content } = payload as {
+      connectionId: string
+      queryId: string
+      name: string
+      content: string
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!queryId || typeof queryId !== 'string') {
+      throw new ValidationError('queryId is required')
+    }
+    if (!name || typeof name !== 'string') {
+      throw new ValidationError('Query name is required')
+    }
+    if (!content || typeof content !== 'string') {
+      throw new ValidationError('Query content is required')
+    }
+
+    return updateQuery(connectionId, queryId, name, content)
   })
 }
