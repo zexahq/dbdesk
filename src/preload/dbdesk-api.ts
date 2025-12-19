@@ -5,6 +5,7 @@ import type {
   DeleteTableRowsResult,
   QueryResult,
   QueryResultRow,
+  SavedQuery,
   SchemaWithTables,
   TableDataOptions,
   TableDataResult,
@@ -345,6 +346,85 @@ export const dbdeskAPI = {
     }
 
     return ipcRenderer.invoke('workspace:delete', { connectionId: connectionId.trim() })
+  },
+
+  /**
+   * Load all saved queries for a connection
+   */
+  async loadQueries(connectionId: string): Promise<SavedQuery[]> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+
+    return ipcRenderer.invoke('queries:load', { connectionId: connectionId.trim() })
+  },
+
+  /**
+   * Save a new query for a connection
+   */
+  async saveQuery(connectionId: string, name: string, content: string): Promise<SavedQuery> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Query name is required')
+    }
+    if (!content || typeof content !== 'string' || content.trim() === '') {
+      throw new Error('Query content is required')
+    }
+
+    return ipcRenderer.invoke('queries:save', {
+      connectionId: connectionId.trim(),
+      name: name.trim(),
+      content: content.trim()
+    })
+  },
+
+  /**
+   * Delete a saved query
+   */
+  async deleteQuery(connectionId: string, queryId: string): Promise<void> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!queryId || typeof queryId !== 'string' || queryId.trim() === '') {
+      throw new Error('Query ID is required')
+    }
+
+    return ipcRenderer.invoke('queries:delete', {
+      connectionId: connectionId.trim(),
+      queryId: queryId.trim()
+    })
+  },
+
+  /**
+   * Update an existing saved query
+   */
+  async updateQuery(
+    connectionId: string,
+    queryId: string,
+    name: string,
+    content: string
+  ): Promise<SavedQuery | undefined> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!queryId || typeof queryId !== 'string' || queryId.trim() === '') {
+      throw new Error('Query ID is required')
+    }
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Query name is required')
+    }
+    if (!content || typeof content !== 'string' || content.trim() === '') {
+      throw new Error('Query content is required')
+    }
+
+    return ipcRenderer.invoke('queries:update', {
+      connectionId: connectionId.trim(),
+      queryId: queryId.trim(),
+      name: name.trim(),
+      content: content.trim()
+    })
   }
 }
 

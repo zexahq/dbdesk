@@ -18,6 +18,14 @@ export interface SerializedQueryTab {
   editorContent: string
 }
 
+export interface SavedQuery {
+  id: string
+  name: string
+  content: string
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface ConnectionWorkspace {
   connectionId: string
   lastUpdated: Date
@@ -30,4 +38,8 @@ export interface ConnectionWorkspace {
 
 export interface WorkspaceStorage {
   [connectionId: string]: ConnectionWorkspace
+}
+
+export interface SavedQueriesStorage {
+  [connectionId: string]: SavedQuery[]
 }

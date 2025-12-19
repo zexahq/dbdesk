@@ -1,5 +1,6 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { useRunQuery } from '@renderer/api/queries/query'
+import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import SqlEditor from '@renderer/components/editor/sql-editor'
 import {
   ResizableHandle,
@@ -9,6 +10,7 @@ import {
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import { cn } from '@renderer/lib/utils'
 import { useQueryTabStore } from '@renderer/store/query-tab-store'
+import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { QueryResults } from './query-results'
@@ -23,7 +25,9 @@ export default function SqlQueryView({ profile }: SqlQueryViewProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isExecuting, setIsExecuting] = useState(false)
   const [executionError, setExecutionError] = useState<Error | null>(null)
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const { tabs, addTab, getActiveTab, updateTab } = useQueryTabStore()
+  const { saveQuery } = useSavedQueriesStore()
   const activeTab = getActiveTab()
   const { mutateAsync: runQuery } = useRunQuery(profile.id)
 
@@ -33,6 +37,23 @@ export default function SqlQueryView({ profile }: SqlQueryViewProps) {
       addTab()
     }
   }, [tabs.length, addTab])
+
+  // Handle Ctrl+S to save query
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        if (activeTab && activeTab.editorContent.trim()) {
+          setSaveDialogOpen(true)
+        } else {
+          toast.error('Query cannot be empty')
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeTab])
 
   const handleRunQuery = async () => {
     if (!activeTab) {
@@ -63,52 +84,75 @@ export default function SqlQueryView({ profile }: SqlQueryViewProps) {
     }
   }
 
+  const handleSaveQuery = async (name: string) => {
+    if (!activeTab) {
+      toast.error('No active tab')
+      return
+    }
+
+    try {
+      await saveQuery(profile.id, name, activeTab.editorContent)
+      toast.success('Query saved successfully')
+      updateTab(activeTab.id, { name })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save query')
+    }
+  }
+
   return (
-    <SidebarProvider className="h-full">
-      <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
-        <ResizablePanel
-          defaultSize={16}
-          minSize={12}
-          maxSize={32}
-          className={cn(!isSidebarOpen && 'hidden')}
-        >
-          <QuerySidebar profile={profile} />
-        </ResizablePanel>
-        <ResizableHandle withHandle className={cn(!isSidebarOpen && 'hidden')} />
-        <ResizablePanel>
-          <SidebarInset className="flex h-full flex-col overflow-hidden">
-            <QueryTopbar
-              profile={profile}
-              isSidebarOpen={isSidebarOpen}
-              onSidebarOpenChange={setIsSidebarOpen}
-            />
-            <ResizablePanelGroup direction="vertical" className="flex-1">
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <div className="h-full w-full">
-                  {activeTab && (
-                    <SqlEditor
-                      tabId={activeTab.id}
-                      value={activeTab.editorContent}
-                      onChange={(value) => updateTab(activeTab.id, { editorContent: value })}
-                      language={profile.type}
-                      onExecute={handleRunQuery}
-                    />
-                  )}
-                </div>
-              </ResizablePanel>
-              <ResizableHandle />
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <QueryResults
-                  queryResults={activeTab?.queryResults}
-                  isLoading={isExecuting}
-                  error={executionError}
-                  onRun={handleRunQuery}
-                />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </SidebarInset>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </SidebarProvider>
+    <>
+      <SidebarProvider className="h-full">
+        <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
+          <ResizablePanel
+            defaultSize={16}
+            minSize={12}
+            maxSize={32}
+            className={cn(!isSidebarOpen && 'hidden')}
+          >
+            <QuerySidebar profile={profile} />
+          </ResizablePanel>
+          <ResizableHandle withHandle className={cn(!isSidebarOpen && 'hidden')} />
+          <ResizablePanel>
+            <SidebarInset className="flex h-full flex-col overflow-hidden">
+              <QueryTopbar
+                profile={profile}
+                isSidebarOpen={isSidebarOpen}
+                onSidebarOpenChange={setIsSidebarOpen}
+              />
+              <ResizablePanelGroup direction="vertical" className="flex-1">
+                <ResizablePanel defaultSize={50} minSize={30}>
+                  <div className="h-full w-full">
+                    {activeTab && (
+                      <SqlEditor
+                        tabId={activeTab.id}
+                        value={activeTab.editorContent}
+                        onChange={(value) => updateTab(activeTab.id, { editorContent: value })}
+                        language={profile.type}
+                        onExecute={handleRunQuery}
+                      />
+                    )}
+                  </div>
+                </ResizablePanel>
+                <ResizableHandle />
+                <ResizablePanel defaultSize={50} minSize={30}>
+                  <QueryResults
+                    queryResults={activeTab?.queryResults}
+                    isLoading={isExecuting}
+                    error={executionError}
+                    onRun={handleRunQuery}
+                  />
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            </SidebarInset>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </SidebarProvider>
+
+      <SaveQueryDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        onSave={handleSaveQuery}
+      />
+    </>
   )
 }

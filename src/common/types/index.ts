@@ -51,6 +51,8 @@ export type {
 // Workspace types
 export type {
   ConnectionWorkspace,
+  SavedQuery,
+  SavedQueriesStorage,
   SerializedQueryTab,
   SerializedTab,
   WorkspaceStorage
