@@ -17,6 +17,33 @@ Currently supports **PostgreSQL** and **MySQL**, with more SQL databases coming 
 - **🚀 Quick Panel** — Fast navigation with `Ctrl+K`.
 - **⚡ Blazing Fast** — Opens instantly, tables load in milliseconds.
 
+## 📥 Installation
+
+Download the latest installer for your platform from the [GitHub Releases](https://github.com/zexahq/dbdesk/releases) page.
+
+### macOS
+
+If you encounter issues with macOS Gatekeeper blocking the app (since it is not signed with an Apple developer certificate), you can bypass this by running the following command in your terminal after installation:
+
+```bash
+xattr -rd com.apple.quarantine /Applications/dbdesk.app
+```
+
+After running this command, you can launch the app.
+
+### Linux
+
+Download the `.AppImage` file from the releases page. Make it executable and run:
+
+```bash
+chmod +x dbdesk-*.AppImage
+./dbdesk-*.AppImage
+```
+
+### Windows
+
+Download and run the installer from the releases page. The installer will handle setup automatically.
+
 ## 🛠️ Tech Stack
 
 - [Electron](https://www.electronjs.org/) — Cross-platform desktop app
