@@ -2,11 +2,11 @@ import type { QueryResult, SerializedQueryTab } from '@common/types'
 import { create } from 'zustand'
 
 export interface QueryTab {
-  id: string // unique tab identifier
+  id: string // unique tab identifier (UUID, shared with SavedQuery.id when saved)
   name: string // tab name (e.g., "Untitled Query")
   editorContent: string // SQL query content in the editor
   queryResults?: QueryResult // query results
-  savedQueryId?: string // ID of the saved query (if opened from saved queries)
+  lastSavedContent?: string // content at last save point (undefined = never saved)
 }
 
 interface QueryTabStore {
@@ -14,12 +14,12 @@ interface QueryTabStore {
   activeTabId: string | null
 
   // Actions
-  addTab: (savedQueryId?: string) => string // returns tab id
+  addTab: () => string // returns tab id
   removeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
   updateTab: (tabId: string, updates: Partial<QueryTab>) => void
   getActiveTab: () => QueryTab | undefined
-  findTabBySavedQueryId: (savedQueryId: string) => QueryTab | undefined
+  findTabById: (tabId: string) => QueryTab | undefined
   reset: () => void
 
   // Persistence methods
@@ -27,16 +27,13 @@ interface QueryTabStore {
   serializeState: () => { tabs: SerializedQueryTab[]; activeTabId: string | null }
 }
 
-let tabCounter = 1
-
-const createDefaultTab = (savedQueryId?: string): QueryTab => {
-  const tabNumber = tabCounter++
+const createDefaultTab = (): QueryTab => {
   return {
-    id: `query-${tabNumber}`,
+    id: crypto.randomUUID(),
     name: 'Untitled Query',
     editorContent: '',
     queryResults: undefined,
-    savedQueryId
+    lastSavedContent: undefined
   }
 }
 
@@ -44,8 +41,8 @@ export const useQueryTabStore = create<QueryTabStore>((set, get) => ({
   tabs: [],
   activeTabId: null,
 
-  addTab: (savedQueryId?: string) => {
-    const newTab = createDefaultTab(savedQueryId)
+  addTab: () => {
+    const newTab = createDefaultTab()
     set((state) => ({
       tabs: [...state.tabs, newTab],
       activeTabId: newTab.id
@@ -86,9 +83,13 @@ export const useQueryTabStore = create<QueryTabStore>((set, get) => ({
   },
 
   updateTab: (tabId: string, updates: Partial<QueryTab>) => {
-    set((state) => ({
-      tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, ...updates } : tab))
-    }))
+    set((state) => {
+      const newTabs = state.tabs.map((tab) => (tab.id === tabId ? { ...tab, ...updates } : tab))
+      // If we're changing the ID of the active tab, update activeTabId
+      const newActiveTabId =
+        state.activeTabId === tabId && updates.id ? updates.id : state.activeTabId
+      return { tabs: newTabs, activeTabId: newActiveTabId }
+    })
   },
 
   getActiveTab: () => {
@@ -96,13 +97,12 @@ export const useQueryTabStore = create<QueryTabStore>((set, get) => ({
     return tabs.find((t) => t.id === activeTabId)
   },
 
-  findTabBySavedQueryId: (savedQueryId: string) => {
+  findTabById: (tabId: string) => {
     const { tabs } = get()
-    return tabs.find((t) => t.savedQueryId === savedQueryId)
+    return tabs.find((t) => t.id === tabId)
   },
 
   reset: () => {
-    tabCounter = 1
     set({
       tabs: [],
       activeTabId: null
@@ -111,20 +111,11 @@ export const useQueryTabStore = create<QueryTabStore>((set, get) => ({
 
   // Persistence methods
   loadFromSerialized: (serializedTabs: SerializedQueryTab[], activeTabId: string | null) => {
-    // Update the tab counter based on existing tabs to avoid ID conflicts
-    const maxTabNumber = serializedTabs.reduce((max, tab) => {
-      const match = tab.id.match(/query-(\d+)/)
-      if (match) {
-        return Math.max(max, parseInt(match[1], 10))
-      }
-      return max
-    }, 0)
-    tabCounter = maxTabNumber + 1
-
     // Convert serialized tabs back to full QueryTab objects (without results)
     const tabs = serializedTabs.map((serializedTab) => ({
       ...serializedTab,
-      queryResults: undefined // Results are not persisted
+      queryResults: undefined,
+      lastSavedContent: serializedTab.lastSavedContent
     }))
 
     set({
@@ -140,7 +131,8 @@ export const useQueryTabStore = create<QueryTabStore>((set, get) => ({
     const serializedTabs: SerializedQueryTab[] = tabs.map((tab) => ({
       id: tab.id,
       name: tab.name,
-      editorContent: tab.editorContent
+      editorContent: tab.editorContent,
+      lastSavedContent: tab.lastSavedContent
       // Exclude queryResults as requested
     }))
 

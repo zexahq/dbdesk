@@ -16,6 +16,7 @@ export interface SerializedQueryTab {
   id: string
   name: string
   editorContent: string
+  lastSavedContent?: string
 }
 
 export interface SavedQuery {

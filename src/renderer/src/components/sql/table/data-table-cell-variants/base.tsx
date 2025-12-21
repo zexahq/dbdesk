@@ -1,6 +1,6 @@
 'use client'
 
-import { TableCell } from '@renderer/components/ui/table'
+import type { TableCell } from '@renderer/components/ui/table'
 import { formatCellValue, getEditorLanguage } from '@renderer/lib/data-table'
 import { cn } from '@renderer/lib/utils'
 import { flexRender } from '@tanstack/react-table'

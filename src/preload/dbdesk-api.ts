@@ -362,9 +362,12 @@ export const dbdeskAPI = {
   /**
    * Save a new query for a connection
    */
-  async saveQuery(connectionId: string, name: string, content: string): Promise<SavedQuery> {
+  async saveQuery(connectionId: string, id: string, name: string, content: string): Promise<SavedQuery> {
     if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
       throw new Error('Connection ID is required')
+    }
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      throw new Error('Query ID is required')
     }
     if (!name || typeof name !== 'string' || name.trim() === '') {
       throw new Error('Query name is required')
@@ -375,6 +378,7 @@ export const dbdeskAPI = {
 
     return ipcRenderer.invoke('queries:save', {
       connectionId: connectionId.trim(),
+      id: id.trim(),
       name: name.trim(),
       content: content.trim()
     })
