@@ -13,13 +13,13 @@ import { create } from 'zustand'
 export interface BaseTab {
   id: string
   kind: 'table' | 'query'
-  isTemporary: boolean
 }
 
 export interface TableTab extends BaseTab {
   kind: 'table'
   schema: string
   table: string
+  isTemporary: boolean
   view: 'tables' | 'structure'
   limit: number
   offset: number
@@ -94,7 +94,6 @@ const createDefaultQueryTab = (): QueryTab => ({
   kind: 'query',
   name: 'Untitled Query',
   editorContent: '',
-  isTemporary: true,
   queryResults: undefined,
   lastSavedContent: undefined
 })
@@ -273,7 +272,6 @@ export const useTabStore = create<TabStore>((set, get) => ({
           id: tab.id,
           name: tab.name,
           editorContent: tab.editorContent,
-          isTemporary: tab.isTemporary,
           lastSavedContent: tab.lastSavedContent
         } as SerializedQueryTab
       }
