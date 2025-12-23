@@ -150,7 +150,7 @@ export function TableView({ profile, activeTab }: TableViewProps) {
       <div className="flex-1 overflow-hidden">
         {activeTab.view === 'tables' && (
           <SqlTable
-            tabId={activeTab.id}
+            activeTab={activeTab}
             isLoading={isLoadingTableData}
             error={tableError}
             tableData={tableData}

@@ -6,19 +6,20 @@ import { QueryResultRow } from '@renderer/api/client'
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@renderer/components/ui/table'
 import { useDataTable } from '@renderer/hooks/use-data-table'
 import { cn } from '@renderer/lib/utils'
+import { TableTab } from '@renderer/store/tab-store'
 import { ColumnResizer } from './column-resizer'
 import { DataTableCell } from './data-table-cell'
 import { DataTableKeyboardShortcuts } from './data-table-keyboard-shortcuts'
 
 interface DataTableProps<TData, TValue> {
-  tabId: string
+  activeTab: TableTab
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
 }
 
 export function DataTable<TData, TValue>({
-  tabId,
+  activeTab,
   columns,
   data,
   onCellUpdate
@@ -34,7 +35,7 @@ export function DataTable<TData, TValue>({
     onCellEditingStop,
     onDataUpdate
   } = useDataTable({
-    tabId,
+    activeTab,
     columns,
     data,
     onCellUpdate
