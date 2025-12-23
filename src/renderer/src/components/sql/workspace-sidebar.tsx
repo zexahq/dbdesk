@@ -24,10 +24,9 @@ import {
   SidebarSeparator
 } from '@renderer/components/ui/sidebar'
 import { cn } from '@renderer/lib/utils'
-import { useQueryTabStore } from '@renderer/store/query-tab-store'
 import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
-import { useTabStore } from '@renderer/store/tab-store'
+import { Tab, useTabStore } from '@renderer/store/tab-store'
 import {
   ChevronRight,
   DatabaseIcon,
@@ -55,54 +54,41 @@ type RenameMode = {
 export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const [renameMode, setRenameMode] = useState<RenameMode>({ open: false, queryId: null })
 
-  // Stores
-  const { schemasWithTables, view, setView } = useSqlWorkspaceStore()
-  const { addTab: addTableTab, getActiveTab } = useTabStore()
-  const activeTableTab = getActiveTab()
+  const { schemasWithTables } = useSqlWorkspaceStore()
+  const { addTableTab, addQueryTab, setActiveTab, findQueryTabById, updateQueryTab, getActiveTab } =
+    useTabStore()
+
+  const activeTab = getActiveTab()
 
   const { queries, loadQueries, deleteQuery, updateQuery } = useSavedQueriesStore()
-  const {
-    activeTabId: activeQueryTabId,
-    addTab: addQueryTab,
-    setActiveTab: setActiveQueryTab,
-    findTabById,
-    updateTab
-  } = useQueryTabStore()
 
-  // Load saved queries on mount
   useEffect(() => {
     loadQueries(profile.id).catch((error) => {
       console.error('Failed to load queries:', error)
     })
   }, [profile.id, loadQueries])
 
-  // Handle table click
   const handleTableClick = (schema: string, table: string) => {
     addTableTab(schema, table)
-    setView('table')
   }
 
-  // Handle saved query click
   const handleLoadQuery = (query: (typeof queries)[0]) => {
-    const existingTab = findTabById(query.id)
+    const existingTab = findQueryTabById(query.id)
     if (existingTab) {
-      setActiveQueryTab(existingTab.id)
-      setView('query')
+      setActiveTab(existingTab.id)
       return
     }
 
     const newTabId = addQueryTab()
-    updateTab(newTabId, {
+    updateQueryTab(newTabId, {
       id: query.id,
       name: query.name,
       editorContent: query.content,
       lastSavedContent: query.content
     })
-    setActiveQueryTab(query.id)
-    setView('query')
+    setActiveTab(query.id)
   }
 
-  // Handle delete query
   const handleDeleteQuery = async (queryId: string) => {
     try {
       await deleteQuery(profile.id, queryId)
@@ -112,7 +98,6 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
     }
   }
 
-  // Handle rename query
   const handleRenameQuery = async (newName: string) => {
     if (!renameMode.queryId) return
 
@@ -123,9 +108,9 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
       await updateQuery(profile.id, renameMode.queryId, newName, query.content)
       toast.success('Query renamed')
 
-      const tab = findTabById(renameMode.queryId)
+      const tab = findQueryTabById(renameMode.queryId)
       if (tab) {
-        updateTab(tab.id, { name: newName })
+        updateQueryTab(tab.id, { name: newName })
       }
     } catch {
       toast.error('Failed to rename query')
@@ -136,7 +121,6 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
 
   const handleNewQuery = () => {
     addQueryTab()
-    setView('query')
   }
 
   return (
@@ -157,7 +141,6 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
         </SidebarHeader>
         <SidebarSeparator />
         <SidebarContent className="gap-0 py-2">
-          {/* Schemas Section */}
           <Collapsible defaultOpen className="group/schema">
             <SidebarGroup className="gap-2 py-0">
               <CollapsibleTrigger className="cursor-pointer w-full h-10 px-3 flex items-center justify-between text-sm font-medium border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -180,7 +163,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
                           key={schemaData.schema}
                           schema={schemaData.schema}
                           tables={schemaData.tables}
-                          activeTab={view === 'table' ? activeTableTab : undefined}
+                          activeTab={activeTab}
                           onTableClick={handleTableClick}
                         />
                       ))
@@ -191,7 +174,6 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
             </SidebarGroup>
           </Collapsible>
 
-          {/* Saved Queries Section */}
           <Collapsible className="group/queries">
             <SidebarGroup className="gap-2">
               <CollapsibleTrigger className="cursor-pointer w-full h-10 px-3 flex items-center justify-between text-sm font-medium border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -211,7 +193,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
                   ) : (
                     <SidebarMenu>
                       {queries.map((query) => {
-                        const isActive = view === 'query' && activeQueryTabId === query.id
+                        const isActive = activeTab?.id === query.id
                         return (
                           <SidebarMenuItem key={query.id}>
                             <div
@@ -287,7 +269,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
 type SchemaTreeProps = {
   schema: string
   tables: string[]
-  activeTab: { schema: string; table: string } | undefined
+  activeTab: Tab | undefined
   onTableClick: (schema: string, table: string) => void
 }
 
@@ -313,7 +295,7 @@ function SchemaTree({ schema, tables, activeTab, onTableClick }: SchemaTreeProps
               <SidebarMenuButton aria-disabled>No tables</SidebarMenuButton>
             ) : (
               tables.map((table) => {
-                const isActive = activeTab?.schema === schema && activeTab?.table === table
+                const isActive = activeTab?.id === `${schema}.${table}`
                 return (
                   <SidebarMenuButton
                     key={table}

@@ -1,22 +1,30 @@
-import type { SerializedTab, TableFilterCondition, TableSortRule } from '@common/types'
+import type {
+  QueryResult,
+  SerializedQueryTab,
+  SerializedTab,
+  SerializedTableTab,
+  TableFilterCondition,
+  TableSortRule
+} from '@common/types'
 import type { CellPosition, UpdateCell } from '@renderer/types/data-table'
 import type { ColumnSizingState, RowSelectionState, VisibilityState } from '@tanstack/react-table'
 import { create } from 'zustand'
 
-export interface Tab {
-  id: string // unique tab identifier
+export interface BaseTab {
+  id: string
+  kind: 'table' | 'query'
+  isTemporary: boolean
+}
+
+export interface TableTab extends BaseTab {
+  kind: 'table'
   schema: string
   table: string
-  isTemporary: boolean // whether this tab is temporary (will be replaced on next table click)
-
-  // Tab-specific state
   view: 'tables' | 'structure'
   limit: number
   offset: number
   filters?: TableFilterCondition[]
   sortRules?: TableSortRule[]
-
-  // Data table state (moved from global store)
   rowSelection: RowSelectionState
   columnSizing: ColumnSizingState
   columnVisibility: VisibilityState
@@ -25,27 +33,46 @@ export interface Tab {
   pendingUpdates: UpdateCell[]
 }
 
+export interface QueryTab extends BaseTab {
+  kind: 'query'
+  name: string
+  editorContent: string
+  lastSavedContent?: string
+  queryResults?: QueryResult
+}
+
+export type Tab = TableTab | QueryTab
+
 interface TabStore {
   tabs: Tab[]
   activeTabId: string | null
 
-  // Actions
-  addTab: (schema: string, table: string) => string // returns tab id
+  // Common actions
   removeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
-  updateTabState: (tabId: string, updates: Partial<Tab>) => void
-  makeTabPermanent: (tabId: string) => void
-  getTabBySchemaTable: (schema: string, table: string) => Tab | undefined
   getActiveTab: () => Tab | undefined
   reset: () => void
+  moveTab: (fromIndex: number, toIndex: number) => void
 
-  // Persistence methods
-  loadFromSerialized: (serializedTabs: SerializedTab[], activeTabId: string | null) => void
+  // Table-specific actions
+  addTableTab: (schema: string, table: string) => string
+  updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => void
+  makeTabPermanent: (tabId: string) => void
+  getTableTabBySchemaTable: (schema: string, table: string) => TableTab | undefined
+
+  // Query-specific actions
+  addQueryTab: () => string
+  updateQueryTab: (tabId: string, updates: Partial<Omit<QueryTab, 'kind'>>) => void
+  findQueryTabById: (tabId: string) => QueryTab | undefined
+
+  // Persistence
+  loadFromSerialized: (tabs: SerializedTab[], activeTabId: string | null) => void
   serializeState: () => { tabs: SerializedTab[]; activeTabId: string | null }
 }
 
-const createDefaultTab = (schema: string, table: string, isTemporary = true): Tab => ({
+const createDefaultTableTab = (schema: string, table: string, isTemporary = true): TableTab => ({
   id: `${schema}.${table}`,
+  kind: 'table',
   schema,
   table,
   isTemporary,
@@ -62,54 +89,29 @@ const createDefaultTab = (schema: string, table: string, isTemporary = true): Ta
   pendingUpdates: []
 })
 
+const createDefaultQueryTab = (): QueryTab => ({
+  id: crypto.randomUUID(),
+  kind: 'query',
+  name: 'Untitled Query',
+  editorContent: '',
+  isTemporary: true,
+  queryResults: undefined,
+  lastSavedContent: undefined
+})
+
 export const useTabStore = create<TabStore>((set, get) => ({
   tabs: [],
   activeTabId: null,
 
-  addTab: (schema: string, table: string) => {
-    const tabId = `${schema}.${table}`
-    const existingTab = get().tabs.find((t) => t.id === tabId)
-
-    if (existingTab) {
-      // Tab already exists, just activate it
-      set({ activeTabId: tabId })
-      return tabId
-    }
-
-    // Find any existing temporary tab
-    const temporaryTab = get().tabs.find((t) => t.isTemporary)
-
-    if (temporaryTab) {
-      // Replace the temporary tab with the new table
-      const newTab = createDefaultTab(schema, table, true)
-      set((state) => ({
-        tabs: state.tabs.map((t) => (t.id === temporaryTab.id ? newTab : t)),
-        activeTabId: tabId
-      }))
-      return tabId
-    }
-
-    // No temporary tab exists, create new temporary tab
-    const newTab = createDefaultTab(schema, table, true)
-    set((state) => ({
-      tabs: [...state.tabs, newTab],
-      activeTabId: tabId
-    }))
-
-    return tabId
-  },
-
+  // Common actions
   removeTab: (tabId: string) => {
     set((state) => {
       const newTabs = state.tabs.filter((t) => t.id !== tabId)
       let newActiveTabId = state.activeTabId
 
-      // If we're closing the active tab, switch to another tab
       if (state.activeTabId === tabId) {
         if (newTabs.length > 0) {
-          // Find the index of the closed tab
           const closedIndex = state.tabs.findIndex((t) => t.id === tabId)
-          // Try to activate the next tab, or the previous one if it was the last tab
           const nextIndex = Math.min(closedIndex, newTabs.length - 1)
           newActiveTabId = newTabs[nextIndex]?.id || null
         } else {
@@ -117,10 +119,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
         }
       }
 
-      return {
-        tabs: newTabs,
-        activeTabId: newActiveTabId
-      }
+      return { tabs: newTabs, activeTabId: newActiveTabId }
     })
   },
 
@@ -131,12 +130,61 @@ export const useTabStore = create<TabStore>((set, get) => ({
     }
   },
 
-  updateTabState: (tabId: string, updates: Partial<Tab>) => {
-    // Any update to tab state makes it permanent
+  getActiveTab: () => {
+    const { tabs, activeTabId } = get()
+    return tabs.find((t) => t.id === activeTabId)
+  },
+
+  reset: () => {
+    set({ tabs: [], activeTabId: null })
+  },
+
+  moveTab: (fromIndex: number, toIndex: number) => {
+    set((state) => {
+      const newTabs = [...state.tabs]
+      const [movedTab] = newTabs.splice(fromIndex, 1)
+      newTabs.splice(toIndex, 0, movedTab)
+      return { tabs: newTabs }
+    })
+  },
+
+  // Table-specific actions
+  addTableTab: (schema: string, table: string) => {
+    const tabId = `${schema}.${table}`
+    const existingTab = get().tabs.find((t) => t.id === tabId)
+
+    if (existingTab) {
+      set({ activeTabId: tabId })
+      return tabId
+    }
+
+    const temporaryTableTab = get().tabs.find((t) => t.kind === 'table' && t.isTemporary)
+
+    if (temporaryTableTab) {
+      const newTab = createDefaultTableTab(schema, table, true)
+      set((state) => ({
+        tabs: state.tabs.map((t) => (t.id === temporaryTableTab.id ? newTab : t)),
+        activeTabId: tabId
+      }))
+      return tabId
+    }
+
+    const newTab = createDefaultTableTab(schema, table, true)
+    set((state) => ({
+      tabs: [...state.tabs, newTab],
+      activeTabId: tabId
+    }))
+
+    return tabId
+  },
+
+  updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => {
     get().makeTabPermanent(tabId)
 
     set((state) => ({
-      tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, ...updates } : tab))
+      tabs: state.tabs.map((tab) =>
+        tab.id === tabId && tab.kind === 'table' ? { ...tab, ...updates } : tab
+      )
     }))
   },
 
@@ -146,58 +194,90 @@ export const useTabStore = create<TabStore>((set, get) => ({
     }))
   },
 
-  getTabBySchemaTable: (schema: string, table: string) => {
+  getTableTabBySchemaTable: (schema: string, table: string) => {
     const tabId = `${schema}.${table}`
-    return get().tabs.find((t) => t.id === tabId)
+    const tab = get().tabs.find((t) => t.id === tabId)
+    return tab?.kind === 'table' ? tab : undefined
   },
 
-  getActiveTab: () => {
-    const { tabs, activeTabId } = get()
-    return tabs.find((t) => t.id === activeTabId)
-  },
-
-  reset: () => {
-    set({
-      tabs: [],
-      activeTabId: null
-    })
-  },
-
-  // Persistence methods
-  loadFromSerialized: (serializedTabs: SerializedTab[], activeTabId: string | null) => {
-    // Convert serialized tabs back to full Tab objects with default UI state
-    const tabs = serializedTabs.map((serializedTab) => ({
-      ...serializedTab,
-      // Restore UI state with defaults (these don't persist)
-      rowSelection: {},
-      columnSizing: {},
-      columnVisibility: {},
-      focusedCell: null,
-      editingCell: null,
-      pendingUpdates: []
+  // Query-specific actions
+  addQueryTab: () => {
+    const newTab = createDefaultQueryTab()
+    set((state) => ({
+      tabs: [...state.tabs, newTab],
+      activeTabId: newTab.id
     }))
+    return newTab.id
+  },
 
-    set({
-      tabs,
-      activeTabId
+  updateQueryTab: (tabId: string, updates: Partial<Omit<QueryTab, 'kind'>>) => {
+    set((state) => {
+      const newTabs = state.tabs.map((tab) =>
+        tab.id === tabId && tab.kind === 'query' ? { ...tab, ...updates } : tab
+      )
+      const newActiveTabId =
+        state.activeTabId === tabId && updates.id ? updates.id : state.activeTabId
+      return { tabs: newTabs, activeTabId: newActiveTabId }
     })
+  },
+
+  findQueryTabById: (tabId: string) => {
+    const tab = get().tabs.find((t) => t.id === tabId)
+    return tab?.kind === 'query' ? tab : undefined
+  },
+
+  // Persistence
+  loadFromSerialized: (serializedTabs: SerializedTab[], activeTabId: string | null) => {
+    const tabs: Tab[] = serializedTabs.map((serializedTab) => {
+      if (serializedTab.kind === 'table') {
+        return {
+          ...serializedTab,
+          rowSelection: {},
+          columnSizing: {},
+          columnVisibility: {},
+          focusedCell: null,
+          editingCell: null,
+          pendingUpdates: []
+        } as TableTab
+      } else {
+        return {
+          ...serializedTab,
+          queryResults: undefined
+        } as QueryTab
+      }
+    })
+
+    set({ tabs, activeTabId })
   },
 
   serializeState: () => {
     const { tabs, activeTabId } = get()
 
-    // Only serialize the persisted state, exclude UI state
-    const serializedTabs: SerializedTab[] = tabs.map((tab) => ({
-      id: tab.id,
-      schema: tab.schema,
-      table: tab.table,
-      isTemporary: tab.isTemporary,
-      view: tab.view,
-      limit: tab.limit,
-      offset: tab.offset,
-      filters: tab.filters,
-      sortRules: tab.sortRules
-    }))
+    const serializedTabs: SerializedTab[] = tabs.map((tab) => {
+      if (tab.kind === 'table') {
+        return {
+          kind: 'table',
+          id: tab.id,
+          schema: tab.schema,
+          table: tab.table,
+          isTemporary: tab.isTemporary,
+          view: tab.view,
+          limit: tab.limit,
+          offset: tab.offset,
+          filters: tab.filters,
+          sortRules: tab.sortRules
+        } as SerializedTableTab
+      } else {
+        return {
+          kind: 'query',
+          id: tab.id,
+          name: tab.name,
+          editorContent: tab.editorContent,
+          isTemporary: tab.isTemporary,
+          lastSavedContent: tab.lastSavedContent
+        } as SerializedQueryTab
+      }
+    })
 
     return { tabs: serializedTabs, activeTabId }
   }

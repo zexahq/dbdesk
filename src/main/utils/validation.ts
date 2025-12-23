@@ -487,16 +487,8 @@ export const validateWorkspaceInput = (input: unknown): WorkspaceInput => {
     throw new ValidationError('Invalid workspace: connectionId is required')
   }
 
-  if (!Array.isArray(workspace.tableTabs)) {
-    throw new ValidationError('Invalid workspace: tableTabs must be an array')
-  }
-
-  if (!Array.isArray(workspace.queryTabs)) {
-    throw new ValidationError('Invalid workspace: queryTabs must be an array')
-  }
-
-  if (workspace.workspaceView !== 'table' && workspace.workspaceView !== 'query') {
-    throw new ValidationError('Invalid workspace: workspaceView must be "table" or "query"')
+  if (!Array.isArray(workspace.tabs)) {
+    throw new ValidationError('Invalid workspace: tabs must be an array')
   }
 
   return { workspace }

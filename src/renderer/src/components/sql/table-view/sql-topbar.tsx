@@ -2,7 +2,7 @@ import type { TableDataColumn, TableFilterCondition, TableSortRule } from '@comm
 import { Button } from '@renderer/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@renderer/components/ui/toggle-group'
 import { cn } from '@renderer/lib/utils'
-import { useTabStore } from '@renderer/store/tab-store'
+import { TableTab, useTabStore } from '@renderer/store/tab-store'
 import { Layers, RefreshCcw, Table } from 'lucide-react'
 import { useState } from 'react'
 import { DeleteConfirmationDialog } from '../dialogs/delete-confirmation-dialog'
@@ -11,7 +11,7 @@ import { TableFilterPopover } from './table-filter-popover'
 import { TableSortPopover } from './table-sort-popover'
 
 interface SqlTopbarProps {
-  tabId: string
+  activeTab: TableTab
   onRefresh: () => void
   isLoading: boolean
   columns?: TableDataColumn[]
@@ -20,7 +20,7 @@ interface SqlTopbarProps {
 }
 
 export function SqlTopbar({
-  tabId,
+  activeTab,
   onRefresh,
   isLoading,
   columns = [],
@@ -28,12 +28,8 @@ export function SqlTopbar({
   isDeletePending
 }: SqlTopbarProps) {
   const [open, setOpen] = useState(false)
-  const tab = useTabStore((state) => state.tabs.find((t) => t.id === tabId))
-  const updateTabState = useTabStore((state) => state.updateTabState)
 
-  if (!tab) return null
-
-  const selectedRowsCount = Object.keys(tab.rowSelection).length
+  const updateTableTab = useTabStore((state) => state.updateTableTab)
 
   const handleDelete = async () => {
     try {
@@ -45,16 +41,16 @@ export function SqlTopbar({
 
   const handleViewChange = (value: string) => {
     if (value === 'tables' || value === 'structure') {
-      updateTabState(tabId, { view: value })
+      updateTableTab(activeTab.id, { view: value })
     }
   }
 
   const handleFiltersChange = (filters: TableFilterCondition[] | undefined) => {
-    updateTabState(tabId, { filters, offset: 0 })
+    updateTableTab(activeTab.id, { filters, offset: 0 })
   }
 
   const handleSortRulesChange = (sortRules: TableSortRule[] | undefined) => {
-    updateTabState(tabId, { sortRules, offset: 0 })
+    updateTableTab(activeTab.id, { sortRules, offset: 0 })
   }
 
   return (
@@ -64,7 +60,7 @@ export function SqlTopbar({
           <ToggleGroup
             type="single"
             aria-label="Toggle view"
-            value={tab.view}
+            value={activeTab.view}
             onValueChange={handleViewChange}
           >
             <ToggleGroupItem value="tables" aria-label="Toggle tables view">
@@ -76,17 +72,17 @@ export function SqlTopbar({
               <span className="sr-only">Layers</span>
             </ToggleGroupItem>
           </ToggleGroup>
-          {tab.view === 'tables' && (
+          {activeTab.view === 'tables' && (
             <TableFilterPopover
               columns={columns}
-              activeFilters={tab.filters}
+              activeFilters={activeTab.filters}
               onApply={handleFiltersChange}
             />
           )}
-          {tab.view === 'tables' && (
+          {activeTab.view === 'tables' && (
             <TableSortPopover
               columns={columns}
-              activeSorts={tab.sortRules}
+              activeSorts={activeTab.sortRules}
               onApply={handleSortRulesChange}
             />
           )}
@@ -94,13 +90,13 @@ export function SqlTopbar({
             open={open}
             onOpenChange={setOpen}
             onDelete={handleDelete}
-            selectedRowsCount={selectedRowsCount}
+            selectedRowsCount={Object.keys(activeTab.rowSelection).length}
             isPending={isDeletePending}
           />
         </div>
         <div className="flex items-center gap-2 pt-1.5">
-          {tab.view === 'tables' && (
-            <TableColumnVisibilityDropdown tabId={tabId} columns={columns} />
+          {activeTab.view === 'tables' && (
+            <TableColumnVisibilityDropdown activeTab={activeTab} columns={columns} />
           )}
           <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
             <RefreshCcw className={cn('size-4 cursor-pointer', isLoading && 'animate-spin')} />
