@@ -245,4 +245,3 @@ export function buildUpdateCellQuery(options: {
 
   return { query, params }
 }
-
