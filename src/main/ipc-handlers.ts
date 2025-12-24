@@ -16,6 +16,13 @@ import { ipcMain } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { adapterRegistry, listRegisteredAdapters } from './adapters'
 import { connectionManager } from './connectionManager'
+import {
+  deleteAllQueriesForConnection,
+  deleteQuery,
+  loadQueries,
+  saveQuery,
+  updateQuery
+} from './saved-queries-storage'
 import { deleteProfile, getProfile, loadProfiles, saveProfile } from './storage'
 import { ConnectionError, QueryError, sanitizeError, ValidationError } from './utils/errors'
 import {
@@ -30,20 +37,13 @@ import {
   validateWorkspaceInput
 } from './utils/validation'
 import { deleteWorkspace, loadWorkspace, saveWorkspace } from './workspace-storage'
-import {
-  deleteQuery,
-  deleteAllQueriesForConnection,
-  loadQueries,
-  saveQuery,
-  updateQuery
-} from './saved-queries-storage'
 
 type SafeIpcHandler<Payload, Result> = (payload: Payload) => Promise<Result> | Result
 
 const safeHandle = <Payload = unknown, Result = unknown>(
   channel: string,
   handler: SafeIpcHandler<Payload, Result>
-): void => {
+) => {
   ipcMain.handle(channel, async (_event, payload: Payload) => {
     try {
       return await handler(payload)
@@ -85,7 +85,7 @@ const ensureSQLAdapter = (adapter: unknown, connectionId: string): SQLAdapter =>
   return adapter as SQLAdapter
 }
 
-export const registerIpcHandlers = (): void => {
+export const registerIpcHandlers = () => {
   safeHandle('adapters:list', async () => listRegisteredAdapters())
 
   safeHandle('connections:list', async () => loadProfiles())
@@ -310,32 +310,29 @@ export const registerIpcHandlers = (): void => {
   })
 
   // Saved queries handlers
-  safeHandle(
-    'queries:save',
-    async (payload): Promise<SavedQuery> => {
-      const { connectionId, id, name, content } = payload as {
-        connectionId: string
-        id: string
-        name: string
-        content: string
-      }
-
-      if (!connectionId || typeof connectionId !== 'string') {
-        throw new ValidationError('connectionId is required')
-      }
-      if (!id || typeof id !== 'string') {
-        throw new ValidationError('Query id is required')
-      }
-      if (!name || typeof name !== 'string') {
-        throw new ValidationError('Query name is required')
-      }
-      if (!content || typeof content !== 'string') {
-        throw new ValidationError('Query content is required')
-      }
-
-      return saveQuery(connectionId, id, name, content)
+  safeHandle('queries:save', async (payload): Promise<SavedQuery> => {
+    const { connectionId, id, name, content } = payload as {
+      connectionId: string
+      id: string
+      name: string
+      content: string
     }
-  )
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!id || typeof id !== 'string') {
+      throw new ValidationError('Query id is required')
+    }
+    if (!name || typeof name !== 'string') {
+      throw new ValidationError('Query name is required')
+    }
+    if (!content || typeof content !== 'string') {
+      throw new ValidationError('Query content is required')
+    }
+
+    return saveQuery(connectionId, id, name, content)
+  })
 
   safeHandle('queries:load', async (payload): Promise<SavedQuery[]> => {
     const { connectionId } = validateConnectionIdentifier(payload)

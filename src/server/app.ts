@@ -2,6 +2,7 @@ import type {
   DBConnectionOptions,
   DatabaseType,
   DeleteTableRowsOptions,
+  QueryResultRow,
   TableDataOptions,
   UpdateTableCellOptions
 } from '@common/types'
@@ -314,7 +315,7 @@ app.post(
         return
       }
 
-      const options: DeleteTableRowsOptions = { schema, table, rows: rows as any }
+      const options: DeleteTableRowsOptions = { schema, table, rows: rows as QueryResultRow[] }
       const result = await adapter.deleteTableRows(options)
       res.json(result)
     } catch (err) {
@@ -466,7 +467,7 @@ app.delete(
 )
 
 // Error handler middleware (placed after routes so it catches errors)
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: unknown, _req: Request, res: Response) => {
   console.error('API Error:', err)
   const message = err instanceof Error ? err.message : 'Internal server error'
   res.status(500).json({ error: message })

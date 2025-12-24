@@ -1,7 +1,7 @@
+import type { ConnectionProfile } from '@common/types'
+import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { app } from 'electron'
-import type { ConnectionProfile } from '@common/types'
 
 const STORAGE_FILENAME = 'connections.json'
 

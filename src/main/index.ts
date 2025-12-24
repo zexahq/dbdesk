@@ -8,7 +8,7 @@ import { registerIpcHandlers } from './ipc-handlers'
 import { AssetServer } from './protocols/asset-server'
 import { AssetUrl } from './protocols/asset-url'
 
-function createWindow(): void {
+function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 900,

@@ -24,7 +24,7 @@ export async function saveCurrentWorkspace() {
   }
 }
 
-export const registerWorkspaceFlushListener = (): void => {
+export const registerWorkspaceFlushListener = () => {
   const ipcRenderer = window.electron?.ipcRenderer
   if (!ipcRenderer) return
 
