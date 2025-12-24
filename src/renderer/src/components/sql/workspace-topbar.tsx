@@ -3,7 +3,6 @@ import { useDisconnect } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 import { saveCurrentWorkspace } from '@renderer/lib/workspace'
-import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { type QueryTab, useTabStore } from '@renderer/store/tab-store'
 import { useRouter } from '@tanstack/react-router'
@@ -38,14 +37,15 @@ export function WorkspaceTopbar({
   const addQueryTab = useTabStore((s) => s.addQueryTab)
   const reset = useTabStore((s) => s.reset)
 
-  const { queries } = useSavedQueriesStore()
   const { reset: resetWorkspace } = useSqlWorkspaceStore()
 
-  const isQueryTabSaved = (tab: QueryTab) => queries.some((q) => q.id === tab.id)
-
   const isQueryTabDirty = (tab: QueryTab) => {
-    if (tab.lastSavedContent === undefined) return false
-    return tab.editorContent !== tab.lastSavedContent
+    // Tab is dirty if it was previously saved and content changed
+    if (tab.lastSavedContent !== undefined) {
+      return tab.editorContent !== tab.lastSavedContent
+    }
+    // Or if it's unsaved but has content
+    return tab.editorContent.trim().length > 0
   }
 
   const handleTabClick = (tabId: string) => {
@@ -95,7 +95,6 @@ export function WorkspaceTopbar({
             const isActive = activeTabId === tab.id
             const isQueryTab = tab.kind === 'query'
             const isDirty = isQueryTab ? isQueryTabDirty(tab) : false
-            const isSaved = isQueryTab ? isQueryTabSaved(tab) : true
 
             return (
               <button
@@ -107,7 +106,7 @@ export function WorkspaceTopbar({
                   isActive
                     ? 'bg-background text-foreground border-t-2 border-t-primary pt-0.5'
                     : 'text-muted-foreground border-t-2 border-t-transparent pt-0.5',
-                  (tab.isTemporary || (isQueryTab && !isSaved)) && 'italic'
+                  tab.kind === 'table' && tab.isTemporary && 'italic'
                 )}
               >
                 {tab.kind === 'table' ? (
@@ -115,10 +114,10 @@ export function WorkspaceTopbar({
                 ) : (
                   <SquareCode className="size-3.5 shrink-0" />
                 )}
-                {isDirty && <span className="size-2 rounded-full bg-amber-500 shrink-0" />}
                 <span className="truncate flex-1 text-left">
                   {tab.kind === 'table' ? tab.table : tab.name}
                 </span>
+                {isDirty && <span className="size-2 rounded-full bg-white shrink-0" />}
                 <div
                   role="button"
                   onClick={(e) => handleCloseTab(tab.id, e)}

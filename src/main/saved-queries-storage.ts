@@ -1,4 +1,4 @@
-import type { SavedQuery, SavedQueriesStorage } from '@common/types'
+import type { SavedQueriesStorage, SavedQuery } from '@common/types'
 import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -14,8 +14,7 @@ type StoredQueriesStorage = {
   [connectionId: string]: StoredQuery[]
 }
 
-const getSavedQueriesStoragePath = (): string =>
-  join(app.getPath('userData'), QUERIES_FILENAME)
+const getSavedQueriesStoragePath = (): string => join(app.getPath('userData'), QUERIES_FILENAME)
 
 const serializeQuery = (query: SavedQuery): StoredQuery => ({
   ...query,

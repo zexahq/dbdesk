@@ -24,12 +24,19 @@ export function TableView({ profile, activeTab }: TableViewProps) {
     data: tableData,
     isLoading: isLoadingTableData,
     error: tableError
-  } = useTableData(profile.id, activeTab.schema, activeTab.table, {
-    limit: activeTab.limit,
-    offset: activeTab.offset,
-    filters: undefined,
-    sortRules: undefined
-  })
+  } = useTableData(
+    profile.id,
+    activeTab.schema,
+    activeTab.table,
+    activeTab
+      ? {
+          limit: activeTab.limit,
+          offset: activeTab.offset,
+          filters: activeTab.filters,
+          sortRules: activeTab.sortRules
+        }
+      : undefined
+  )
 
   const { mutateAsync: deleteRowsMutation, isPending: isDeletePending } = useDeleteTableRows(
     profile.id
