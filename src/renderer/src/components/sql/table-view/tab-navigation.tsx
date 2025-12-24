@@ -1,12 +1,17 @@
 'use client'
 
+import type { SQLConnectionProfile } from '@common/types'
+import type { Tab } from '@renderer/store/tab-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import * as React from 'react'
 
-export const TabNavigation = React.memo(TabNavigationImpl, () => true)
+interface TabNavigationProps {
+  profile: SQLConnectionProfile
+  requestCloseTab: (tab: Tab) => void
+}
 
-function TabNavigationImpl() {
-  const { tabs, activeTabId, removeTab, setActiveTab } = useTabStore()
+export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
+  const { tabs, activeTabId, getActiveTab, setActiveTab } = useTabStore()
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -39,8 +44,9 @@ function TabNavigationImpl() {
         if (tabs.length <= 1) return
 
         event.preventDefault()
-        if (activeTabId) {
-          removeTab(activeTabId)
+        const activeTab = getActiveTab()
+        if (activeTab) {
+          requestCloseTab(activeTab)
         }
         return
       }
@@ -60,8 +66,7 @@ function TabNavigationImpl() {
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [tabs, activeTabId, removeTab, setActiveTab])
+  }, [tabs, activeTabId, getActiveTab, setActiveTab, requestCloseTab])
 
-  // This component doesn't render anything, it just handles keyboard shortcuts
   return null
 }

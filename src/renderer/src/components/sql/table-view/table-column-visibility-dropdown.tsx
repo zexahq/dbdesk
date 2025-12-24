@@ -10,33 +10,30 @@ import {
 } from '@renderer/components/ui/dropdown-menu'
 import { Input } from '@renderer/components/ui/input'
 import { cn } from '@renderer/lib/utils'
-import { useTabStore } from '@renderer/store/tab-store'
+import { TableTab, useTabStore } from '@renderer/store/tab-store'
 import { AlertCircle, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 interface TableColumnVisibilityDropdownProps {
-  tabId: string
+  activeTab: TableTab
   columns?: TableDataColumn[]
 }
 
 export function TableColumnVisibilityDropdown({
-  tabId,
+  activeTab,
   columns = []
 }: TableColumnVisibilityDropdownProps) {
-  const tab = useTabStore((state) => state.tabs.find((t) => t.id === tabId))
-  const updateTabState = useTabStore((state) => state.updateTabState)
+  const updateTableTab = useTabStore((state) => state.updateTableTab)
   const [searchQuery, setSearchQuery] = useState('')
 
-  if (!tab) return null
-
-  const columnVisibility = tab.columnVisibility
+  const columnVisibility = activeTab.columnVisibility
 
   const setColumnVisibility = (
     visibility:
       | typeof columnVisibility
       | ((prev: typeof columnVisibility) => typeof columnVisibility)
   ) => {
-    updateTabState(tabId, {
+    updateTableTab(activeTab.id, {
       columnVisibility: typeof visibility === 'function' ? visibility(columnVisibility) : visibility
     })
   }

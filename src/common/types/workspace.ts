@@ -1,6 +1,7 @@
 import type { TableFilterCondition, TableSortRule } from './sql'
 
-export interface SerializedTab {
+export interface SerializedTableTab {
+  kind: 'table'
   id: string
   schema: string
   table: string
@@ -13,10 +14,15 @@ export interface SerializedTab {
 }
 
 export interface SerializedQueryTab {
+  kind: 'query'
   id: string
   name: string
   editorContent: string
+  isTemporary: boolean
+  lastSavedContent?: string
 }
+
+export type SerializedTab = SerializedTableTab | SerializedQueryTab
 
 export interface SavedQuery {
   id: string
@@ -29,11 +35,8 @@ export interface SavedQuery {
 export interface ConnectionWorkspace {
   connectionId: string
   lastUpdated: Date
-  tableTabs: SerializedTab[]
-  activeTableTabId: string | null
-  queryTabs: SerializedQueryTab[]
-  activeQueryTabId: string | null
-  workspaceView: 'table' | 'query'
+  tabs: SerializedTab[]
+  activeTabId: string | null
 }
 
 export interface WorkspaceStorage {

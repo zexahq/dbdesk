@@ -1,8 +1,7 @@
-import type { SavedQuery, SavedQueriesStorage } from '@common/types'
+import type { SavedQueriesStorage, SavedQuery } from '@common/types'
 import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { randomUUID } from 'node:crypto'
 
 const QUERIES_FILENAME = 'saved-queries.json'
 
@@ -15,8 +14,7 @@ type StoredQueriesStorage = {
   [connectionId: string]: StoredQuery[]
 }
 
-const getSavedQueriesStoragePath = (): string =>
-  join(app.getPath('userData'), QUERIES_FILENAME)
+const getSavedQueriesStoragePath = (): string => join(app.getPath('userData'), QUERIES_FILENAME)
 
 const serializeQuery = (query: SavedQuery): StoredQuery => ({
   ...query,
@@ -62,6 +60,7 @@ const writeQueriesToDisk = async (queries: StoredQueriesStorage): Promise<void> 
 
 export const saveQuery = async (
   connectionId: string,
+  id: string,
   name: string,
   content: string
 ): Promise<SavedQuery> => {
@@ -69,7 +68,7 @@ export const saveQuery = async (
   const now = new Date()
 
   const query: SavedQuery = {
-    id: randomUUID(),
+    id,
     name,
     content,
     createdAt: now,

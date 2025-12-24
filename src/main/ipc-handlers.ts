@@ -313,14 +313,18 @@ export const registerIpcHandlers = (): void => {
   safeHandle(
     'queries:save',
     async (payload): Promise<SavedQuery> => {
-      const { connectionId, name, content } = payload as {
+      const { connectionId, id, name, content } = payload as {
         connectionId: string
+        id: string
         name: string
         content: string
       }
 
       if (!connectionId || typeof connectionId !== 'string') {
         throw new ValidationError('connectionId is required')
+      }
+      if (!id || typeof id !== 'string') {
+        throw new ValidationError('Query id is required')
       }
       if (!name || typeof name !== 'string') {
         throw new ValidationError('Query name is required')
@@ -329,7 +333,7 @@ export const registerIpcHandlers = (): void => {
         throw new ValidationError('Query content is required')
       }
 
-      return saveQuery(connectionId, name, content)
+      return saveQuery(connectionId, id, name, content)
     }
   )
 

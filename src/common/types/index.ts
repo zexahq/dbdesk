@@ -55,5 +55,6 @@ export type {
   SavedQueriesStorage,
   SerializedQueryTab,
   SerializedTab,
+  SerializedTableTab,
   WorkspaceStorage
 } from './workspace'
