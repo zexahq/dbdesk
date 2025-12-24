@@ -6,8 +6,6 @@ export class ConnectionManager {
 
   private readonly connections = new Map<string, DBAdapter>()
 
-  private constructor() {}
-
   public static getInstance(): ConnectionManager {
     if (!ConnectionManager.instance) {
       ConnectionManager.instance = new ConnectionManager()

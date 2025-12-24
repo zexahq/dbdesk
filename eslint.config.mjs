@@ -1,8 +1,7 @@
-import { defineConfig } from 'eslint/config'
 import tseslint from '@electron-toolkit/eslint-config-ts'
-import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
 import eslintPluginReact from 'eslint-plugin-react'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
+import { defineConfig } from 'eslint/config'
 
 export default defineConfig(
   { ignores: ['**/node_modules', '**/dist', '**/out'] },
@@ -14,6 +13,9 @@ export default defineConfig(
       react: {
         version: 'detect'
       }
+    },
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off'
     }
   },
   {
@@ -22,8 +24,7 @@ export default defineConfig(
       'react-hooks': eslintPluginReactHooks
     },
     rules: {
-      ...eslintPluginReactHooks.configs.recommended.rules,
-      ...eslintPluginReactRefresh.configs.vite.rules
+      ...eslintPluginReactHooks.configs.recommended.rules
     }
   },
   {
@@ -32,6 +33,5 @@ export default defineConfig(
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off'
     }
-  },
-  eslintConfigPrettier
+  }
 )

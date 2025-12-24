@@ -199,7 +199,7 @@ export function buildTableCountQuery(
 
   let query = `SELECT COUNT(*) as total FROM ${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
   const params: SqlParameter[] = []
-  let paramCount = 1
+  const paramCount = 1
 
   const { clause } = buildWhereClause(filters, params, paramCount)
 
@@ -245,4 +245,3 @@ export function buildUpdateCellQuery(options: {
 
   return { query, params }
 }
-

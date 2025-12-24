@@ -14,8 +14,6 @@ export class AdapterRegistry {
 
   private readonly factories = new Map<DatabaseType, AdapterFactory>()
 
-  private constructor() {}
-
   /**
    * Retrieve the singleton instance of the adapter registry.
    */
