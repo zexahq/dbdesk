@@ -1,36 +1,29 @@
-import type { DBAdapter, DBConnectionOptions, DatabaseType, SQLAdapter } from '@common/types'
+import type {
+  ConnectionProfile,
+  DBAdapter,
+  DBConnectionOptions,
+  DatabaseType,
+  SQLAdapter
+} from '@common/types'
 import { adapterRegistry } from './adapters'
 import {
-  readProfilesFromDiskSync,
-  writeProfilesToDisk,
-  type StoredProfiles
-} from './profiles-storage'
+  deleteProfile as deleteProfileFromDisk,
+  loadProfiles,
+  saveProfile as saveProfileToDisk
+} from './storage'
 
 export class ConnectionManager {
   private static instance: ConnectionManager
 
   private readonly connections = new Map<string, DBAdapter>()
-  private profiles = new Map<
-    string,
-    {
-      id: string
-      name: string
-      type: DatabaseType
-      options: DBConnectionOptions
-    }
-  >()
+  private profiles = new Map<string, ConnectionProfile>()
 
-  // Load persisted profiles (sync) during initialization
-  private initializeProfiles() {
+  // Load persisted profiles (async) during initialization
+  private async initializeProfiles(): Promise<void> {
     try {
-      const stored = readProfilesFromDiskSync()
-      for (const [id, p] of Object.entries(stored)) {
-        this.profiles.set(id, {
-          id,
-          name: p.name,
-          type: p.type as DatabaseType,
-          options: p.options
-        })
+      const stored = await loadProfiles()
+      for (const p of stored) {
+        this.profiles.set(p.id, p)
       }
     } catch (err) {
       // Non-fatal: continue with empty profiles
@@ -51,12 +44,19 @@ export class ConnectionManager {
   // ========================================================================
   // Profile Management (for server)
   // ========================================================================
-  public createProfile(name: string, type: DatabaseType, options: DBConnectionOptions) {
+  public createProfile(
+    name: string,
+    type: DatabaseType,
+    options: DBConnectionOptions
+  ): ConnectionProfile {
     const id = `profile_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-    const profile = { id, name, type, options }
+    const now = new Date()
+    const profile = { id, name, type, options, createdAt: now, updatedAt: now } as ConnectionProfile
     this.profiles.set(id, profile)
     // Persist in background
-    void this.persistProfiles()
+    void saveProfileToDisk(profile).catch((err) => {
+      console.warn('Failed to save profile:', err)
+    })
     return profile
   }
 
@@ -73,31 +73,24 @@ export class ConnectionManager {
     name: string,
     type: DatabaseType,
     options: DBConnectionOptions
-  ) {
-    const profile = this.profiles.get(profileId)
-    if (!profile) {
+  ): ConnectionProfile {
+    const existing = this.profiles.get(profileId)
+    if (!existing) {
       throw new Error(`Profile ${profileId} not found`)
     }
-    const updated = { id: profileId, name, type, options }
+    const updated = { ...existing, name, type, options, updatedAt: new Date() } as ConnectionProfile
     this.profiles.set(profileId, updated)
-    void this.persistProfiles()
+    void saveProfileToDisk(updated).catch((err) => {
+      console.warn('Failed to save profile:', err)
+    })
     return updated
   }
 
   public deleteProfile(profileId: string) {
     this.profiles.delete(profileId)
-    void this.persistProfiles()
-  }
-
-  private async persistProfiles(): Promise<void> {
-    try {
-      const obj: StoredProfiles = Object.fromEntries(this.profiles)
-      await writeProfilesToDisk(obj)
-    } catch (err) {
-      // Best-effort persistence; log and continue
-      // eslint-disable-next-line no-console
-      console.warn('Failed to persist profiles:', err)
-    }
+    void deleteProfileFromDisk(profileId).catch((err) => {
+      console.warn('Failed to delete profile:', err)
+    })
   }
 
   // ========================================================================
