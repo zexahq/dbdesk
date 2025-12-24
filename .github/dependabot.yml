@@ -1,0 +1,81 @@
+version: 2
+
+updates:
+  # ----------------------------
+  # JS / TS dependencies (pnpm)
+  # ----------------------------
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+      timezone: "Asia/Kolkata"
+
+    # Limit how noisy Dependabot gets
+    open-pull-requests-limit: 5
+
+    # Keep PRs clean & readable
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+    # Group related updates together
+    groups:
+      electron:
+        patterns:
+          - "electron"
+          - "electron-*"
+          - "@electron-toolkit/*"
+
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+
+      monaco:
+        patterns:
+          - "monaco-*"
+          - "@monaco-editor/*"
+
+      build-tooling:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "electron-vite"
+          - "typescript"
+          - "eslint*"
+          - "prettier*"
+          - "tailwindcss"
+          - "@tailwindcss/*"
+
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+
+    # Be conservative where breakage is common
+    ignore:
+      # Electron major bumps often require manual testing
+      - dependency-name: "electron"
+        update-types: ["version-update:semver-major"]
+
+      # Tooling majors can be disruptive
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+    # Labels help triage PRs faster
+    labels:
+      - "dependencies"
+      - "pnpm"
+      - "electron"
+
+    # Rebase automatically to avoid stale PRs
+    rebase-strategy: "auto"
