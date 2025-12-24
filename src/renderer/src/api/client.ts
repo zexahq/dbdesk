@@ -20,11 +20,11 @@ function isDesktop(): boolean {
   // Environment override: VITE_FORCE_DESKTOP=true forces desktop mode (useful for dev)
   const force = (import.meta.env.VITE_FORCE_DESKTOP ?? '').toString().toLowerCase()
   if (force === 'true' || force === '1') return true
-  return typeof window !== 'undefined' && !!(window as any).dbdesk
+  return typeof window !== 'undefined' && !!window.dbdesk
 }
 
-function impl(): any {
-  if (isDesktop()) return (window as any).dbdesk
+function impl() {
+  if (isDesktop()) return window.dbdesk
   return httpClient
 }
 
