@@ -12,7 +12,6 @@ import {
   CardTitle
 } from '@renderer/components/ui/card'
 import { cn } from '@renderer/lib/utils'
-import { useQueryTabStore } from '@renderer/store/query-tab-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useNavigate } from '@tanstack/react-router'
@@ -38,9 +37,8 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
   const { mutateAsync: connect, isPending: isConnecting } = useConnect()
   const { mutateAsync: deleteConnection, isPending: isDeleting } = useDeleteConnection()
   const navigate = useNavigate()
-  const { setCurrentConnection, setView } = useSqlWorkspaceStore()
-  const { reset: resetTabs, loadFromSerialized: loadTabs } = useTabStore()
-  const { reset: resetQueryTabs, loadFromSerialized: loadQueryTabs } = useQueryTabStore()
+  const { setCurrentConnection } = useSqlWorkspaceStore()
+  const { reset, loadFromSerialized } = useTabStore()
 
   const isBusy = isConnecting || isDeleting
 
@@ -54,26 +52,16 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
       onSuccess: async () => {
         setCurrentConnection(profile.id)
 
-        // Try to restore saved workspace
         try {
           const savedWorkspace = await dbdeskClient.loadWorkspace(profile.id)
           if (savedWorkspace) {
-            // Restore saved state
-            loadTabs(savedWorkspace.tableTabs, savedWorkspace.activeTableTabId)
-            loadQueryTabs(savedWorkspace.queryTabs, savedWorkspace.activeQueryTabId)
-            setView(savedWorkspace.workspaceView)
+            loadFromSerialized(savedWorkspace.tabs, savedWorkspace.activeTabId)
           } else {
-            // No saved state, use defaults
-            resetTabs()
-            resetQueryTabs()
-            setView('table')
+            reset()
           }
         } catch (error) {
-          // If workspace loading fails, fall back to defaults
           console.warn('Failed to load workspace, using defaults:', error)
-          resetTabs()
-          resetQueryTabs()
-          setView('table')
+          reset()
         }
 
         navigate({

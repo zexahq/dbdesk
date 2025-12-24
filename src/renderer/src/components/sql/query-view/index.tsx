@@ -7,60 +7,50 @@ import {
   ResizablePanel,
   ResizablePanelGroup
 } from '@renderer/components/ui/resizable'
-import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
-import { cn } from '@renderer/lib/utils'
-import { useQueryTabStore } from '@renderer/store/query-tab-store'
 import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
+import { QueryTab, useTabStore } from '@renderer/store/tab-store'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { QueryResults } from './query-results'
-import { QuerySidebar } from './query-sidebar'
-import { QueryTopbar } from './query-topbar'
 
-interface SqlQueryViewProps {
+interface QueryViewProps {
   profile: SQLConnectionProfile
+  activeTab: QueryTab
 }
 
-export default function SqlQueryView({ profile }: SqlQueryViewProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+export function QueryView({ profile, activeTab }: QueryViewProps) {
+  const { queries, saveQuery, updateQuery } = useSavedQueriesStore()
   const [isExecuting, setIsExecuting] = useState(false)
   const [executionError, setExecutionError] = useState<Error | null>(null)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
-  const { tabs, addTab, getActiveTab, updateTab } = useQueryTabStore()
-  const { saveQuery } = useSavedQueriesStore()
-  const activeTab = getActiveTab()
+
   const { mutateAsync: runQuery } = useRunQuery(profile.id)
 
-  // Initialize with one tab if no tabs exist
-  useEffect(() => {
-    if (tabs.length === 0) {
-      addTab()
-    }
-  }, [tabs.length, addTab])
+  const isQueryTabSaved = queries.some((q) => q.id === activeTab.id)
+  const updateQueryTab = useTabStore((s) => s.updateQueryTab)
 
-  // Handle Ctrl+S to save query
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        if (activeTab && activeTab.editorContent.trim()) {
-          setSaveDialogOpen(true)
-        } else {
+        if (!activeTab.editorContent.trim()) {
           toast.error('Query cannot be empty')
+          return
+        }
+
+        if (isQueryTabSaved) {
+          void handleUpdateQuery()
+        } else {
+          setSaveDialogOpen(true)
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeTab])
+  }, [activeTab, isQueryTabSaved])
 
   const handleRunQuery = async () => {
-    if (!activeTab) {
-      toast.error('No active tab')
-      return
-    }
-
     const query = activeTab.editorContent.trim()
     if (!query) {
       toast.error('Query cannot be empty')
@@ -72,28 +62,33 @@ export default function SqlQueryView({ profile }: SqlQueryViewProps) {
 
     try {
       const data = await runQuery(query)
-      updateTab(activeTab.id, { queryResults: data })
-      toast.success('Query executed successfully')
+      updateQueryTab(activeTab.id, { queryResults: data })
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Failed to execute query')
       setExecutionError(err)
-      updateTab(activeTab.id, { queryResults: undefined })
+      updateQueryTab(activeTab.id, { queryResults: undefined })
       toast.error(err.message)
     } finally {
       setIsExecuting(false)
     }
   }
 
-  const handleSaveQuery = async (name: string) => {
-    if (!activeTab) {
-      toast.error('No active tab')
-      return
-    }
+  const handleUpdateQuery = async () => {
+    const savedQuery = queries.find((q) => q.id === activeTab.id)
+    if (!savedQuery) return
 
     try {
-      await saveQuery(profile.id, name, activeTab.editorContent)
-      toast.success('Query saved successfully')
-      updateTab(activeTab.id, { name })
+      await updateQuery(profile.id, activeTab.id, savedQuery.name, activeTab.editorContent)
+      updateQueryTab(activeTab.id, { lastSavedContent: activeTab.editorContent })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save query')
+    }
+  }
+
+  const handleSaveQuery = async (name: string) => {
+    try {
+      await saveQuery(profile.id, activeTab.id, name, activeTab.editorContent)
+      updateQueryTab(activeTab.id, { name, lastSavedContent: activeTab.editorContent })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save query')
     }
@@ -101,52 +96,28 @@ export default function SqlQueryView({ profile }: SqlQueryViewProps) {
 
   return (
     <>
-      <SidebarProvider className="h-full">
-        <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
-          <ResizablePanel
-            defaultSize={16}
-            minSize={12}
-            maxSize={32}
-            className={cn(!isSidebarOpen && 'hidden')}
-          >
-            <QuerySidebar profile={profile} />
-          </ResizablePanel>
-          <ResizableHandle withHandle className={cn(!isSidebarOpen && 'hidden')} />
-          <ResizablePanel>
-            <SidebarInset className="flex h-full flex-col overflow-hidden">
-              <QueryTopbar
-                profile={profile}
-                isSidebarOpen={isSidebarOpen}
-                onSidebarOpenChange={setIsSidebarOpen}
-              />
-              <ResizablePanelGroup direction="vertical" className="flex-1">
-                <ResizablePanel defaultSize={50} minSize={30}>
-                  <div className="h-full w-full">
-                    {activeTab && (
-                      <SqlEditor
-                        tabId={activeTab.id}
-                        value={activeTab.editorContent}
-                        onChange={(value) => updateTab(activeTab.id, { editorContent: value })}
-                        language={profile.type}
-                        onExecute={handleRunQuery}
-                      />
-                    )}
-                  </div>
-                </ResizablePanel>
-                <ResizableHandle />
-                <ResizablePanel defaultSize={50} minSize={30}>
-                  <QueryResults
-                    queryResults={activeTab?.queryResults}
-                    isLoading={isExecuting}
-                    error={executionError}
-                    onRun={handleRunQuery}
-                  />
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            </SidebarInset>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </SidebarProvider>
+      <ResizablePanelGroup direction="vertical" className="flex-1">
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <div className="h-full w-full">
+            <SqlEditor
+              tabId={activeTab.id}
+              value={activeTab.editorContent}
+              onChange={(value) => updateQueryTab(activeTab.id, { editorContent: value })}
+              language={profile.type}
+              onExecute={handleRunQuery}
+            />
+          </div>
+        </ResizablePanel>
+        <ResizableHandle />
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <QueryResults
+            queryResults={activeTab.queryResults}
+            isLoading={isExecuting}
+            error={executionError}
+            onRun={handleRunQuery}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       <SaveQueryDialog
         open={saveDialogOpen}

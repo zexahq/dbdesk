@@ -424,7 +424,9 @@ app.post(
         return
       }
 
-      const query = await saveQuery(req.params.connectionId, name, content)
+      // Generate an id for the saved query and persist
+      const id = `query_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+      const query = await saveQuery(req.params.connectionId, id, name, content)
       res.status(201).json(query)
     } catch (err) {
       next(err)

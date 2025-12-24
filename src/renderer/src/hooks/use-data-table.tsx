@@ -1,6 +1,6 @@
 'use client'
 
-import { useTabStore } from '@renderer/store/tab-store'
+import { TableTab, useTabStore } from '@renderer/store/tab-store'
 import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/types/data-table'
 import {
   type ColumnDef,
@@ -16,7 +16,7 @@ import type { QueryResultRow } from '@renderer/api/client'
 
 interface UseDataTableProps<TData, TValue = unknown>
   extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
-  tabId: string
+  activeTab: TableTab
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
@@ -25,7 +25,7 @@ interface UseDataTableProps<TData, TValue = unknown>
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
 
 export function useDataTable<TData, TValue = unknown>({
-  tabId,
+  activeTab,
   columns,
   data,
   onCellUpdate,
@@ -36,47 +36,49 @@ export function useDataTable<TData, TValue = unknown>({
   const rowMapRef = React.useRef<Map<number, HTMLTableRowElement>>(new Map())
 
   // Get tab-specific state from tab store
-  const tab = useTabStore((state) => state.tabs.find((t) => t.id === tabId))
-  const updateTabState = useTabStore((state) => state.updateTabState)
+  const updateTableTab = useTabStore((state) => state.updateTableTab)
 
-  if (!tab) {
-    throw new Error(`Tab with id ${tabId} not found`)
-  }
-
-  const { focusedCell, editingCell, rowSelection, columnSizing, columnVisibility, pendingUpdates } =
-    tab
+  const {
+    id: tabId,
+    focusedCell,
+    editingCell,
+    rowSelection,
+    columnSizing,
+    columnVisibility,
+    pendingUpdates
+  } = activeTab
 
   // Setters that update tab state
   const setFocusedCell = React.useCallback(
     (cell: CellPosition | null) => {
-      updateTabState(tabId, { focusedCell: cell })
+      updateTableTab(tabId, { focusedCell: cell })
     },
-    [tabId, updateTabState]
+    [tabId, updateTableTab]
   )
 
   const setEditingCell = React.useCallback(
     (cell: CellPosition | null) => {
-      updateTabState(tabId, { editingCell: cell })
+      updateTableTab(tabId, { editingCell: cell })
     },
-    [tabId, updateTabState]
+    [tabId, updateTableTab]
   )
 
   const setRowSelection = React.useCallback(
     (selection: RowSelectionState | ((prev: RowSelectionState) => RowSelectionState)) => {
-      updateTabState(tabId, {
+      updateTableTab(tabId, {
         rowSelection: typeof selection === 'function' ? selection(rowSelection) : selection
       })
     },
-    [tabId, updateTabState, rowSelection]
+    [tabId, updateTableTab, rowSelection]
   )
 
   const setColumnSizing = React.useCallback(
     (sizing: typeof columnSizing | ((prev: typeof columnSizing) => typeof columnSizing)) => {
-      updateTabState(tabId, {
+      updateTableTab(tabId, {
         columnSizing: typeof sizing === 'function' ? sizing(columnSizing) : sizing
       })
     },
-    [tabId, updateTabState, columnSizing]
+    [tabId, updateTableTab, columnSizing]
   )
 
   const setColumnVisibility = React.useCallback(
@@ -85,21 +87,21 @@ export function useDataTable<TData, TValue = unknown>({
         | typeof columnVisibility
         | ((prev: typeof columnVisibility) => typeof columnVisibility)
     ) => {
-      updateTabState(tabId, {
+      updateTableTab(tabId, {
         columnVisibility:
           typeof visibility === 'function' ? visibility(columnVisibility) : visibility
       })
     },
-    [tabId, updateTabState, columnVisibility]
+    [tabId, updateTableTab, columnVisibility]
   )
 
   const setPendingUpdates = React.useCallback(
     (updates: UpdateCell[] | ((prev: UpdateCell[]) => UpdateCell[])) => {
-      updateTabState(tabId, {
+      updateTableTab(tabId, {
         pendingUpdates: typeof updates === 'function' ? updates(pendingUpdates) : updates
       })
     },
-    [tabId, updateTabState, pendingUpdates]
+    [tabId, updateTableTab, pendingUpdates]
   )
 
   // Get column IDs

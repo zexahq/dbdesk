@@ -14,22 +14,19 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useTheme } from '@renderer/hooks/use-theme'
 import { saveCurrentWorkspace } from '@renderer/lib/workspace'
-import { useQueryTabStore } from '@renderer/store/query-tab-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useNavigate } from '@tanstack/react-router'
-import { CodeIcon, Database, Moon, Search, Sun, Table2Icon, Unplug } from 'lucide-react'
+import { Database, Moon, Search, Sun, Table2Icon, Unplug } from 'lucide-react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { Button } from './ui/button'
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
-  const { schemasWithTables, currentConnectionId, setCurrentConnection, view, setView } =
-    useSqlWorkspaceStore()
+  const { schemasWithTables, currentConnectionId, setCurrentConnection } = useSqlWorkspaceStore()
 
-  const { addTab, reset: resetTabs, loadFromSerialized: loadTabs } = useTabStore()
-  const { reset: resetQueryTabs, loadFromSerialized: loadQueryTabs } = useQueryTabStore()
+  const { addTableTab, reset, loadFromSerialized } = useTabStore()
   const { theme, toggleTheme } = useTheme()
 
   const { data: connections } = useConnections()
@@ -50,8 +47,7 @@ export function QuickPanel() {
   }, [])
 
   const handleTableSelect = (schema: string, table: string) => {
-    // Create or switch to tab for this table
-    addTab(schema, table)
+    addTableTab(schema, table)
     setOpen(false)
   }
 
@@ -60,26 +56,16 @@ export function QuickPanel() {
       await connect(connectionId)
       setCurrentConnection(connectionId)
 
-      // Try to restore saved workspace
       try {
         const savedWorkspace = await dbdeskClient.loadWorkspace(connectionId)
         if (savedWorkspace) {
-          // Restore saved state
-          loadTabs(savedWorkspace.tableTabs, savedWorkspace.activeTableTabId)
-          loadQueryTabs(savedWorkspace.queryTabs, savedWorkspace.activeQueryTabId)
-          setView(savedWorkspace.workspaceView)
+          loadFromSerialized(savedWorkspace.tabs, savedWorkspace.activeTabId)
         } else {
-          // No saved state, use defaults
-          resetTabs()
-          resetQueryTabs()
-          setView('table')
+          reset()
         }
       } catch (error) {
-        // If workspace loading fails, fall back to defaults
         console.warn('Failed to load workspace, using defaults:', error)
-        resetTabs()
-        resetQueryTabs()
-        setView('table')
+        reset()
       }
 
       navigate({
@@ -98,20 +84,13 @@ export function QuickPanel() {
 
     await disconnect(currentConnectionId)
     setCurrentConnection(null)
-    setView('table')
-    resetTabs()
-    resetQueryTabs()
+    reset()
     navigate({ to: '/' })
     setOpen(false)
   }
 
   const handleThemeToggle = () => {
     toggleTheme()
-    setOpen(false)
-  }
-
-  const handleViewToggle = () => {
-    setView(view === 'table' ? 'query' : 'table')
     setOpen(false)
   }
 
@@ -159,12 +138,6 @@ export function QuickPanel() {
               <CommandItem onSelect={handleDisconnect} className="py-2!">
                 <Unplug className="size-4 mr-2" />
                 <span className="text-sm">Disconnect</span>
-              </CommandItem>
-              <CommandItem onSelect={handleViewToggle} className="py-2!">
-                {view === 'table' ? <CodeIcon /> : <Table2Icon />}
-                <span className="text-sm">
-                  {view === 'table' ? 'Switch to Query View' : 'Switch to Table View'}
-                </span>
               </CommandItem>
             </CommandGroup>
           )}

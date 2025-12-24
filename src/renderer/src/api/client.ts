@@ -135,8 +135,13 @@ export const dbdeskClient = {
     return impl().loadQueries(connectionId)
   },
 
-  async saveQuery(connectionId: string, name: string, content: string): Promise<SavedQuery> {
-    return impl().saveQuery(connectionId, name, content)
+  async saveQuery(
+    connectionId: string,
+    id: string,
+    name: string,
+    content: string
+  ): Promise<SavedQuery> {
+    return impl().saveQuery(connectionId, id, name, content)
   },
 
   async deleteQuery(connectionId: string, queryId: string): Promise<void> {
