@@ -11,28 +11,28 @@ import { useMemo, useState } from 'react'
 import * as z from 'zod'
 import { MySQLQuickConnect } from './mysql-quick-connect'
 
-const baseSchema = z.object({
-  name: z.string().min(1, 'Name is required')
-})
-
-const sqlSchema = z.object({
+const formSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
   host: z.string().min(1, 'Host is required'),
-  port: z.number().min(1, 'Port must be a number').max(65535, 'Port must be a number'),
+  port: z.number().min(1, 'Port must be at least 1').max(65535, 'Port must be at most 65535'),
   database: z.string().min(1, 'Database is required'),
   user: z.string().min(1, 'User is required'),
   password: z.string(),
   ssl: z.boolean()
 })
 
-type SQLFormValues = z.infer<typeof sqlSchema>
+type FormValues = z.infer<typeof formSchema>
 
-function toDefaults(connection?: ConnectionProfile | null): {
-  name: string
-  sqlValues?: SQLFormValues
-} {
+function toDefaults(connection?: ConnectionProfile | null): FormValues {
   if (!connection) {
     return {
-      name: ''
+      name: '',
+      host: '',
+      port: 3306,
+      database: '',
+      user: '',
+      password: '',
+      ssl: false
     }
   }
 
@@ -47,14 +47,12 @@ function toDefaults(connection?: ConnectionProfile | null): {
 
   return {
     name: connection.name,
-    sqlValues: {
-      host: opts.host ?? '',
-      port: typeof opts.port === 'number' && Number.isFinite(opts.port) ? opts.port : 3306,
-      database: opts.database ?? '',
-      user: opts.user ?? '',
-      password: opts.password ?? '',
-      ssl: Boolean(opts.ssl)
-    }
+    host: opts.host ?? '',
+    port: typeof opts.port === 'number' && Number.isFinite(opts.port) ? opts.port : 3306,
+    database: opts.database ?? '',
+    user: opts.user ?? '',
+    password: opts.password ?? '',
+    ssl: Boolean(opts.ssl)
   }
 }
 
@@ -69,32 +67,16 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
 
   const defaults = useMemo(() => toDefaults(connection), [connection])
 
-  const [sqlFormValues, setSqlFormValues] = useState<SQLFormValues>(
-    defaults.sqlValues || {
-      host: '',
-      port: 3306,
-      database: '',
-      user: '',
-      password: '',
-      ssl: false
-    }
-  )
-
   const [showPassword, setShowPassword] = useState(false)
 
   const form = useForm({
-    defaultValues: {
-      name: defaults.name
-    },
+    defaultValues: defaults,
     validators: {
-      onSubmit: baseSchema
+      onSubmit: formSchema
     },
     onSubmit: async ({ value }) => {
-      const { name } = value
+      const { name, host, port, database, user, password, ssl } = value
 
-      const { host, port, database, user, password, ssl } = sqlFormValues
-
-      // When updating, if password is empty, preserve the original password
       let finalPassword = password ?? ''
       if (connection && !finalPassword) {
         const originalOptions = connection.options as { password?: string }
@@ -130,11 +112,22 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
     }
   })
 
-  // Update connection name when database name changes
-  const handleDatabaseChange = (database: string) => {
-    if (!connection && database) {
-      form.setFieldValue('name', database)
-    }
+  const handleQuickConnect = (values: {
+    name: string
+    host: string
+    port: number
+    database: string
+    user: string
+    password?: string
+    ssl: boolean
+  }) => {
+    form.setFieldValue('name', values.name)
+    form.setFieldValue('host', values.host)
+    form.setFieldValue('port', values.port)
+    form.setFieldValue('database', values.database)
+    form.setFieldValue('user', values.user)
+    form.setFieldValue('password', values.password || '')
+    form.setFieldValue('ssl', values.ssl)
   }
 
   return (
@@ -148,27 +141,14 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
     >
       {!connection && (
         <>
-          <MySQLQuickConnect
-            onSuccess={(values) => {
-              form.setFieldValue('name', values.name)
-              setSqlFormValues({
-                host: values.host,
-                port: values.port,
-                database: values.database,
-                user: values.user,
-                password: values.password || '',
-                ssl: values.ssl
-              })
-            }}
-          />
+          <MySQLQuickConnect onSuccess={handleQuickConnect} />
           <Separator />
         </>
       )}
 
       <FieldGroup>
-        <form.Field
-          name="name"
-          children={(field) => {
+        <form.Field name="name">
+          {(field) => {
             const invalid = field.state.meta.isTouched && !field.state.meta.isValid
             return (
               <UIField data-invalid={invalid}>
@@ -187,130 +167,153 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
               </UIField>
             )
           }}
-        />
+        </form.Field>
       </FieldGroup>
 
       <Separator />
 
       <FieldGroup className="grid grid-cols-2 gap-4">
-        <UIField>
-          <FieldLabel htmlFor="host">Host</FieldLabel>
-          <Input
-            id="host"
-            value={sqlFormValues.host}
-            onChange={(e) => {
-              setSqlFormValues((prev) => ({
-                ...prev,
-                host: e.target.value
-              }))
-            }}
-            placeholder="localhost"
-            autoComplete="off"
-          />
-        </UIField>
+        <form.Field name="host">
+          {(field) => {
+            const invalid = field.state.meta.isTouched && !field.state.meta.isValid
+            return (
+              <UIField data-invalid={invalid}>
+                <FieldLabel htmlFor={field.name}>Host</FieldLabel>
+                <Input
+                  id={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="localhost"
+                  autoComplete="off"
+                />
+                {invalid && <FieldError errors={field.state.meta.errors} />}
+              </UIField>
+            )
+          }}
+        </form.Field>
 
-        <UIField>
-          <FieldLabel htmlFor="port">Port</FieldLabel>
-          <Input
-            id="port"
-            type="number"
-            inputMode="numeric"
-            value={sqlFormValues.port}
-            onChange={(e) => {
-              setSqlFormValues((prev) => ({
-                ...prev,
-                port: Number(e.target.value)
-              }))
-            }}
-            placeholder="3306"
-            autoComplete="off"
-          />
-        </UIField>
+        <form.Field name="port">
+          {(field) => {
+            const invalid = field.state.meta.isTouched && !field.state.meta.isValid
+            return (
+              <UIField data-invalid={invalid}>
+                <FieldLabel htmlFor={field.name}>Port</FieldLabel>
+                <Input
+                  id={field.name}
+                  type="number"
+                  inputMode="numeric"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(Number(e.target.value))}
+                  placeholder="3306"
+                  autoComplete="off"
+                />
+                {invalid && <FieldError errors={field.state.meta.errors} />}
+              </UIField>
+            )
+          }}
+        </form.Field>
       </FieldGroup>
 
       <FieldGroup className="grid grid-cols-2 gap-4">
-        <UIField>
-          <FieldLabel htmlFor="database">Database</FieldLabel>
-          <Input
-            id="database"
-            value={sqlFormValues.database}
-            onChange={(e) => {
-              const database = e.target.value
-              setSqlFormValues((prev) => ({
-                ...prev,
-                database
-              }))
-              handleDatabaseChange(database)
-            }}
-            placeholder="app_db"
-            autoComplete="off"
-          />
-        </UIField>
+        <form.Field name="database">
+          {(field) => {
+            const invalid = field.state.meta.isTouched && !field.state.meta.isValid
+            return (
+              <UIField data-invalid={invalid}>
+                <FieldLabel htmlFor={field.name}>Database</FieldLabel>
+                <Input
+                  id={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => {
+                    const database = e.target.value
+                    field.handleChange(database)
+                    if (!connection && database) {
+                      form.setFieldValue('name', database)
+                    }
+                  }}
+                  placeholder="app_db"
+                  autoComplete="off"
+                />
+                {invalid && <FieldError errors={field.state.meta.errors} />}
+              </UIField>
+            )
+          }}
+        </form.Field>
 
-        <UIField>
-          <FieldLabel htmlFor="user">User</FieldLabel>
-          <Input
-            id="user"
-            value={sqlFormValues.user}
-            onChange={(e) => {
-              setSqlFormValues((prev) => ({
-                ...prev,
-                user: e.target.value
-              }))
-            }}
-            placeholder="root"
-            autoComplete="off"
-          />
-        </UIField>
+        <form.Field name="user">
+          {(field) => {
+            const invalid = field.state.meta.isTouched && !field.state.meta.isValid
+            return (
+              <UIField data-invalid={invalid}>
+                <FieldLabel htmlFor={field.name}>User</FieldLabel>
+                <Input
+                  id={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="root"
+                  autoComplete="off"
+                />
+                {invalid && <FieldError errors={field.state.meta.errors} />}
+              </UIField>
+            )
+          }}
+        </form.Field>
       </FieldGroup>
 
       <FieldGroup>
-        <UIField>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
-          <div className="relative">
-            <Input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              value={sqlFormValues.password}
-              onChange={(e) => {
-                setSqlFormValues((prev) => ({
-                  ...prev,
-                  password: e.target.value
-                }))
-              }}
-              placeholder="••••••••"
-              autoComplete="off"
-              className="pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
-          </div>
-        </UIField>
+        <form.Field name="password">
+          {(field) => {
+            const invalid = field.state.meta.isTouched && !field.state.meta.isValid
+            return (
+              <UIField data-invalid={invalid}>
+                <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                <div className="relative">
+                  <Input
+                    id={field.name}
+                    type={showPassword ? 'text' : 'password'}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="off"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+                {invalid && <FieldError errors={field.state.meta.errors} />}
+              </UIField>
+            )
+          }}
+        </form.Field>
 
-        <UIField>
-          <FieldLabel htmlFor="ssl">SSL</FieldLabel>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="ssl"
-              checked={sqlFormValues.ssl}
-              onCheckedChange={(v) => {
-                setSqlFormValues((prev) => ({
-                  ...prev,
-                  ssl: Boolean(v)
-                }))
-              }}
-            />
-            <label htmlFor="ssl" className="text-sm text-muted-foreground select-none">
-              Enable SSL
-            </label>
-          </div>
-        </UIField>
+        <form.Field name="ssl">
+          {(field) => (
+            <UIField>
+              <FieldLabel htmlFor={field.name}>SSL</FieldLabel>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id={field.name}
+                  checked={field.state.value}
+                  onCheckedChange={(v) => field.handleChange(Boolean(v))}
+                />
+                <label htmlFor={field.name} className="text-sm text-muted-foreground select-none">
+                  Enable SSL
+                </label>
+              </div>
+            </UIField>
+          )}
+        </form.Field>
       </FieldGroup>
 
       <div className="flex justify-end gap-2">
