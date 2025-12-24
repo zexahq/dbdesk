@@ -1,4 +1,3 @@
-import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
 import tseslint from '@electron-toolkit/eslint-config-ts'
 import eslintPluginReact from 'eslint-plugin-react'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
@@ -34,6 +33,5 @@ export default defineConfig(
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off'
     }
-  },
-  eslintConfigPrettier
+  }
 )
