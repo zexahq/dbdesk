@@ -1,5 +1,5 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, protocol, shell } from 'electron'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import './adapters'
@@ -97,6 +97,9 @@ const requestWorkspaceFlush = async (): Promise<void> => {
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  // Remove the application menu
+  Menu.setApplicationMenu(null)
 
   protocol.handle('app-asset', (request) => {
     const asset = new AssetUrl(request.url)
