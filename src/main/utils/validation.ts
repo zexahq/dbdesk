@@ -384,6 +384,7 @@ const validateFilterScalarValue = (
   )
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const isObject = (value: unknown): value is Record<string, any> =>
   typeof value === 'object' && value !== null
 

@@ -110,7 +110,7 @@ export function UnsavedChangesDialog({
               Do you want to save the changes you made to {tab?.name || 'Untitled Query'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Your changes will be lost if you don't save them.
+              Your changes will be lost if you don&apos;t save them.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -119,7 +119,7 @@ export function UnsavedChangesDialog({
               onClick={handleCloseWithoutSave}
               className="bg-muted text-foreground hover:bg-muted/80"
             >
-              Don't Save
+              Don&apos;t Save
             </AlertDialogAction>
             <AlertDialogAction onClick={() => void handleSaveAndClose()}>Save</AlertDialogAction>
           </AlertDialogFooter>

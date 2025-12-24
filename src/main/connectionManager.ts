@@ -20,18 +20,20 @@ export class ConnectionManager {
     }
   >()
 
-  private constructor() {}
-
   // Load persisted profiles (sync) during initialization
   private initializeProfiles() {
     try {
       const stored = readProfilesFromDiskSync()
       for (const [id, p] of Object.entries(stored)) {
-        this.profiles.set(id, p as any)
+        this.profiles.set(id, {
+          id,
+          name: p.name,
+          type: p.type as DatabaseType,
+          options: p.options
+        })
       }
     } catch (err) {
       // Non-fatal: continue with empty profiles
-      // eslint-disable-next-line no-console
       console.warn('Failed to load persisted profiles:', err)
     }
   }
