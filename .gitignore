@@ -7,3 +7,4 @@ out
 agent_plans/
 .tanstack
 package-lock.json
+.env
