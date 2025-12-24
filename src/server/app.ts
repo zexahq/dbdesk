@@ -1,15 +1,19 @@
 import type {
-  DBConnectionOptions,
+  ConnectionProfile,
   DatabaseType,
+  DBConnectionOptions,
   DeleteTableRowsOptions,
   QueryResultRow,
   TableDataOptions,
   UpdateTableCellOptions
 } from '@common/types'
+import { randomUUID } from 'crypto'
 import express, { type NextFunction, type Request, type Response } from 'express'
-import { listRegisteredAdapters } from '../main/adapters'
-import { ConnectionManager } from '../main/connectionManager'
+import { adapterRegistry, listRegisteredAdapters } from '../main/adapters'
+import { connectionManager, ConnectionManager } from '../main/connectionManager'
 import { deleteQuery, loadQueries, saveQuery, updateQuery } from '../main/saved-queries-storage'
+import { deleteProfile, getProfile, loadProfiles, saveProfile } from '../main/storage'
+import { ValidationError } from '../main/utils/errors'
 import { deleteWorkspace, loadWorkspace, saveWorkspace } from '../main/workspace-storage'
 
 const app = express()
@@ -37,9 +41,8 @@ app.get('/api/adapters', (_req: Request, res: Response) => {
 // Connections API
 // ============================================================================
 
-app.get('/api/connections', (_req: Request, res: Response) => {
-  const manager = ConnectionManager.getInstance()
-  const profiles = manager.listProfiles()
+app.get('/api/connections', async (_req: Request, res: Response) => {
+  const profiles = await loadProfiles()
   res.json(profiles)
 })
 
@@ -56,55 +59,108 @@ app.post('/api/connections', (req: Request, res: Response, next: NextFunction) =
       return
     }
 
-    const manager = ConnectionManager.getInstance()
-    const profile = manager.createProfile(name, type, options)
+    const now = new Date()
+    const profile = {
+      id: randomUUID(),
+      name,
+      type,
+      options,
+      createdAt: now,
+      updatedAt: now
+    } as ConnectionProfile
     res.status(201).json(profile)
   } catch (err) {
     next(err)
   }
 })
 
-app.get('/api/connections/:connectionId', (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const manager = ConnectionManager.getInstance()
-    const profile = manager.getProfile(req.params.connectionId)
+app.get(
+  '/api/connections/:connectionId',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const profile = await getProfile(req.params.connectionId)
 
-    if (!profile) {
-      res.status(404).json({ error: 'Connection not found' })
-      return
+      if (!profile) {
+        res.status(404).json({ error: 'Connection not found' })
+        return
+      }
+
+      res.json(profile)
+    } catch (err) {
+      next(err)
     }
-
-    res.json(profile)
-  } catch (err) {
-    next(err)
   }
-})
+)
 
-app.put('/api/connections/:connectionId', (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { name, type, options } = req.body as {
-      name: string
-      type: DatabaseType
-      options: DBConnectionOptions
+app.put(
+  '/api/connections/:connectionId',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { name, type, options } = req.body as {
+        name: string
+        type: DatabaseType
+        options: DBConnectionOptions
+      }
+
+      const connectionId = req.params.connectionId
+
+      if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+        res.status(400).json({ error: 'Missing required fields: connection id' })
+        return
+      }
+      if (!name || typeof name !== 'string' || name.trim() === '') {
+        res.status(400).json({ error: 'Missing required fields: name' })
+        return
+      }
+      if (!type || typeof type !== 'string') {
+        res.status(400).json({ error: 'Missing required fields: type' })
+        return
+      }
+      if (!options || typeof options !== 'object') {
+        res.status(400).json({ error: 'Missing required fields: options' })
+        return
+      }
+
+      const profiles = await loadProfiles()
+      const existingProfile = profiles.find((item) => item.id === connectionId)
+
+      if (!existingProfile) {
+        throw new ValidationError(`Connection profile "${connectionId}" not found`)
+      }
+
+      if (!adapterRegistry.getFactory(type)) {
+        throw new ValidationError(`Adapter "${type}" is not available`)
+      }
+
+      // If connection is active and options changed, we should reconnect
+      const isConnected = connectionManager.isConnected(connectionId)
+      const optionsChanged =
+        JSON.stringify(existingProfile.options) !== JSON.stringify(options) ||
+        existingProfile.type !== type
+
+      if (isConnected && optionsChanged) {
+        await connectionManager.closeConnection(connectionId).catch(() => {})
+      }
+
+      const profile = {
+        ...existingProfile,
+        name: name.trim(),
+        type,
+        options: options as ConnectionProfile['options'],
+        updatedAt: new Date()
+      } as ConnectionProfile
+
+      await saveProfile(profile)
+      res.json(profile)
+    } catch (err) {
+      next(err)
     }
-
-    if (!name || !type || !options) {
-      res.status(400).json({ error: 'Missing required fields: name, type, options' })
-      return
-    }
-
-    const manager = ConnectionManager.getInstance()
-    const profile = manager.updateProfile(req.params.connectionId, name, type, options)
-    res.json(profile)
-  } catch (err) {
-    next(err)
   }
-})
+)
 
 app.delete('/api/connections/:connectionId', (req: Request, res: Response, next: NextFunction) => {
   try {
-    const manager = ConnectionManager.getInstance()
-    manager.deleteProfile(req.params.connectionId)
+    deleteProfile(req.params.connectionId)
     res.json({ success: true })
   } catch (err) {
     next(err)
@@ -116,7 +172,7 @@ app.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const manager = ConnectionManager.getInstance()
-      const profile = manager.getProfile(req.params.connectionId)
+      const profile = await getProfile(req.params.connectionId)
 
       if (!profile) {
         res.status(404).json({ error: 'Connection not found' })
@@ -136,7 +192,7 @@ app.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const manager = ConnectionManager.getInstance()
-      await manager.disconnectConnection(req.params.connectionId)
+      await manager.closeConnection(req.params.connectionId)
       res.json({ success: true })
     } catch (err) {
       next(err)

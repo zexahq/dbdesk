@@ -38,7 +38,8 @@ export const dbdeskClient = {
   },
 
   async getConnection(connectionId: string): Promise<ConnectionProfile> {
-    return impl().getConnection(connectionId)
+    const profile = await impl().getConnection(connectionId)
+    return profile
   },
 
   async createConnection(

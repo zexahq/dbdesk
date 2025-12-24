@@ -138,7 +138,14 @@ export function useUpdateTableCell(connectionId?: string) {
       if (!connectionId) {
         throw new Error('Connection ID is required to update cell')
       }
-      return dbdeskClient.updateTableCell(connectionId, schema, table, columnToUpdate, newValue, row)
+      return dbdeskClient.updateTableCell(
+        connectionId,
+        schema,
+        table,
+        columnToUpdate,
+        newValue,
+        row
+      )
     }
   })
 }

@@ -71,6 +71,7 @@ export const loadProfiles = async (): Promise<ConnectionProfile[]> => {
 
 export const getProfile = async (profileId: string): Promise<ConnectionProfile | undefined> => {
   const profiles = await loadProfiles()
+
   const profile = profiles.find((profile) => profile.id === profileId)
 
   if (!profile) {
