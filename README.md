@@ -89,6 +89,31 @@ pnpm build:mac
 pnpm build:linux
 ```
 
+## Renderer API client (desktop vs web)
+
+The renderer uses a unified client (`@renderer/api/client.ts`) that hides whether it talks to the app via Electron IPC (desktop) or via HTTP (web).
+
+- Detection
+  - If `window.dbdesk` is present the client uses the preload IPC bridge (desktop mode).
+  - Otherwise the client falls back to HTTP calls to `/api/...` endpoints (web mode).
+  - You can force desktop mode in dev with `VITE_FORCE_DESKTOP=true`.
+
+- Environment variables
+  - `VITE_API_BASE_URL` — base URL to prefix HTTP requests (defaults to `''`)
+  - `VITE_FORCE_DESKTOP=true` — force desktop mode even if `window.dbdesk` is not present
+
+- Implementation
+  - Desktop mode → `window.dbdesk.*` → IPC → Electron main process → database adapters
+  - Web mode → `fetch('/api/...')` → HTTP Node.js API server → database adapters
+
+## Node.js API Server
+
+See [docs/SERVER.md](docs/SERVER.md) for complete documentation on running the standalone HTTP server.
+
+Quick start: `npm run dev:server` starts the server on `http://localhost:3000`.
+
+When running the renderer in dev (`npm run dev`), the Vite dev server proxies requests starting with `/api` to `http://localhost:3000` (see `electron.vite.config.ts`), so ensure the server is running before starting the renderer.
+
 ## 🔗 Connect
 
 Follow us on X: [@dbdesk](https://x.com/dbdesk)

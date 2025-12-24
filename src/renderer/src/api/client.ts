@@ -14,26 +14,31 @@ import type {
   UpdateTableCellResult
 } from '@common/types'
 
-function getDbdesk() {
-  if (typeof window === 'undefined' || !window.dbdesk) {
-    throw new Error(
-      'DBDesk preload API is not available. Ensure preload is loaded and contextIsolation is enabled.'
-    )
-  }
-  return window.dbdesk
+import { httpClient } from './http-client'
+
+function isDesktop(): boolean {
+  // Environment override: VITE_FORCE_DESKTOP=true forces desktop mode (useful for dev)
+  const force = (import.meta.env.VITE_FORCE_DESKTOP ?? '').toString().toLowerCase()
+  if (force === 'true' || force === '1') return true
+  return typeof window !== 'undefined' && !!(window as any).dbdesk
+}
+
+function impl(): any {
+  if (isDesktop()) return (window as any).dbdesk
+  return httpClient
 }
 
 export const dbdeskClient = {
   async getAdapters(): Promise<DatabaseType[]> {
-    return getDbdesk().getAdapters()
+    return impl().getAdapters()
   },
 
   async listConnections(): Promise<ConnectionProfile[]> {
-    return getDbdesk().listConnections()
+    return impl().listConnections()
   },
 
   async getConnection(connectionId: string): Promise<ConnectionProfile> {
-    return getDbdesk().getConnection(connectionId)
+    return impl().getConnection(connectionId)
   },
 
   async createConnection(
@@ -41,7 +46,7 @@ export const dbdeskClient = {
     type: DatabaseType,
     options: DBConnectionOptions
   ): Promise<ConnectionProfile> {
-    return getDbdesk().createConnection(name, type, options)
+    return impl().createConnection(name, type, options)
   },
 
   async updateConnection(
@@ -50,39 +55,39 @@ export const dbdeskClient = {
     type: DatabaseType,
     options: DBConnectionOptions
   ): Promise<ConnectionProfile> {
-    return getDbdesk().updateConnection(connectionId, name, type, options)
+    return impl().updateConnection(connectionId, name, type, options)
   },
 
   async connect(connectionId: string): Promise<{ success: boolean; connectionId?: string }> {
-    return getDbdesk().connect(connectionId)
+    return impl().connect(connectionId)
   },
 
   async disconnect(connectionId: string): Promise<{ success: boolean }> {
-    return getDbdesk().disconnect(connectionId)
+    return impl().disconnect(connectionId)
   },
 
   async deleteConnection(connectionId: string): Promise<{ success: boolean }> {
-    return getDbdesk().deleteConnection(connectionId)
+    return impl().deleteConnection(connectionId)
   },
 
   async runQuery(connectionId: string, query: string): Promise<QueryResult> {
-    return getDbdesk().runQuery(connectionId, query)
+    return impl().runQuery(connectionId, query)
   },
 
   async listSchemas(connectionId: string): Promise<string[]> {
-    return getDbdesk().listSchemas(connectionId)
+    return impl().listSchemas(connectionId)
   },
 
   async listTables(connectionId: string, schema: string): Promise<string[]> {
-    return getDbdesk().listTables(connectionId, schema)
+    return impl().listTables(connectionId, schema)
   },
 
   async listSchemasWithTables(connectionId: string): Promise<SchemaWithTables[]> {
-    return getDbdesk().listSchemasWithTables(connectionId)
+    return impl().listSchemasWithTables(connectionId)
   },
 
   async introspectTable(connectionId: string, schema: string, table: string): Promise<TableInfo> {
-    return getDbdesk().introspectTable(connectionId, schema, table)
+    return impl().introspectTable(connectionId, schema, table)
   },
 
   async fetchTableData(
@@ -91,7 +96,7 @@ export const dbdeskClient = {
     table: string,
     options?: Pick<TableDataOptions, 'limit' | 'offset' | 'sortRules' | 'filters'>
   ): Promise<TableDataResult> {
-    return getDbdesk().fetchTableData(connectionId, schema, table, options)
+    return impl().fetchTableData(connectionId, schema, table, options)
   },
 
   async deleteTableRows(
@@ -100,7 +105,7 @@ export const dbdeskClient = {
     table: string,
     rows: QueryResultRow[]
   ): Promise<DeleteTableRowsResult> {
-    return getDbdesk().deleteTableRows(connectionId, schema, table, rows)
+    return impl().deleteTableRows(connectionId, schema, table, rows)
   },
 
   async updateTableCell(
@@ -111,31 +116,31 @@ export const dbdeskClient = {
     newValue: unknown,
     row: QueryResultRow
   ): Promise<UpdateTableCellResult> {
-    return getDbdesk().updateTableCell(connectionId, schema, table, columnToUpdate, newValue, row)
+    return impl().updateTableCell(connectionId, schema, table, columnToUpdate, newValue, row)
   },
 
   async loadWorkspace(connectionId: string): Promise<ConnectionWorkspace | undefined> {
-    return getDbdesk().loadWorkspace(connectionId) as Promise<ConnectionWorkspace | undefined>
+    return impl().loadWorkspace(connectionId) as Promise<ConnectionWorkspace | undefined>
   },
 
   async saveWorkspace(workspace: ConnectionWorkspace): Promise<void> {
-    return getDbdesk().saveWorkspace(workspace)
+    return impl().saveWorkspace(workspace)
   },
 
   async deleteWorkspace(connectionId: string): Promise<void> {
-    return getDbdesk().deleteWorkspace(connectionId)
+    return impl().deleteWorkspace(connectionId)
   },
 
   async loadQueries(connectionId: string): Promise<SavedQuery[]> {
-    return getDbdesk().loadQueries(connectionId)
+    return impl().loadQueries(connectionId)
   },
 
   async saveQuery(connectionId: string, name: string, content: string): Promise<SavedQuery> {
-    return getDbdesk().saveQuery(connectionId, name, content)
+    return impl().saveQuery(connectionId, name, content)
   },
 
   async deleteQuery(connectionId: string, queryId: string): Promise<void> {
-    return getDbdesk().deleteQuery(connectionId, queryId)
+    return impl().deleteQuery(connectionId, queryId)
   },
 
   async updateQuery(
@@ -144,7 +149,7 @@ export const dbdeskClient = {
     name: string,
     content: string
   ): Promise<SavedQuery | undefined> {
-    return getDbdesk().updateQuery(connectionId, queryId, name, content)
+    return impl().updateQuery(connectionId, queryId, name, content)
   }
 }
 
