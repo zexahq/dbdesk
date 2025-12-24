@@ -1,10 +1,13 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { useDisconnect } from '@renderer/api/queries/connections'
+import { UnsavedChangesDialog } from '@renderer/components/sql/dialogs/unsaved-changes-dialog'
 import { Button } from '@renderer/components/ui/button'
+import { useTabCloseHandler } from '@renderer/hooks/use-tab-close-handler'
 import { cn } from '@renderer/lib/utils'
 import { saveCurrentWorkspace } from '@renderer/lib/workspace'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
-import { type QueryTab, useTabStore } from '@renderer/store/tab-store'
+import type { Tab } from '@renderer/store/tab-store'
+import { useTabStore } from '@renderer/store/tab-store'
 import { useRouter } from '@tanstack/react-router'
 import {
   PanelLeftClose,
@@ -33,28 +36,19 @@ export function WorkspaceTopbar({
   const tabs = useTabStore((s) => s.tabs)
   const activeTabId = useTabStore((s) => s.activeTabId)
   const setActiveTab = useTabStore((s) => s.setActiveTab)
-  const removeTab = useTabStore((s) => s.removeTab)
   const addQueryTab = useTabStore((s) => s.addQueryTab)
   const reset = useTabStore((s) => s.reset)
+  const isQueryTabDirty = useTabStore((s) => s.isQueryTabDirty)
 
   const { reset: resetWorkspace } = useSqlWorkspaceStore()
-
-  const isQueryTabDirty = (tab: QueryTab) => {
-    // Tab is dirty if it was previously saved and content changed
-    if (tab.lastSavedContent !== undefined) {
-      return tab.editorContent !== tab.lastSavedContent
-    }
-    // Or if it's unsaved but has content
-    return tab.editorContent.trim().length > 0
-  }
+  const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
 
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId)
   }
 
-  const handleCloseTab = (tabId: string, event: React.MouseEvent) => {
-    event.stopPropagation()
-    removeTab(tabId)
+  const handleCloseTab = (tab: Tab) => {
+    requestCloseTab(tab)
   }
 
   const handleAddQueryTab = () => {
@@ -120,7 +114,10 @@ export function WorkspaceTopbar({
                 {isDirty && <span className="size-2 rounded-full bg-white shrink-0" />}
                 <div
                   role="button"
-                  onClick={(e) => handleCloseTab(tab.id, e)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleCloseTab(tab)
+                  }}
                   className={cn(
                     'rounded-sm opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/20 p-0.5 transition-opacity',
                     isActive && 'opacity-100'
@@ -153,6 +150,8 @@ export function WorkspaceTopbar({
         <Unplug className="size-4" />
         <span className="sr-only">Disconnect</span>
       </Button>
+
+      <UnsavedChangesDialog {...dialogProps} />
     </div>
   )
 }

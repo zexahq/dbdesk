@@ -63,7 +63,6 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
     try {
       const data = await runQuery(query)
       updateQueryTab(activeTab.id, { queryResults: data })
-      toast.success('Query executed successfully')
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Failed to execute query')
       setExecutionError(err)
@@ -81,7 +80,6 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
     try {
       await updateQuery(profile.id, activeTab.id, savedQuery.name, activeTab.editorContent)
       updateQueryTab(activeTab.id, { lastSavedContent: activeTab.editorContent })
-      toast.success('Query saved')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save query')
     }
@@ -91,7 +89,6 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
     try {
       await saveQuery(profile.id, activeTab.id, name, activeTab.editorContent)
       updateQueryTab(activeTab.id, { name, lastSavedContent: activeTab.editorContent })
-      toast.success('Query saved successfully')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save query')
     }

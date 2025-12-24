@@ -37,7 +37,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   return (
     <>
       <SidebarProvider className="h-full">
-        <TabNavigation />
+        <TabNavigation profile={profile} />
         <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
           <ResizablePanel
             defaultSize={16}

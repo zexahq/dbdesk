@@ -64,6 +64,7 @@ interface TabStore {
   addQueryTab: () => string
   updateQueryTab: (tabId: string, updates: Partial<Omit<QueryTab, 'kind'>>) => void
   findQueryTabById: (tabId: string) => QueryTab | undefined
+  isQueryTabDirty: (tab: QueryTab) => boolean
 
   // Persistence
   loadFromSerialized: (tabs: SerializedTab[], activeTabId: string | null) => void
@@ -223,6 +224,15 @@ export const useTabStore = create<TabStore>((set, get) => ({
   findQueryTabById: (tabId: string) => {
     const tab = get().tabs.find((t) => t.id === tabId)
     return tab?.kind === 'query' ? tab : undefined
+  },
+
+  isQueryTabDirty: (tab: QueryTab) => {
+    // Tab is dirty if it was previously saved and content changed
+    if (tab.lastSavedContent !== undefined) {
+      return tab.editorContent !== tab.lastSavedContent
+    }
+    // Or if it's unsaved but has content
+    return tab.editorContent.trim().length > 0
   },
 
   // Persistence

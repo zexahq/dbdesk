@@ -1,12 +1,20 @@
 'use client'
 
+import type { SQLConnectionProfile } from '@common/types'
+import { UnsavedChangesDialog } from '@renderer/components/sql/dialogs/unsaved-changes-dialog'
+import { useTabCloseHandler } from '@renderer/hooks/use-tab-close-handler'
 import { useTabStore } from '@renderer/store/tab-store'
 import * as React from 'react'
 
+interface TabNavigationProps {
+  profile: SQLConnectionProfile
+}
+
 export const TabNavigation = React.memo(TabNavigationImpl, () => true)
 
-function TabNavigationImpl() {
-  const { tabs, activeTabId, removeTab, setActiveTab } = useTabStore()
+function TabNavigationImpl({ profile }: TabNavigationProps) {
+  const { tabs, activeTabId, getActiveTab, setActiveTab } = useTabStore()
+  const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -39,8 +47,9 @@ function TabNavigationImpl() {
         if (tabs.length <= 1) return
 
         event.preventDefault()
-        if (activeTabId) {
-          removeTab(activeTabId)
+        const activeTab = getActiveTab()
+        if (activeTab) {
+          requestCloseTab(activeTab)
         }
         return
       }
@@ -60,8 +69,7 @@ function TabNavigationImpl() {
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [tabs, activeTabId, removeTab, setActiveTab])
+  }, [tabs, activeTabId, getActiveTab, setActiveTab, requestCloseTab])
 
-  // This component doesn't render anything, it just handles keyboard shortcuts
-  return null
+  return <UnsavedChangesDialog {...dialogProps} />
 }
