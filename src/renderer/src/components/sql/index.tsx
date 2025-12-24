@@ -1,5 +1,6 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { useSchemasWithTables } from '@renderer/api/queries/schema'
+import { UnsavedChangesDialog } from '@renderer/components/sql/dialogs/unsaved-changes-dialog'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -7,6 +8,7 @@ import {
 } from '@renderer/components/ui/resizable'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import { cn } from '@renderer/lib/utils'
+import { useTabCloseHandler } from '@renderer/hooks/use-tab-close-handler'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useEffect, useState } from 'react'
@@ -23,6 +25,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   const activeTab = getActiveTab()
+  const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
 
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
 
@@ -37,7 +40,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   return (
     <>
       <SidebarProvider className="h-full">
-        <TabNavigation profile={profile} />
+        <TabNavigation profile={profile} requestCloseTab={requestCloseTab} />
         <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
           <ResizablePanel
             defaultSize={16}
@@ -51,10 +54,11 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
           <ResizablePanel>
             <SidebarInset className="flex h-full flex-col overflow-hidden">
               <WorkspaceTopbar
-                profile={profile}
-                isSidebarOpen={isSidebarOpen}
-                onSidebarOpenChange={setIsSidebarOpen}
-              />
+                 profile={profile}
+                 isSidebarOpen={isSidebarOpen}
+                 onSidebarOpenChange={setIsSidebarOpen}
+                 requestCloseTab={requestCloseTab}
+               />
 
               {/* No tab open - empty state */}
               {!activeTab ? (
@@ -73,6 +77,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
           </ResizablePanel>
         </ResizablePanelGroup>
       </SidebarProvider>
+      <UnsavedChangesDialog {...dialogProps} />
     </>
   )
 }

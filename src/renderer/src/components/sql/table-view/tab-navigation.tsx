@@ -1,20 +1,17 @@
 'use client'
 
 import type { SQLConnectionProfile } from '@common/types'
-import { UnsavedChangesDialog } from '@renderer/components/sql/dialogs/unsaved-changes-dialog'
-import { useTabCloseHandler } from '@renderer/hooks/use-tab-close-handler'
+import type { Tab } from '@renderer/store/tab-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import * as React from 'react'
 
 interface TabNavigationProps {
   profile: SQLConnectionProfile
+  requestCloseTab: (tab: Tab) => void
 }
 
-export const TabNavigation = React.memo(TabNavigationImpl, () => true)
-
-function TabNavigationImpl({ profile }: TabNavigationProps) {
+export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
   const { tabs, activeTabId, getActiveTab, setActiveTab } = useTabStore()
-  const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -71,5 +68,5 @@ function TabNavigationImpl({ profile }: TabNavigationProps) {
     }
   }, [tabs, activeTabId, getActiveTab, setActiveTab, requestCloseTab])
 
-  return <UnsavedChangesDialog {...dialogProps} />
+  return null
 }

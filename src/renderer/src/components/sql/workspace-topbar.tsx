@@ -1,8 +1,6 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { useDisconnect } from '@renderer/api/queries/connections'
-import { UnsavedChangesDialog } from '@renderer/components/sql/dialogs/unsaved-changes-dialog'
 import { Button } from '@renderer/components/ui/button'
-import { useTabCloseHandler } from '@renderer/hooks/use-tab-close-handler'
 import { cn } from '@renderer/lib/utils'
 import { saveCurrentWorkspace } from '@renderer/lib/workspace'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
@@ -23,12 +21,14 @@ interface WorkspaceTopbarProps {
   profile: SQLConnectionProfile
   isSidebarOpen: boolean
   onSidebarOpenChange: (open: boolean) => void
+  requestCloseTab: (tab: Tab) => void
 }
 
 export function WorkspaceTopbar({
   profile,
   isSidebarOpen,
-  onSidebarOpenChange
+  onSidebarOpenChange,
+  requestCloseTab
 }: WorkspaceTopbarProps) {
   const router = useRouter()
   const { mutate: disconnect, isPending: isDisconnecting } = useDisconnect()
@@ -41,7 +41,6 @@ export function WorkspaceTopbar({
   const isQueryTabDirty = useTabStore((s) => s.isQueryTabDirty)
 
   const { reset: resetWorkspace } = useSqlWorkspaceStore()
-  const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
 
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId)
@@ -150,8 +149,6 @@ export function WorkspaceTopbar({
         <Unplug className="size-4" />
         <span className="sr-only">Disconnect</span>
       </Button>
-
-      <UnsavedChangesDialog {...dialogProps} />
     </div>
   )
 }
