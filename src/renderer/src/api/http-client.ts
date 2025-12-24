@@ -179,10 +179,15 @@ export const httpClient = {
     return request<SavedQuery[]>(`/api/connections/${connectionId}/queries`)
   },
 
-  async saveQuery(connectionId: string, name: string, content: string): Promise<SavedQuery> {
+  async saveQuery(
+    connectionId: string,
+    id: string,
+    name: string,
+    content: string
+  ): Promise<SavedQuery> {
     return request<SavedQuery>(`/api/connections/${connectionId}/queries`, {
       method: 'POST',
-      body: JSON.stringify({ name, content })
+      body: JSON.stringify({ connectionId, id, name, content })
     })
   },
 

@@ -474,15 +474,19 @@ app.post(
   '/api/connections/:connectionId/queries',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, content } = req.body as { name: string; content: string }
+      const { connectionId, id, name, content } = req.body as {
+        connectionId: string
+        id: string
+        name: string
+        content: string
+      }
 
       if (!name || !content) {
         res.status(400).json({ error: 'Missing required fields: name, content' })
         return
       }
 
-      // Generate an id for the saved query and persist
-      const id = `query_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+      console.log('Saving query with id:', connectionId, id, name, content)
       const query = await saveQuery(req.params.connectionId, id, name, content)
       res.status(201).json(query)
     } catch (err) {

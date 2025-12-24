@@ -9,7 +9,12 @@ interface SavedQueriesStore {
 
   // Actions
   loadQueries: (connectionId: string) => Promise<void>
-  saveQuery: (connectionId: string, id: string, name: string, content: string) => Promise<SavedQuery>
+  saveQuery: (
+    connectionId: string,
+    id: string,
+    name: string,
+    content: string
+  ) => Promise<SavedQuery>
   deleteQuery: (connectionId: string, queryId: string) => Promise<void>
   updateQuery: (
     connectionId: string,
@@ -64,12 +69,7 @@ export const useSavedQueriesStore = create<SavedQueriesStore>((set) => ({
     }
   },
 
-  updateQuery: async (
-    connectionId: string,
-    queryId: string,
-    name: string,
-    content: string
-  ) => {
+  updateQuery: async (connectionId: string, queryId: string, name: string, content: string) => {
     try {
       const query = await dbdeskClient.updateQuery(connectionId, queryId, name, content)
 
