@@ -362,7 +362,12 @@ export const dbdeskAPI = {
   /**
    * Save a new query for a connection
    */
-  async saveQuery(connectionId: string, id: string, name: string, content: string): Promise<SavedQuery> {
+  async saveQuery(
+    connectionId: string,
+    id: string,
+    name: string,
+    content: string
+  ): Promise<SavedQuery> {
     if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
       throw new Error('Connection ID is required')
     }

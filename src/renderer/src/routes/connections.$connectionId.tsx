@@ -46,5 +46,5 @@ function ConnectionPage() {
     )
   }
 
-  return <div className="p-6">Unsupported database type.</div>
+  return <div className="p-6">{`Unsupported database type : ${profile.type}`}</div>
 }

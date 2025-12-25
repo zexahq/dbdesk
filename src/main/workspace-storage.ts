@@ -1,6 +1,7 @@
 import type { ConnectionWorkspace, WorkspaceStorage } from '@common/types'
 import { app } from 'electron'
 import { promises as fs } from 'node:fs'
+import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 const WORKSPACE_FILENAME = 'workspaces.json'
@@ -13,7 +14,20 @@ type StoredWorkspaceStorage = {
   [connectionId: string]: StoredWorkspace
 }
 
-const getWorkspaceStoragePath = (): string => join(app.getPath('userData'), WORKSPACE_FILENAME)
+const getWorkspaceStoragePath = (): string => {
+  // In Electron runtime use app.getPath('userData'); when running in plain Node (API server),
+  // fall back to a sensible directory (HOME or DB_DESK_USER_DATA override).
+  try {
+    if (app && typeof app.getPath === 'function') {
+      return join(app.getPath('userData'), WORKSPACE_FILENAME)
+    }
+  } catch {
+    // ignore and use fallback
+  }
+
+  const base = process.env.DB_DESK_USER_DATA ?? homedir()
+  return join(base, '.dbdesk', WORKSPACE_FILENAME)
+}
 
 const serializeWorkspace = (workspace: ConnectionWorkspace): StoredWorkspace => ({
   ...workspace,

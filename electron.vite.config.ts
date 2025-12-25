@@ -84,6 +84,15 @@ export default defineConfig({
         '@common': resolve('src/common')
       }
     },
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false
+        }
+      }
+    },
     plugins: [
       monacoSelectiveLanguageRegistration(),
       monacoLanguageFilter(),

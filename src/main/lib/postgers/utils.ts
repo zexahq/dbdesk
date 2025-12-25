@@ -4,6 +4,10 @@ import type { SqlParameter, TableFilterCondition, TableFilterIsValue } from '@co
  * Escapes and quotes an identifier for safe use in SQL queries
  */
 export function quoteIdentifier(identifier: string): string {
+  if (typeof identifier !== 'string' || identifier.length === 0) {
+    throw new Error(`Invalid SQL identifier: ${String(identifier)}`)
+  }
+
   return `"${identifier.replace(/"/g, '""')}"`
 }
 

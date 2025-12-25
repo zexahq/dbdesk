@@ -31,7 +31,7 @@ export class AdapterRegistry {
   public registerAdapter<TOptions extends DBConnectionOptions>(
     type: DatabaseType,
     factory: AdapterFactory<TOptions>
-  ): void {
+  ) {
     this.factories.set(type, factory as AdapterFactory)
   }
 

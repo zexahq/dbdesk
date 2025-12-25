@@ -1,7 +1,8 @@
-import { promises as fs } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { app } from 'electron'
 import type { ConnectionProfile } from '@common/types'
+import { app } from 'electron'
+import { promises as fs } from 'node:fs'
+import { homedir } from 'node:os'
+import { dirname, join } from 'node:path'
 
 const STORAGE_FILENAME = 'connections.json'
 
@@ -14,7 +15,18 @@ type StoredConnectionProfile = Omit<
   lastConnectedAt?: string
 }
 
-const getStoragePath = (): string => join(app.getPath('userData'), STORAGE_FILENAME)
+const getStoragePath = (): string => {
+  try {
+    if (app && typeof app.getPath === 'function') {
+      return join(app.getPath('userData'), STORAGE_FILENAME)
+    }
+  } catch {
+    // ignore and use fallback path
+  }
+
+  const base = process.env.DB_DESK_USER_DATA ?? homedir()
+  return join(base, '.dbdesk', STORAGE_FILENAME)
+}
 
 const serializeProfile = (profile: ConnectionProfile): StoredConnectionProfile => ({
   ...profile,
@@ -59,6 +71,7 @@ export const loadProfiles = async (): Promise<ConnectionProfile[]> => {
 
 export const getProfile = async (profileId: string): Promise<ConnectionProfile | undefined> => {
   const profiles = await loadProfiles()
+
   const profile = profiles.find((profile) => profile.id === profileId)
 
   if (!profile) {
