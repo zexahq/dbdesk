@@ -6,8 +6,6 @@ import type {
   TableFilterCondition,
   TableSortRule
 } from '@common/types'
-import type { CellPosition, UpdateCell } from '@renderer/types/data-table'
-import type { ColumnSizingState, RowSelectionState, VisibilityState } from '@tanstack/react-table'
 import { create } from 'zustand'
 
 export interface BaseTab {
@@ -25,12 +23,6 @@ export interface TableTab extends BaseTab {
   offset: number
   filters?: TableFilterCondition[]
   sortRules?: TableSortRule[]
-  rowSelection: RowSelectionState
-  columnSizing: ColumnSizingState
-  columnVisibility: VisibilityState
-  focusedCell: CellPosition | null
-  editingCell: CellPosition | null
-  pendingUpdates: UpdateCell[]
 }
 
 export interface QueryTab extends BaseTab {
@@ -81,13 +73,7 @@ const createDefaultTableTab = (schema: string, table: string, isTemporary = true
   limit: 50,
   offset: 0,
   filters: undefined,
-  sortRules: undefined,
-  rowSelection: {},
-  columnSizing: {},
-  columnVisibility: {},
-  focusedCell: null,
-  editingCell: null,
-  pendingUpdates: []
+  sortRules: undefined
 })
 
 const createDefaultQueryTab = (): QueryTab => ({
@@ -161,6 +147,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     const temporaryTableTab = get().tabs.find((t) => t.kind === 'table' && t.isTemporary)
 
     if (temporaryTableTab) {
+      console.log('temporaryTableTab', temporaryTableTab)
       const newTab = createDefaultTableTab(schema, table, true)
       set((state) => ({
         tabs: state.tabs.map((t) => (t.id === temporaryTableTab.id ? newTab : t)),
@@ -170,6 +157,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     }
 
     const newTab = createDefaultTableTab(schema, table, true)
+    console.log('newTab', newTab)
     set((state) => ({
       tabs: [...state.tabs, newTab],
       activeTabId: tabId
@@ -240,13 +228,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     const tabs: Tab[] = serializedTabs.map((serializedTab) => {
       if (serializedTab.kind === 'table') {
         return {
-          ...serializedTab,
-          rowSelection: {},
-          columnSizing: {},
-          columnVisibility: {},
-          focusedCell: null,
-          editingCell: null,
-          pendingUpdates: []
+          ...serializedTab
         } as TableTab
       } else {
         return {

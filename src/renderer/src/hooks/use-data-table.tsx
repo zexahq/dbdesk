@@ -1,142 +1,53 @@
 'use client'
 
-import { TableTab, useTabStore } from '@renderer/store/tab-store'
 import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/types/data-table'
 import {
   type ColumnDef,
   getCoreRowModel,
+  type OnChangeFn,
   type RowSelectionState,
   type TableOptions,
   type Updater,
   useReactTable
 } from '@tanstack/react-table'
 import * as React from 'react'
+import { useState } from 'react'
 
 import type { QueryResultRow } from '@renderer/api/client'
+import type { VisibilityState } from '@tanstack/react-table'
+export type { VisibilityState }
 
 interface UseDataTableProps<TData, TValue = unknown>
   extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
-  activeTab: TableTab
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
+  rowSelection: RowSelectionState
+  onRowSelectionChange: OnChangeFn<RowSelectionState>
+  columnVisibility: VisibilityState
+  onColumnVisibilityChange: OnChangeFn<VisibilityState>
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
 
 export function useDataTable<TData, TValue = unknown>({
-  activeTab,
   columns,
   data,
   onCellUpdate,
+  rowSelection,
+  onRowSelectionChange,
+  columnVisibility,
+  onColumnVisibilityChange,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = React.useRef<HTMLDivElement>(null)
   const tableRef = React.useRef<ReturnType<typeof useReactTable<TData>>>(null)
   const rowMapRef = React.useRef<Map<number, HTMLTableRowElement>>(new Map())
 
-  // Get tab-specific state from tab store
-  const updateTableTab = useTabStore((state) => state.updateTableTab)
-
-  const {
-    id: tabId,
-    rowSelection,
-    columnSizing,
-    columnVisibility,
-    pendingUpdates
-  } = activeTab
-
-  // LOCAL state for focusedCell and editingCell to avoid Zustand re-renders
-  // Initialize from activeTab but manage locally
-  const [focusedCell, setFocusedCellLocal] = React.useState<CellPosition | null>(
-    activeTab.focusedCell
-  )
-  const [editingCell, setEditingCellLocal] = React.useState<CellPosition | null>(
-    activeTab.editingCell
-  )
-
-  // Sync local state back to store only when needed (on unmount or tab change)
-  const focusedCellRef = React.useRef(focusedCell)
-  const editingCellRef = React.useRef(editingCell)
-  focusedCellRef.current = focusedCell
-  editingCellRef.current = editingCell
-
-  // Sync to store on unmount
-  React.useEffect(() => {
-    return () => {
-      updateTableTab(tabId, {
-        focusedCell: focusedCellRef.current,
-        editingCell: editingCellRef.current
-      })
-    }
-  }, [tabId, updateTableTab])
-
-  // Reset local state when tab changes
-  const prevTabIdRef = React.useRef(tabId)
-  React.useEffect(() => {
-    if (prevTabIdRef.current !== tabId) {
-      setFocusedCellLocal(activeTab.focusedCell)
-      setEditingCellLocal(activeTab.editingCell)
-      prevTabIdRef.current = tabId
-    }
-  }, [tabId, activeTab.focusedCell, activeTab.editingCell])
-
-  // Stable setters for local state
-  const setFocusedCell = React.useCallback((cell: CellPosition | null) => {
-    setFocusedCellLocal(cell)
-  }, [])
-
-  const setEditingCell = React.useCallback((cell: CellPosition | null) => {
-    setEditingCellLocal(cell)
-  }, [])
-
-  // Setters that update tab state - use functional updates to avoid stale closures
-  const setRowSelection = React.useCallback(
-    (selection: RowSelectionState | ((prev: RowSelectionState) => RowSelectionState)) => {
-      updateTableTab(tabId, {
-        rowSelection:
-          typeof selection === 'function' ? selection(activeTab.rowSelection) : selection
-      })
-    },
-    [tabId, updateTableTab, activeTab.rowSelection]
-  )
-
-  const setColumnSizing = React.useCallback(
-    (sizing: typeof columnSizing | ((prev: typeof columnSizing) => typeof columnSizing)) => {
-      updateTableTab(tabId, {
-        columnSizing: typeof sizing === 'function' ? sizing(activeTab.columnSizing) : sizing
-      })
-    },
-    [tabId, updateTableTab, activeTab.columnSizing]
-  )
-
-  const setColumnVisibility = React.useCallback(
-    (
-      visibility:
-        | typeof columnVisibility
-        | ((prev: typeof columnVisibility) => typeof columnVisibility)
-    ) => {
-      updateTableTab(tabId, {
-        columnVisibility:
-          typeof visibility === 'function' ? visibility(activeTab.columnVisibility) : visibility
-      })
-    },
-    [tabId, updateTableTab, activeTab.columnVisibility]
-  )
-
-  // Use ref for pendingUpdates to avoid callback recreation
-  const pendingUpdatesRef = React.useRef(pendingUpdates)
-  pendingUpdatesRef.current = pendingUpdates
-
-  const setPendingUpdates = React.useCallback(
-    (updates: UpdateCell[] | ((prev: UpdateCell[]) => UpdateCell[])) => {
-      updateTableTab(tabId, {
-        pendingUpdates:
-          typeof updates === 'function' ? updates(pendingUpdatesRef.current) : updates
-      })
-    },
-    [tabId, updateTableTab]
-  )
+  // All state is local - no Zustand syncing for ephemeral UI state
+  const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
+  const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
+  const [columnSizing, setColumnSizing] = useState<Record<string, number>>({})
 
   // Get column IDs
   const columnIds = React.useMemo(() => {
@@ -155,13 +66,21 @@ export function useDataTable<TData, TValue = unknown>({
   }, [columnIds])
 
   // Handle row selection change (keep separate from cell selection)
-  const onRowSelectionChange = React.useCallback(
+  const handleRowSelectionChange = React.useCallback(
     (updater: Updater<RowSelectionState>) => {
-      setRowSelection((currentRowSelection) => {
-        return typeof updater === 'function' ? updater(currentRowSelection) : updater
-      })
+      const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater
+      onRowSelectionChange(newSelection)
     },
-    [setRowSelection]
+    [rowSelection, onRowSelectionChange]
+  )
+
+  // Handle column visibility change
+  const handleColumnVisibilityChange = React.useCallback(
+    (updater: Updater<VisibilityState>) => {
+      const newVisibility = typeof updater === 'function' ? updater(columnVisibility) : updater
+      onColumnVisibilityChange(newVisibility)
+    },
+    [columnVisibility, onColumnVisibilityChange]
   )
 
   // Table instance
@@ -181,8 +100,8 @@ export function useDataTable<TData, TValue = unknown>({
       rowSelection
     },
     onColumnSizingChange: setColumnSizing,
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange
+    onColumnVisibilityChange: handleColumnVisibilityChange,
+    onRowSelectionChange: handleRowSelectionChange
   })
 
   if (!tableRef.current) {
@@ -413,9 +332,10 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Stop editing cell - use ref to avoid stale closure
-  const onCellEditingStopRef = React.useRef<
-    (opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => void
-  >(null)
+  const onCellEditingStopRef =
+    React.useRef<(opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => void>(
+      null
+    )
 
   onCellEditingStopRef.current = (opts?: {
     moveToNextRow?: boolean
@@ -460,9 +380,6 @@ export function useDataTable<TData, TValue = unknown>({
 
       if (updateArray.length === 0) return
 
-      // Store updates in pendingUpdates for future UI
-      setPendingUpdates((prev) => [...prev, ...updateArray])
-
       // If onCellUpdate is provided and this is a single cell update, call it
       if (onCellUpdate && updateArray.length === 1) {
         const update = updateArray[0]
@@ -476,7 +393,7 @@ export function useDataTable<TData, TValue = unknown>({
         }
       }
     },
-    [onCellUpdate, setPendingUpdates]
+    [onCellUpdate, tableRef2]
   )
 
   // Handle cell click - only focuses, never starts editing
@@ -606,7 +523,6 @@ export function useDataTable<TData, TValue = unknown>({
     editingCell,
     columnSizing,
     columnVisibility,
-    pendingUpdates,
     columnIds,
     onCellClick,
     onCellDoubleClick,
