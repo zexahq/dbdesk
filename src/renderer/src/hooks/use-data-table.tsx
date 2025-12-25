@@ -40,45 +40,74 @@ export function useDataTable<TData, TValue = unknown>({
 
   const {
     id: tabId,
-    focusedCell,
-    editingCell,
     rowSelection,
     columnSizing,
     columnVisibility,
     pendingUpdates
   } = activeTab
 
-  // Setters that update tab state
-  const setFocusedCell = React.useCallback(
-    (cell: CellPosition | null) => {
-      updateTableTab(tabId, { focusedCell: cell })
-    },
-    [tabId, updateTableTab]
+  // LOCAL state for focusedCell and editingCell to avoid Zustand re-renders
+  // Initialize from activeTab but manage locally
+  const [focusedCell, setFocusedCellLocal] = React.useState<CellPosition | null>(
+    activeTab.focusedCell
+  )
+  const [editingCell, setEditingCellLocal] = React.useState<CellPosition | null>(
+    activeTab.editingCell
   )
 
-  const setEditingCell = React.useCallback(
-    (cell: CellPosition | null) => {
-      updateTableTab(tabId, { editingCell: cell })
-    },
-    [tabId, updateTableTab]
-  )
+  // Sync local state back to store only when needed (on unmount or tab change)
+  const focusedCellRef = React.useRef(focusedCell)
+  const editingCellRef = React.useRef(editingCell)
+  focusedCellRef.current = focusedCell
+  editingCellRef.current = editingCell
 
+  // Sync to store on unmount
+  React.useEffect(() => {
+    return () => {
+      updateTableTab(tabId, {
+        focusedCell: focusedCellRef.current,
+        editingCell: editingCellRef.current
+      })
+    }
+  }, [tabId, updateTableTab])
+
+  // Reset local state when tab changes
+  const prevTabIdRef = React.useRef(tabId)
+  React.useEffect(() => {
+    if (prevTabIdRef.current !== tabId) {
+      setFocusedCellLocal(activeTab.focusedCell)
+      setEditingCellLocal(activeTab.editingCell)
+      prevTabIdRef.current = tabId
+    }
+  }, [tabId, activeTab.focusedCell, activeTab.editingCell])
+
+  // Stable setters for local state
+  const setFocusedCell = React.useCallback((cell: CellPosition | null) => {
+    setFocusedCellLocal(cell)
+  }, [])
+
+  const setEditingCell = React.useCallback((cell: CellPosition | null) => {
+    setEditingCellLocal(cell)
+  }, [])
+
+  // Setters that update tab state - use functional updates to avoid stale closures
   const setRowSelection = React.useCallback(
     (selection: RowSelectionState | ((prev: RowSelectionState) => RowSelectionState)) => {
       updateTableTab(tabId, {
-        rowSelection: typeof selection === 'function' ? selection(rowSelection) : selection
+        rowSelection:
+          typeof selection === 'function' ? selection(activeTab.rowSelection) : selection
       })
     },
-    [tabId, updateTableTab, rowSelection]
+    [tabId, updateTableTab, activeTab.rowSelection]
   )
 
   const setColumnSizing = React.useCallback(
     (sizing: typeof columnSizing | ((prev: typeof columnSizing) => typeof columnSizing)) => {
       updateTableTab(tabId, {
-        columnSizing: typeof sizing === 'function' ? sizing(columnSizing) : sizing
+        columnSizing: typeof sizing === 'function' ? sizing(activeTab.columnSizing) : sizing
       })
     },
-    [tabId, updateTableTab, columnSizing]
+    [tabId, updateTableTab, activeTab.columnSizing]
   )
 
   const setColumnVisibility = React.useCallback(
@@ -89,19 +118,24 @@ export function useDataTable<TData, TValue = unknown>({
     ) => {
       updateTableTab(tabId, {
         columnVisibility:
-          typeof visibility === 'function' ? visibility(columnVisibility) : visibility
+          typeof visibility === 'function' ? visibility(activeTab.columnVisibility) : visibility
       })
     },
-    [tabId, updateTableTab, columnVisibility]
+    [tabId, updateTableTab, activeTab.columnVisibility]
   )
+
+  // Use ref for pendingUpdates to avoid callback recreation
+  const pendingUpdatesRef = React.useRef(pendingUpdates)
+  pendingUpdatesRef.current = pendingUpdates
 
   const setPendingUpdates = React.useCallback(
     (updates: UpdateCell[] | ((prev: UpdateCell[]) => UpdateCell[])) => {
       updateTableTab(tabId, {
-        pendingUpdates: typeof updates === 'function' ? updates(pendingUpdates) : updates
+        pendingUpdates:
+          typeof updates === 'function' ? updates(pendingUpdatesRef.current) : updates
       })
     },
-    [tabId, updateTableTab, pendingUpdates]
+    [tabId, updateTableTab]
   )
 
   // Get column IDs
@@ -279,92 +313,95 @@ export function useDataTable<TData, TValue = unknown>({
     [setFocusedCell, setEditingCell, scrollCellIntoView]
   )
 
-  // Navigate cell
-  const navigateCell = React.useCallback(
-    (direction: NavigationDirection) => {
-      if (!focusedCell) return
+  // Navigate cell - use refs for state to avoid recreating callback
+  const navigateCellRef = React.useRef<(direction: NavigationDirection) => void>(null)
 
-      const { rowIndex, columnId } = focusedCell
-      const currentColIndex = navigableColumnIds.indexOf(columnId)
-      const rows = table.getRowModel().rows
-      const rowCount = rows.length
+  navigateCellRef.current = (direction: NavigationDirection) => {
+    if (!focusedCell) return
 
-      let newRowIndex = rowIndex
-      let newColumnId = columnId
+    const { rowIndex, columnId } = focusedCell
+    const currentColIndex = navigableColumnIds.indexOf(columnId)
+    const rows = table.getRowModel().rows
+    const rowCount = rows.length
 
-      switch (direction) {
-        case 'up':
-          newRowIndex = Math.max(0, rowIndex - 1)
-          break
-        case 'down':
-          newRowIndex = Math.min(rowCount - 1, rowIndex + 1)
-          break
-        case 'left':
-          if (currentColIndex > 0) {
-            const prevColumnId = navigableColumnIds[currentColIndex - 1]
-            if (prevColumnId) newColumnId = prevColumnId
-          }
-          break
-        case 'right':
-          if (currentColIndex < navigableColumnIds.length - 1) {
-            const nextColumnId = navigableColumnIds[currentColIndex + 1]
-            if (nextColumnId) newColumnId = nextColumnId
-          }
-          break
-        case 'home':
-          if (navigableColumnIds.length > 0) {
-            newColumnId = navigableColumnIds[0] ?? columnId
-          }
-          break
-        case 'end':
-          if (navigableColumnIds.length > 0) {
-            newColumnId = navigableColumnIds[navigableColumnIds.length - 1] ?? columnId
-          }
-          break
-        case 'ctrl+home':
-          newRowIndex = 0
-          if (navigableColumnIds.length > 0) {
-            newColumnId = navigableColumnIds[0] ?? columnId
-          }
-          break
-        case 'ctrl+end':
-          newRowIndex = Math.max(0, rowCount - 1)
-          if (navigableColumnIds.length > 0) {
-            newColumnId = navigableColumnIds[navigableColumnIds.length - 1] ?? columnId
-          }
-          break
-        case 'pageup': {
-          const container = tableContainerRef.current
-          if (container) {
-            const containerHeight = container.clientHeight
-            const rowHeight = 40 // Approximate row height, can be made dynamic
-            const pageSize = Math.floor(containerHeight / rowHeight) || 10
-            newRowIndex = Math.max(0, rowIndex - pageSize)
-          } else {
-            newRowIndex = Math.max(0, rowIndex - 10)
-          }
-          break
+    let newRowIndex = rowIndex
+    let newColumnId = columnId
+
+    switch (direction) {
+      case 'up':
+        newRowIndex = Math.max(0, rowIndex - 1)
+        break
+      case 'down':
+        newRowIndex = Math.min(rowCount - 1, rowIndex + 1)
+        break
+      case 'left':
+        if (currentColIndex > 0) {
+          const prevColumnId = navigableColumnIds[currentColIndex - 1]
+          if (prevColumnId) newColumnId = prevColumnId
         }
-        case 'pagedown': {
-          const container = tableContainerRef.current
-          if (container) {
-            const containerHeight = container.clientHeight
-            const rowHeight = 40 // Approximate row height, can be made dynamic
-            const pageSize = Math.floor(containerHeight / rowHeight) || 10
-            newRowIndex = Math.min(rowCount - 1, rowIndex + pageSize)
-          } else {
-            newRowIndex = Math.min(rowCount - 1, rowIndex + 10)
-          }
-          break
+        break
+      case 'right':
+        if (currentColIndex < navigableColumnIds.length - 1) {
+          const nextColumnId = navigableColumnIds[currentColIndex + 1]
+          if (nextColumnId) newColumnId = nextColumnId
         }
+        break
+      case 'home':
+        if (navigableColumnIds.length > 0) {
+          newColumnId = navigableColumnIds[0] ?? columnId
+        }
+        break
+      case 'end':
+        if (navigableColumnIds.length > 0) {
+          newColumnId = navigableColumnIds[navigableColumnIds.length - 1] ?? columnId
+        }
+        break
+      case 'ctrl+home':
+        newRowIndex = 0
+        if (navigableColumnIds.length > 0) {
+          newColumnId = navigableColumnIds[0] ?? columnId
+        }
+        break
+      case 'ctrl+end':
+        newRowIndex = Math.max(0, rowCount - 1)
+        if (navigableColumnIds.length > 0) {
+          newColumnId = navigableColumnIds[navigableColumnIds.length - 1] ?? columnId
+        }
+        break
+      case 'pageup': {
+        const container = tableContainerRef.current
+        if (container) {
+          const containerHeight = container.clientHeight
+          const rowHeight = 40 // Approximate row height, can be made dynamic
+          const pageSize = Math.floor(containerHeight / rowHeight) || 10
+          newRowIndex = Math.max(0, rowIndex - pageSize)
+        } else {
+          newRowIndex = Math.max(0, rowIndex - 10)
+        }
+        break
       }
+      case 'pagedown': {
+        const container = tableContainerRef.current
+        if (container) {
+          const containerHeight = container.clientHeight
+          const rowHeight = 40 // Approximate row height, can be made dynamic
+          const pageSize = Math.floor(containerHeight / rowHeight) || 10
+          newRowIndex = Math.min(rowCount - 1, rowIndex + pageSize)
+        } else {
+          newRowIndex = Math.min(rowCount - 1, rowIndex + 10)
+        }
+        break
+      }
+    }
 
-      if (newRowIndex !== rowIndex || newColumnId !== columnId) {
-        focusCell(newRowIndex, newColumnId, direction)
-      }
-    },
-    [focusedCell, navigableColumnIds, table, focusCell]
-  )
+    if (newRowIndex !== rowIndex || newColumnId !== columnId) {
+      focusCell(newRowIndex, newColumnId, direction)
+    }
+  }
+
+  const navigateCell = React.useCallback((direction: NavigationDirection) => {
+    navigateCellRef.current?.(direction)
+  }, [])
 
   // Start editing cell
   const onCellEditingStart = React.useCallback(
@@ -375,34 +412,48 @@ export function useDataTable<TData, TValue = unknown>({
     [setFocusedCell, setEditingCell]
   )
 
-  // Stop editing cell
-  const onCellEditingStop = React.useCallback(
-    (opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => {
-      setEditingCell(null)
+  // Stop editing cell - use ref to avoid stale closure
+  const onCellEditingStopRef = React.useRef<
+    (opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => void
+  >(null)
 
-      if (opts?.moveToNextRow && focusedCell) {
-        const { rowIndex, columnId } = focusedCell
-        const rows = table.getRowModel().rows
-        const rowCount = rows.length
+  onCellEditingStopRef.current = (opts?: {
+    moveToNextRow?: boolean
+    direction?: NavigationDirection
+  }) => {
+    setEditingCell(null)
 
-        const nextRowIndex = rowIndex + 1
-        if (nextRowIndex < rowCount) {
-          requestAnimationFrame(() => {
-            focusCell(nextRowIndex, columnId)
-          })
-        }
-      } else if (opts?.direction && focusedCell) {
-        const { rowIndex, columnId } = focusedCell
-        focusCell(rowIndex, columnId)
+    if (opts?.moveToNextRow && focusedCell) {
+      const { rowIndex, columnId } = focusedCell
+      const rows = table.getRowModel().rows
+      const rowCount = rows.length
+
+      const nextRowIndex = rowIndex + 1
+      if (nextRowIndex < rowCount) {
         requestAnimationFrame(() => {
-          navigateCell(opts.direction ?? 'right')
+          focusCell(nextRowIndex, columnId)
         })
       }
+    } else if (opts?.direction && focusedCell) {
+      const { rowIndex, columnId } = focusedCell
+      focusCell(rowIndex, columnId)
+      requestAnimationFrame(() => {
+        navigateCell(opts.direction ?? 'right')
+      })
+    }
+  }
+
+  const onCellEditingStop = React.useCallback(
+    (opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => {
+      onCellEditingStopRef.current?.(opts)
     },
-    [focusedCell, table, focusCell, navigateCell]
+    []
   )
 
-  // Handle data updates
+  // Handle data updates - use ref to avoid table dependency
+  const tableRef2 = React.useRef(table)
+  tableRef2.current = table
+
   const onDataUpdate = React.useCallback(
     (updates: UpdateCell | Array<UpdateCell>) => {
       const updateArray = Array.isArray(updates) ? updates : [updates]
@@ -415,7 +466,7 @@ export function useDataTable<TData, TValue = unknown>({
       // If onCellUpdate is provided and this is a single cell update, call it
       if (onCellUpdate && updateArray.length === 1) {
         const update = updateArray[0]
-        const rows = table.getRowModel().rows
+        const rows = tableRef2.current.getRowModel().rows
         const row = rows[update.rowIndex]
         if (row) {
           const originalData = row.original as QueryResultRow
@@ -425,7 +476,7 @@ export function useDataTable<TData, TValue = unknown>({
         }
       }
     },
-    [onCellUpdate, table]
+    [onCellUpdate, setPendingUpdates]
   )
 
   // Handle cell click - only focuses, never starts editing
@@ -456,104 +507,96 @@ export function useDataTable<TData, TValue = unknown>({
     [onCellEditingStart]
   )
 
-  // Handle keyboard events
-  const onKeyDown = React.useCallback(
-    (event: KeyboardEvent) => {
-      const { key, ctrlKey, metaKey, shiftKey } = event
-      const isCtrlPressed = ctrlKey || metaKey
+  // Handle keyboard events - use refs to get latest state
+  const onKeyDownRef = React.useRef<(event: KeyboardEvent) => void>(null)
 
-      if (editingCell) return
+  onKeyDownRef.current = (event: KeyboardEvent) => {
+    const { key, ctrlKey, metaKey, shiftKey } = event
+    const isCtrlPressed = ctrlKey || metaKey
 
-      if (!focusedCell) return
+    if (editingCell) return
 
-      let direction: NavigationDirection | null = null
+    if (!focusedCell) return
 
-      // Delete/Backspace to clear focused cell
-      if (key === 'Delete' || key === 'Backspace') {
-        if (focusedCell) {
+    let direction: NavigationDirection | null = null
+
+    // Delete/Backspace to clear focused cell
+    if (key === 'Delete' || key === 'Backspace') {
+      if (focusedCell) {
+        event.preventDefault()
+        onDataUpdate({
+          rowIndex: focusedCell.rowIndex,
+          columnId: focusedCell.columnId,
+          value: ''
+        })
+      }
+      return
+    }
+
+    // Navigation keys
+    switch (key) {
+      case 'ArrowUp':
+        direction = 'up'
+        break
+      case 'ArrowDown':
+        direction = 'down'
+        break
+      case 'ArrowLeft':
+        direction = 'left'
+        break
+      case 'ArrowRight':
+        direction = 'right'
+        break
+      case 'Home':
+        direction = isCtrlPressed ? 'ctrl+home' : 'home'
+        break
+      case 'End':
+        direction = isCtrlPressed ? 'ctrl+end' : 'end'
+        break
+      case 'PageUp':
+        direction = 'pageup'
+        break
+      case 'PageDown':
+        direction = 'pagedown'
+        break
+      case 'Escape':
+        event.preventDefault()
+        setFocusedCell(null)
+        setEditingCell(null)
+        return
+      case 'Tab':
+        event.preventDefault()
+        direction = shiftKey ? 'left' : 'right'
+        break
+      case 'Enter':
+        if (!editingCell) {
           event.preventDefault()
-          onDataUpdate({
-            rowIndex: focusedCell.rowIndex,
-            columnId: focusedCell.columnId,
-            value: ''
-          })
+          onCellEditingStart(focusedCell.rowIndex, focusedCell.columnId)
         }
         return
-      }
+    }
 
-      // Navigation keys
-      switch (key) {
-        case 'ArrowUp':
-          direction = 'up'
-          break
-        case 'ArrowDown':
-          direction = 'down'
-          break
-        case 'ArrowLeft':
-          direction = 'left'
-          break
-        case 'ArrowRight':
-          direction = 'right'
-          break
-        case 'Home':
-          direction = isCtrlPressed ? 'ctrl+home' : 'home'
-          break
-        case 'End':
-          direction = isCtrlPressed ? 'ctrl+end' : 'end'
-          break
-        case 'PageUp':
-          direction = 'pageup'
-          break
-        case 'PageDown':
-          direction = 'pagedown'
-          break
-        case 'Escape':
-          event.preventDefault()
-          setFocusedCell(null)
-          setEditingCell(null)
-          return
-        case 'Tab':
-          event.preventDefault()
-          direction = shiftKey ? 'left' : 'right'
-          break
-        case 'Enter':
-          if (!editingCell) {
-            event.preventDefault()
-            onCellEditingStart(focusedCell.rowIndex, focusedCell.columnId)
-          }
-          return
-      }
-
-      if (direction) {
-        event.preventDefault()
-        navigateCell(direction)
-      }
-    },
-    [
-      editingCell,
-      focusedCell,
-      navigableColumnIds,
-      table,
-      onDataUpdate,
-      navigateCell,
-      focusCell,
-      onCellEditingStart,
-      setFocusedCell,
-      setEditingCell
-    ]
-  )
+    if (direction) {
+      event.preventDefault()
+      navigateCell(direction)
+    }
+  }
 
   // Set up keyboard event listeners
   React.useEffect(() => {
     const container = tableContainerRef.current
     if (!container) return
 
-    container.addEventListener('keydown', onKeyDown)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      onKeyDownRef.current?.(event)
+    }
+
+    container.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      container.removeEventListener('keydown', onKeyDown)
+      container.removeEventListener('keydown', handleKeyDown)
     }
-  }, [onKeyDown])
+  }, [])
 
   return {
     table,

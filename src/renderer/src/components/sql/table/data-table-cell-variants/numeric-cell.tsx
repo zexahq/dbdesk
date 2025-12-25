@@ -6,7 +6,7 @@ import type { NavigationDirection } from '@renderer/types/data-table'
 import * as React from 'react'
 
 import type { DataTableCellProps } from '../data-table-cell.types'
-import { useDataTableCellContext } from './base'
+import { areCellPropsEqual, useDataTableCellContext } from './base'
 
 function normalizeNumericValue(value: unknown): number | null {
   if (value === null || value === undefined || value === '') {
@@ -27,7 +27,7 @@ function parseNumericInput(value: string): number | null | undefined {
   return Number.isNaN(parsed) ? undefined : parsed
 }
 
-export function NumericDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
+function NumericDataTableCellInner<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
   const {
     tableCellProps,
     renderedCell,
@@ -138,3 +138,8 @@ export function NumericDataTableCell<TData, TValue>(props: DataTableCellProps<TD
     </TableCell>
   )
 }
+
+export const NumericDataTableCell = React.memo(
+  NumericDataTableCellInner,
+  areCellPropsEqual
+) as typeof NumericDataTableCellInner

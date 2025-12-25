@@ -1,5 +1,6 @@
 import { QueryResultRow, TableDataResult } from '@renderer/api/client'
 import { TableTab } from '@renderer/store/tab-store'
+import * as React from 'react'
 import { getColumns } from './columns'
 import { DataTable } from './data-table'
 
@@ -18,6 +19,12 @@ export const SqlTable = ({
   tableData,
   onCellUpdate
 }: SqlTableProps) => {
+  // Memoize columns to prevent recreation on every render
+  const columns = React.useMemo(() => {
+    if (!tableData) return []
+    return getColumns(tableData.columns)
+  }, [tableData])
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -37,8 +44,6 @@ export const SqlTable = ({
       </div>
     )
   }
-
-  const columns = getColumns(tableData.columns)
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
