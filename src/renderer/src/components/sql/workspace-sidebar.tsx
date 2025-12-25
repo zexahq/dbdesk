@@ -55,8 +55,15 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const [renameMode, setRenameMode] = useState<RenameMode>({ open: false, queryId: null })
 
   const { schemasWithTables } = useSqlWorkspaceStore()
-  const { addTableTab, addQueryTab, setActiveTab, findQueryTabById, updateQueryTab, getActiveTab } =
-    useTabStore()
+  const {
+    addTableTab,
+    addQueryTab,
+    setActiveTab,
+    findQueryTabById,
+    updateQueryTab,
+    getActiveTab,
+    removeTab
+  } = useTabStore()
 
   const activeTab = getActiveTab()
 
@@ -92,6 +99,12 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const handleDeleteQuery = async (queryId: string) => {
     try {
       await deleteQuery(profile.id, queryId)
+      // Close the tab if that query is open
+      const tab = findQueryTabById(queryId)
+      if (tab) {
+        removeTab(tab.id)
+      }
+
       toast.success('Query deleted')
     } catch {
       toast.error('Failed to delete query')

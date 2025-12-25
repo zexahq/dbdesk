@@ -4,7 +4,7 @@ import { MainSidebar } from '@renderer/components/main-sidebar'
 import { Toaster } from 'react-hot-toast'
 
 const RootLayout = () => (
-  <div className="flex h-screen overflow-hidden">
+  <div className="flex h-screen overflow-hidden select-none">
     <MainSidebar />
     <div className="flex-1 h-full overflow-y-auto">
       <Outlet />

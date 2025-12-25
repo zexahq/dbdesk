@@ -154,6 +154,20 @@ export class PostgresAdapter implements SQLAdapter {
     const pool = this.ensurePool()
     const start = performance.now()
 
+    // If no sort rules provided, fetch columns first to get primary keys for default sorting
+    if (!options.sortRules || options.sortRules.length === 0) {
+      const columnInfo = await this.queryColumns(pool, options.schema, options.table)
+      const primaryKeyColumns = columnInfo.filter((col) => col.isPrimaryKey).map((col) => col.name)
+
+      // Add primary key sorting as default
+      if (primaryKeyColumns.length > 0) {
+        options.sortRules = primaryKeyColumns.map((column) => ({
+          column,
+          direction: 'ASC'
+        }))
+      }
+    }
+
     // Build queries
     const { query, params } = buildTableDataQuery(options)
     const { query: countQuery, params: countParams } = buildTableCountQuery(options)
