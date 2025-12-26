@@ -37,6 +37,9 @@ export interface QueryTab extends BaseTab {
   kind: 'query'
   name: string
   editorContent: string
+  limit: number
+  offset: number
+  totalRowCount?: number
   lastSavedContent?: string
   queryResults?: QueryResult
 }
@@ -95,6 +98,8 @@ const createDefaultQueryTab = (): QueryTab => ({
   kind: 'query',
   name: 'Untitled Query',
   editorContent: '',
+  limit: 50,
+  offset: 0,
   queryResults: undefined,
   lastSavedContent: undefined
 })
@@ -251,6 +256,8 @@ export const useTabStore = create<TabStore>((set, get) => ({
       } else {
         return {
           ...serializedTab,
+          limit: serializedTab.limit ?? 50,
+          offset: serializedTab.offset ?? 0,
           queryResults: undefined
         } as QueryTab
       }
@@ -282,7 +289,10 @@ export const useTabStore = create<TabStore>((set, get) => ({
           id: tab.id,
           name: tab.name,
           editorContent: tab.editorContent,
-          lastSavedContent: tab.lastSavedContent
+          isTemporary: false,
+          lastSavedContent: tab.lastSavedContent,
+          limit: tab.limit,
+          offset: tab.offset
         } as SerializedQueryTab
       }
     })
