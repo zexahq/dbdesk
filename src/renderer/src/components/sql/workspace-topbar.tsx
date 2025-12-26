@@ -40,7 +40,7 @@ export function WorkspaceTopbar({
   const reset = useTabStore((s) => s.reset)
   const isQueryTabDirty = useTabStore((s) => s.isQueryTabDirty)
 
-  const { reset: resetWorkspace } = useSqlWorkspaceStore()
+  const resetWorkspace = useSqlWorkspaceStore((s) => s.reset)
 
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId)

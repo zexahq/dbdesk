@@ -15,7 +15,8 @@ interface UseTabCloseHandlerReturn {
 }
 
 export function useTabCloseHandler(profile: SQLConnectionProfile): UseTabCloseHandlerReturn {
-  const { isQueryTabDirty, removeTab } = useTabStore()
+  const isQueryTabDirty = useTabStore((s) => s.isQueryTabDirty)
+  const removeTab = useTabStore((s) => s.removeTab)
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [tabToClose, setTabToClose] = useState<QueryTab | null>(null)
 

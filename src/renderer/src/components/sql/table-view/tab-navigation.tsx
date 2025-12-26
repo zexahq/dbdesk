@@ -11,7 +11,10 @@ interface TabNavigationProps {
 }
 
 export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
-  const { tabs, activeTabId, getActiveTab, setActiveTab } = useTabStore()
+  const tabs = useTabStore((s) => s.tabs)
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const getActiveTab = useTabStore((s) => s.getActiveTab)
+  const setActiveTab = useTabStore((s) => s.setActiveTab)
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
