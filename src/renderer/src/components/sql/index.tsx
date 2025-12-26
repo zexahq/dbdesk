@@ -20,7 +20,10 @@ import { WorkspaceTopbar } from './workspace-topbar'
 
 export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const setSchemasWithTables = useSqlWorkspaceStore((s) => s.setSchemasWithTables)
-  const activeTab = useTabStore((state) => state.getActiveTab())
+  const activeTab = useTabStore((state) => {
+    const { tabs, activeTabId } = state
+    return tabs.find((t) => t.id === activeTabId)
+  })
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)

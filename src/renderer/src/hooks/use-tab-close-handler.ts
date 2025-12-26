@@ -15,14 +15,13 @@ interface UseTabCloseHandlerReturn {
 }
 
 export function useTabCloseHandler(profile: SQLConnectionProfile): UseTabCloseHandlerReturn {
-  const isQueryTabDirty = useTabStore((s) => s.isQueryTabDirty)
   const removeTab = useTabStore((s) => s.removeTab)
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [tabToClose, setTabToClose] = useState<QueryTab | null>(null)
 
   const requestCloseTab = (tab: Tab) => {
     // Only show dialog for dirty query tabs
-    if (tab.kind === 'query' && isQueryTabDirty(tab)) {
+    if (tab.kind === 'query' && tab.isDirty) {
       setTabToClose(tab)
       setCloseDialogOpen(true)
     } else {

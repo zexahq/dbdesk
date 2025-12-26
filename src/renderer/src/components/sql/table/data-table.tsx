@@ -4,8 +4,7 @@ import {
   type ColumnDef,
   flexRender,
   type OnChangeFn,
-  type RowSelectionState,
-  type VisibilityState
+  type RowSelectionState
 } from '@tanstack/react-table'
 
 import { QueryResultRow } from '@renderer/api/client'
@@ -20,20 +19,18 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
+  onTableInteract?: () => void
   rowSelection: RowSelectionState
   onRowSelectionChange: OnChangeFn<RowSelectionState>
-  columnVisibility: VisibilityState
-  onColumnVisibilityChange: OnChangeFn<VisibilityState>
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   onCellUpdate,
+  onTableInteract,
   rowSelection,
-  onRowSelectionChange,
-  columnVisibility,
-  onColumnVisibilityChange
+  onRowSelectionChange
 }: DataTableProps<TData, TValue>) {
   const {
     table,
@@ -49,10 +46,9 @@ export function DataTable<TData, TValue>({
     columns,
     data,
     onCellUpdate,
+    onTableInteract,
     rowSelection,
-    onRowSelectionChange,
-    columnVisibility,
-    onColumnVisibilityChange
+    onRowSelectionChange
   })
 
   const rowModel = table.getRowModel()

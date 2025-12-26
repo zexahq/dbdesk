@@ -26,7 +26,7 @@ import {
 import { cn } from '@renderer/lib/utils'
 import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
-import { Tab, useTabStore } from '@renderer/store/tab-store'
+import { Tab, useActiveTab, useTabStore } from '@renderer/store/tab-store'
 import {
   ChevronRight,
   DatabaseIcon,
@@ -61,7 +61,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const findQueryTabById = useTabStore((s) => s.findQueryTabById)
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
   const removeTab = useTabStore((s) => s.removeTab)
-  const activeTab = useTabStore((s) => s.getActiveTab())
+  const activeTab = useActiveTab()
 
   const queries = useSavedQueriesStore((s) => s.queries)
   const loadQueries = useSavedQueriesStore((s) => s.loadQueries)
@@ -281,7 +281,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
 type SchemaTreeProps = {
   schema: string
   tables: string[]
-  activeTab: Tab | undefined
+  activeTab: Tab | null
   onTableClick: (schema: string, table: string) => void
 }
 

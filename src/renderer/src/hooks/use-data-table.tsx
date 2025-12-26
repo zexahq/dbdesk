@@ -14,18 +14,15 @@ import * as React from 'react'
 import { useState } from 'react'
 
 import type { QueryResultRow } from '@renderer/api/client'
-import type { VisibilityState } from '@tanstack/react-table'
-export type { VisibilityState }
 
 interface UseDataTableProps<TData, TValue = unknown>
   extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
+  onTableInteract?: () => void
   rowSelection: RowSelectionState
   onRowSelectionChange: OnChangeFn<RowSelectionState>
-  columnVisibility: VisibilityState
-  onColumnVisibilityChange: OnChangeFn<VisibilityState>
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
@@ -34,10 +31,9 @@ export function useDataTable<TData, TValue = unknown>({
   columns,
   data,
   onCellUpdate,
+  onTableInteract,
   rowSelection,
   onRowSelectionChange,
-  columnVisibility,
-  onColumnVisibilityChange,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = React.useRef<HTMLDivElement>(null)
@@ -74,14 +70,7 @@ export function useDataTable<TData, TValue = unknown>({
     [rowSelection, onRowSelectionChange]
   )
 
-  // Handle column visibility change
-  const handleColumnVisibilityChange = React.useCallback(
-    (updater: Updater<VisibilityState>) => {
-      const newVisibility = typeof updater === 'function' ? updater(columnVisibility) : updater
-      onColumnVisibilityChange(newVisibility)
-    },
-    [columnVisibility, onColumnVisibilityChange]
-  )
+
 
   // Table instance
   const table = useReactTable({
@@ -90,17 +79,14 @@ export function useDataTable<TData, TValue = unknown>({
     columns,
     enableColumnResizing: true,
     enableRowSelection: true,
-    enableHiding: true,
     columnResizeMode: 'onChange',
     getCoreRowModel: getCoreRowModel(),
     state: {
       ...tableOptions.state,
       columnSizing,
-      columnVisibility,
       rowSelection
     },
     onColumnSizingChange: setColumnSizing,
-    onColumnVisibilityChange: handleColumnVisibilityChange,
     onRowSelectionChange: handleRowSelectionChange
   })
 
@@ -224,12 +210,15 @@ export function useDataTable<TData, TValue = unknown>({
         tableContainerRef.current.focus()
       }
 
+      // Notify parent about table interaction
+      onTableInteract?.()
+
       // Scroll cell into view after a brief delay to ensure DOM is updated
       requestAnimationFrame(() => {
         scrollCellIntoView(rowIndex, columnId, scrollDirection)
       })
     },
-    [setFocusedCell, setEditingCell, scrollCellIntoView]
+    [onTableInteract, scrollCellIntoView]
   )
 
   // Navigate cell - use refs for state to avoid recreating callback
@@ -327,8 +316,9 @@ export function useDataTable<TData, TValue = unknown>({
     (rowIndex: number, columnId: string) => {
       setFocusedCell({ rowIndex, columnId })
       setEditingCell({ rowIndex, columnId })
+      onTableInteract?.()
     },
-    [setFocusedCell, setEditingCell]
+    [onTableInteract]
   )
 
   // Stop editing cell - use ref to avoid stale closure
@@ -522,7 +512,6 @@ export function useDataTable<TData, TValue = unknown>({
     focusedCell,
     editingCell,
     columnSizing,
-    columnVisibility,
     columnIds,
     onCellClick,
     onCellDoubleClick,

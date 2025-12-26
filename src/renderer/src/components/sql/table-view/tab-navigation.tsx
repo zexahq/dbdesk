@@ -2,7 +2,7 @@
 
 import type { SQLConnectionProfile } from '@common/types'
 import type { Tab } from '@renderer/store/tab-store'
-import { useTabStore } from '@renderer/store/tab-store'
+import { useActiveTab, useTabStore } from '@renderer/store/tab-store'
 import * as React from 'react'
 
 interface TabNavigationProps {
@@ -13,8 +13,8 @@ interface TabNavigationProps {
 export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
   const tabs = useTabStore((s) => s.tabs)
   const activeTabId = useTabStore((s) => s.activeTabId)
-  const getActiveTab = useTabStore((s) => s.getActiveTab)
   const setActiveTab = useTabStore((s) => s.setActiveTab)
+  const activeTab = useActiveTab()
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -43,11 +43,7 @@ export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
         (event.ctrlKey || event.metaKey) &&
         (event.key === 'w' || event.key === 'W' || event.key === 'F4')
       ) {
-        // Don't close if it's the only tab
-        if (tabs.length <= 1) return
-
         event.preventDefault()
-        const activeTab = getActiveTab()
         if (activeTab) {
           requestCloseTab(activeTab)
         }
@@ -69,7 +65,7 @@ export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [tabs, activeTabId, getActiveTab, setActiveTab, requestCloseTab])
+  }, [tabs, activeTabId, activeTab, setActiveTab, requestCloseTab])
 
   return null
 }

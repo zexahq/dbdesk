@@ -1,5 +1,5 @@
 import { QueryResultRow, TableDataResult } from '@renderer/api/client'
-import type { OnChangeFn, RowSelectionState, VisibilityState } from '@tanstack/react-table'
+import type { OnChangeFn, RowSelectionState } from '@tanstack/react-table'
 import * as React from 'react'
 import { getColumns } from './columns'
 import { DataTable } from './data-table'
@@ -9,10 +9,9 @@ interface SqlTableProps {
   error: Error | null
   tableData?: TableDataResult
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
+  onTableInteract?: () => void
   rowSelection: RowSelectionState
   onRowSelectionChange: OnChangeFn<RowSelectionState>
-  columnVisibility: VisibilityState
-  onColumnVisibilityChange: OnChangeFn<VisibilityState>
 }
 
 export const SqlTable = ({
@@ -20,10 +19,9 @@ export const SqlTable = ({
   error,
   tableData,
   onCellUpdate,
+  onTableInteract,
   rowSelection,
-  onRowSelectionChange,
-  columnVisibility,
-  onColumnVisibilityChange
+  onRowSelectionChange
 }: SqlTableProps) => {
   // Memoize columns to prevent recreation on every render
   const columns = React.useMemo(() => {
@@ -54,16 +52,15 @@ export const SqlTable = ({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex-1 overflow-hidden min-h-0">
-        <DataTable
-          columns={columns}
-          data={tableData.rows}
-          onCellUpdate={onCellUpdate}
-          rowSelection={rowSelection}
-          onRowSelectionChange={onRowSelectionChange}
-          columnVisibility={columnVisibility}
-          onColumnVisibilityChange={onColumnVisibilityChange}
-        />
-      </div>
+         <DataTable
+           columns={columns}
+           data={tableData.rows}
+           onCellUpdate={onCellUpdate}
+           onTableInteract={onTableInteract}
+           rowSelection={rowSelection}
+           onRowSelectionChange={onRowSelectionChange}
+         />
+       </div>
     </div>
   )
 }

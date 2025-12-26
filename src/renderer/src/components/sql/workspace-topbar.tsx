@@ -38,7 +38,6 @@ export function WorkspaceTopbar({
   const setActiveTab = useTabStore((s) => s.setActiveTab)
   const addQueryTab = useTabStore((s) => s.addQueryTab)
   const reset = useTabStore((s) => s.reset)
-  const isQueryTabDirty = useTabStore((s) => s.isQueryTabDirty)
 
   const resetWorkspace = useSqlWorkspaceStore((s) => s.reset)
 
@@ -83,34 +82,33 @@ export function WorkspaceTopbar({
       </Button>
 
       <div className="flex-1 h-full overflow-x-auto no-scrollbar">
-        <div className="flex h-full items-center">
-          {tabs.map((tab) => {
-            const isActive = activeTabId === tab.id
-            const isQueryTab = tab.kind === 'query'
-            const isDirty = isQueryTab ? isQueryTabDirty(tab) : false
+         <div className="flex h-full items-center">
+           {tabs.map((tab) => {
+             const isActive = activeTabId === tab.id
+             const isDirty = tab.kind === 'query' ? tab.isDirty : false
 
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabClick(tab.id)}
-                className={cn(
-                  'group flex items-center gap-2 px-4 text-sm transition-colors whitespace-nowrap h-full border-r border-border/50 min-w-[120px] max-w-[200px]',
-                  'hover:bg-background/60 cursor-pointer',
-                  isActive
-                    ? 'bg-background text-foreground border-t-2 border-t-primary pt-0.5'
-                    : 'text-muted-foreground border-t-2 border-t-transparent pt-0.5',
-                  tab.kind === 'table' && tab.isTemporary && 'italic'
-                )}
-              >
-                {tab.kind === 'table' ? (
-                  <Table2Icon className="size-3.5 shrink-0" />
-                ) : (
-                  <SquareCode className="size-3.5 shrink-0" />
-                )}
-                <span className="truncate flex-1 text-left">
-                  {tab.kind === 'table' ? tab.table : tab.name}
-                </span>
-                {isDirty && <span className="size-2 rounded-full bg-white shrink-0" />}
+             return (
+               <button
+                 key={tab.id}
+                 onClick={() => handleTabClick(tab.id)}
+                 className={cn(
+                   'group flex items-center gap-2 px-4 text-sm transition-colors whitespace-nowrap h-full border-r border-border/50 min-w-[120px] max-w-[200px]',
+                   'hover:bg-background/60 cursor-pointer',
+                   isActive
+                     ? 'bg-background text-foreground border-t-2 border-t-primary pt-0.5'
+                     : 'text-muted-foreground border-t-2 border-t-transparent pt-0.5',
+                   tab.kind === 'table' && tab.isTemporary && 'italic'
+                 )}
+               >
+                 {tab.kind === 'table' ? (
+                   <Table2Icon className="size-3.5 shrink-0" />
+                 ) : (
+                   <SquareCode className="size-3.5 shrink-0" />
+                 )}
+                 <span className="truncate flex-1 text-left">
+                   {tab.kind === 'table' ? tab.table : tab.name}
+                 </span>
+                 {isDirty && <span className="size-2 rounded-full bg-white shrink-0" />}
                 <div
                   role="button"
                   onClick={(e) => {

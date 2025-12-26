@@ -6,11 +6,8 @@ import { TableTab, useTabStore } from '@renderer/store/tab-store'
 import { Layers, RefreshCcw, Table } from 'lucide-react'
 import { useState } from 'react'
 import { DeleteConfirmationDialog } from '../dialogs/delete-confirmation-dialog'
-import { TableColumnVisibilityDropdown } from './table-column-visibility-dropdown'
 import { TableFilterPopover } from './table-filter-popover'
 import { TableSortPopover } from './table-sort-popover'
-
-import type { OnChangeFn, VisibilityState } from '@tanstack/react-table'
 
 interface SqlTopbarProps {
   activeTab: TableTab
@@ -20,8 +17,6 @@ interface SqlTopbarProps {
   onDeleteRows: () => Promise<void> | void
   isDeletePending: boolean
   rowSelectionCount: number
-  columnVisibility: VisibilityState
-  onColumnVisibilityChange: OnChangeFn<VisibilityState>
 }
 
 export function SqlTopbar({
@@ -31,9 +26,7 @@ export function SqlTopbar({
   columns = [],
   onDeleteRows,
   isDeletePending,
-  rowSelectionCount,
-  columnVisibility,
-  onColumnVisibilityChange
+  rowSelectionCount
 }: SqlTopbarProps) {
   const [open, setOpen] = useState(false)
 
@@ -103,13 +96,12 @@ export function SqlTopbar({
           />
         </div>
         <div className="flex items-center gap-2 pt-1.5">
-          {activeTab.view === 'tables' && (
+          {/* TODO: Re-enable column visibility feature */}
+          {/* {activeTab.view === 'tables' && (
            <TableColumnVisibilityDropdown
              columns={columns}
-             columnVisibility={columnVisibility}
-             onColumnVisibilityChange={onColumnVisibilityChange}
            />
-          )}
+          )} */}
           <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
             <RefreshCcw className={cn('size-4 cursor-pointer', isLoading && 'animate-spin')} />
           </Button>
