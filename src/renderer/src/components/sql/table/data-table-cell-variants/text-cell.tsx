@@ -9,9 +9,9 @@ import * as React from 'react'
 
 import { CellEditorSheet } from '../cell-editor-sheet'
 import type { DataTableCellProps } from '../data-table-cell.types'
-import { useDataTableCellContext } from './base'
+import { areCellPropsEqual, useDataTableCellContext } from './base'
 
-export function TextDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
+function TextDataTableCellInner<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
   const {
     tableCellProps,
     isSelectColumn,
@@ -163,3 +163,8 @@ export function TextDataTableCell<TData, TValue>(props: DataTableCellProps<TData
     </>
   )
 }
+
+export const TextDataTableCell = React.memo(
+  TextDataTableCellInner,
+  areCellPropsEqual
+) as typeof TextDataTableCellInner

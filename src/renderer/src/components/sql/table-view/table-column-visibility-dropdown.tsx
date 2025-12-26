@@ -10,32 +10,30 @@ import {
 } from '@renderer/components/ui/dropdown-menu'
 import { Input } from '@renderer/components/ui/input'
 import { cn } from '@renderer/lib/utils'
-import { TableTab, useTabStore } from '@renderer/store/tab-store'
+import type { OnChangeFn, VisibilityState } from '@tanstack/react-table'
 import { AlertCircle, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 interface TableColumnVisibilityDropdownProps {
-  activeTab: TableTab
   columns?: TableDataColumn[]
+  columnVisibility: VisibilityState
+  onColumnVisibilityChange: OnChangeFn<VisibilityState>
 }
 
 export function TableColumnVisibilityDropdown({
-  activeTab,
-  columns = []
+  columns = [],
+  columnVisibility,
+  onColumnVisibilityChange
 }: TableColumnVisibilityDropdownProps) {
-  const updateTableTab = useTabStore((state) => state.updateTableTab)
   const [searchQuery, setSearchQuery] = useState('')
-
-  const columnVisibility = activeTab.columnVisibility
 
   const setColumnVisibility = (
     visibility:
       | typeof columnVisibility
       | ((prev: typeof columnVisibility) => typeof columnVisibility)
   ) => {
-    updateTableTab(activeTab.id, {
-      columnVisibility: typeof visibility === 'function' ? visibility(columnVisibility) : visibility
-    })
+    const newVisibility = typeof visibility === 'function' ? visibility(columnVisibility) : visibility
+    onColumnVisibilityChange(newVisibility)
   }
 
   // Filter columns based on search query

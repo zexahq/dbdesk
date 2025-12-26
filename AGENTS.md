@@ -2,13 +2,15 @@
 
 ## Build/Test Commands
 
-- **Build**: `npm run build` (runs typecheck + electron-vite build)
-- **Dev**: `npm run dev` (start development with noSandbox)
-- **Lint**: `npm run lint` (ESLint with cache)
-- **Format**: `npm run format` (Prettier formatting)
-- **Type Check**: `npm run typecheck` (checks both node and web)
-- **Type Check Node**: `npm run typecheck:node`
-- **Type Check Web**: `npm run typecheck:web`
+Always use `pnpm` (not npm or yarn) for all commands.
+
+- **Build**: `pnpm run build` (runs typecheck + electron-vite build)
+- **Dev**: `pnpm run dev` (start development with noSandbox)
+- **Lint**: `pnpm run lint` (ESLint with cache)
+- **Format**: `pnpm run format` (Prettier formatting)
+- **Type Check**: `pnpm run typecheck` (checks both node and web)
+- **Type Check Node**: `pnpm run typecheck:node`
+- **Type Check Web**: `pnpm run typecheck:web`
 
 ## Code Style
 

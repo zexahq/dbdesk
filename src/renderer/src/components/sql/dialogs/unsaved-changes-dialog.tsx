@@ -31,8 +31,11 @@ export function UnsavedChangesDialog({
   onOpenChange,
   onClose
 }: UnsavedChangesDialogProps) {
-  const { queries, saveQuery, updateQuery } = useSavedQueriesStore()
-  const { removeTab, updateQueryTab } = useTabStore()
+  const queries = useSavedQueriesStore((s) => s.queries)
+  const saveQuery = useSavedQueriesStore((s) => s.saveQuery)
+  const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
+  const removeTab = useTabStore((s) => s.removeTab)
+  const updateQueryTab = useTabStore((s) => s.updateQueryTab)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
   const handleCloseWithoutSave = () => {

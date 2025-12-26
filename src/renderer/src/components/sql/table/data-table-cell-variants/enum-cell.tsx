@@ -11,13 +11,13 @@ import { cn } from '@renderer/lib/utils'
 import * as React from 'react'
 
 import type { DataTableCellProps } from '../data-table-cell.types'
-import { useDataTableCellContext } from './base'
+import { areCellPropsEqual, useDataTableCellContext } from './base'
 
 type ColumnMeta = {
   enumValues?: string[]
 }
 
-export function EnumDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
+function EnumDataTableCellInner<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
   const {
     tableCellProps,
     isSelectColumn,
@@ -105,3 +105,8 @@ export function EnumDataTableCell<TData, TValue>(props: DataTableCellProps<TData
     </TableCell>
   )
 }
+
+export const EnumDataTableCell = React.memo(
+  EnumDataTableCellInner,
+  areCellPropsEqual
+) as typeof EnumDataTableCellInner

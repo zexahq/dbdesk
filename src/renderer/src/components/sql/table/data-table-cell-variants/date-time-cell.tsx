@@ -3,14 +3,13 @@
 import { TableCell } from '@renderer/components/ui/table'
 import { cn } from '@renderer/lib/utils'
 import type { NavigationDirection } from '@renderer/types/data-table'
+import { format } from 'date-fns'
 import * as React from 'react'
 
 import type { DataTableCellProps } from '../data-table-cell.types'
-import { useDataTableCellContext } from './base'
+import { areCellPropsEqual, useDataTableCellContext } from './base'
 
-import { format } from 'date-fns'
-
-export function DateTimeDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
+function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
   const {
     tableCellProps,
     renderedCell,
@@ -43,7 +42,6 @@ export function DateTimeDataTableCell<TData, TValue>(props: DataTableCellProps<T
         try {
           nextValue = format(cellValue, formatString)
         } catch {
-          // Fallback if formatting fails
           nextValue = cellValue.toISOString()
         }
       } else if (cellValue !== null && cellValue !== undefined) {
@@ -132,3 +130,8 @@ export function DateTimeDataTableCell<TData, TValue>(props: DataTableCellProps<T
     </TableCell>
   )
 }
+
+export const DateTimeDataTableCell = React.memo(
+  DateTimeDataTableCellInner,
+  areCellPropsEqual
+) as typeof DateTimeDataTableCellInner
