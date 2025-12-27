@@ -85,7 +85,7 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
 
   const handleRunQuery = async () => {
     const limit = activeTab.limit ?? 50
-    const offset = activeTab.offset ?? 0
+    const offset = 0
     await executeQueryWithPagination(limit, offset)
   }
 
