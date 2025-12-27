@@ -3,6 +3,12 @@ import { dbdeskClient } from '../../api/client'
 
 export function useRunQuery(connectionId: string) {
   return useMutation({
-    mutationFn: (query: string) => dbdeskClient.runQuery(connectionId, query)
+    mutationFn: ({
+      query,
+      options
+    }: {
+      query: string
+      options?: { limit?: number; offset?: number }
+    }) => dbdeskClient.runQuery(connectionId, query, options)
   })
 }

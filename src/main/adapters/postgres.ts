@@ -2,6 +2,7 @@ import type {
   DeleteTableRowsOptions,
   DeleteTableRowsResult,
   QueryResult,
+  RunQueryOptions,
   SQLAdapter,
   SQLConnectionOptions,
   TableInfo,
@@ -21,6 +22,7 @@ import {
   buildUpdateCellQuery
 } from '../lib/postgers/queries'
 import { parsePostgresArray, quoteIdentifier } from '../lib/postgers/utils'
+import { isSelectableQuery, normalizeQuery } from '../lib/sql-parser'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -92,12 +94,38 @@ export class PostgresAdapter implements SQLAdapter {
     this.pool = null
   }
 
-  public async runQuery(query: string): Promise<QueryResult> {
+  public async runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult> {
     const pool = this.ensurePool()
     const start = performance.now()
 
-    const result = await pool.query(query)
+    const normalizedQuery = normalizeQuery(query)
 
+    // Check if this is a SELECT query that can be paginated
+    if (options && isSelectableQuery(normalizedQuery)) {
+      // Execute count query and paginated query in parallel
+      const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
+      const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${options.limit ?? 50} OFFSET ${options.offset ?? 0}`
+
+      const [countResult, pageResult] = await Promise.all([
+        pool.query<{ total: number }>(countQuery),
+        pool.query<QueryResultRow>(paginatedQuery)
+      ])
+
+      const executionTime = performance.now() - start
+      const totalRow = countResult.rows[0]?.total
+      const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
+
+      const transformedResult = this.transformResult(pageResult, executionTime)
+      return {
+        ...transformedResult,
+        totalRowCount,
+        limit: options.limit,
+        offset: options.offset
+      }
+    }
+
+    // For non-SELECT queries or when no pagination options provided
+    const result = await pool.query(normalizedQuery)
     const executionTime = performance.now() - start
 
     return this.transformResult(result, executionTime)

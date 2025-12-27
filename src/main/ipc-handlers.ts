@@ -192,7 +192,7 @@ export const registerIpcHandlers = () => {
   })
 
   safeHandle('query:run', async (payload): Promise<QueryResult> => {
-    const { connectionId, query } = validateQueryInput(payload)
+    const { connectionId, query, limit, offset } = validateQueryInput(payload)
     const adapter = connectionManager.getConnection(connectionId)
 
     if (!adapter) {
@@ -200,7 +200,7 @@ export const registerIpcHandlers = () => {
     }
 
     try {
-      return await adapter.runQuery(query)
+      return await adapter.runQuery(query, { limit, offset })
     } catch (error) {
       throw new QueryError('Failed to execute query', error)
     }

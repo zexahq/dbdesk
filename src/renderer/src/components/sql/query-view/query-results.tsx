@@ -13,22 +13,7 @@ interface QueryResultsProps {
 export function QueryResults({ queryResults, isLoading, error, onRun }: QueryResultsProps) {
   return (
     <div className="flex h-full w-full flex-col border-t">
-      <div className="flex items-center justify-between border-b p-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {queryResults && (
-            <>
-              <span>
-                {queryResults.rowCount} row{queryResults.rowCount === 1 ? '' : 's'}
-              </span>
-              {queryResults.executionTime !== undefined && (
-                <>
-                  <span>•</span>
-                  <span>{`${queryResults.executionTime.toFixed(2)} ms`}</span>
-                </>
-              )}
-            </>
-          )}
-        </div>
+      <div className="flex items-center justify-end border-b p-2">
         <Button
           size="sm"
           className="h-8 text-xs cursor-pointer"

@@ -127,7 +127,7 @@ export const dbdeskAPI = {
   /**
    * Execute a SQL query on a connected database
    */
-  async runQuery(connectionId: string, query: string): Promise<QueryResult> {
+  async runQuery(connectionId: string, query: string, options?: { limit?: number; offset?: number }): Promise<QueryResult> {
     if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
       throw new Error('Connection ID is required')
     }
@@ -137,7 +137,9 @@ export const dbdeskAPI = {
 
     return ipcRenderer.invoke('query:run', {
       connectionId: connectionId.trim(),
-      query: query.trim()
+      query: query.trim(),
+      limit: options?.limit,
+      offset: options?.offset
     })
   },
 

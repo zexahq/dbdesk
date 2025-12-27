@@ -65,8 +65,12 @@ export const dbdeskClient = {
     return getDbdesk().deleteConnection(connectionId)
   },
 
-  async runQuery(connectionId: string, query: string): Promise<QueryResult> {
-    return getDbdesk().runQuery(connectionId, query)
+  async runQuery(
+    connectionId: string,
+    query: string,
+    options?: { limit?: number; offset?: number }
+  ): Promise<QueryResult> {
+    return getDbdesk().runQuery(connectionId, query, options)
   },
 
   async listSchemas(connectionId: string): Promise<string[]> {
@@ -130,7 +134,12 @@ export const dbdeskClient = {
     return getDbdesk().loadQueries(connectionId)
   },
 
-  async saveQuery(connectionId: string, id: string, name: string, content: string): Promise<SavedQuery> {
+  async saveQuery(
+    connectionId: string,
+    id: string,
+    name: string,
+    content: string
+  ): Promise<SavedQuery> {
     return getDbdesk().saveQuery(connectionId, id, name, content)
   },
 

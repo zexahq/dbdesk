@@ -2,6 +2,7 @@ import type {
   DeleteTableRowsOptions,
   DeleteTableRowsResult,
   QueryResult,
+  RunQueryOptions,
   SQLAdapter,
   SQLConnectionOptions,
   TableInfo,
@@ -20,6 +21,7 @@ import {
   buildUpdateCellQuery
 } from '../lib/mysql/queries'
 import { quoteIdentifier } from '../lib/mysql/utils'
+import { isSelectableQuery, normalizeQuery } from '../lib/sql-parser'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -69,12 +71,41 @@ export class MySQLAdapter implements SQLAdapter {
     this.pool = null
   }
 
-  public async runQuery(query: string): Promise<QueryResult> {
+  public async runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult> {
     const pool = this.ensurePool()
     const start = performance.now()
 
-    const [rows, fields] = await pool.query<RowDataPacket[]>(query)
+    const normalizedQuery = normalizeQuery(query)
 
+    // Check if this is a SELECT query that can be paginated
+    if (options && isSelectableQuery(normalizedQuery)) {
+      // Execute count query and paginated query in parallel
+      const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
+      const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${options.limit ?? 50} OFFSET ${options.offset ?? 0}`
+
+      const [countResult, pageResult] = await Promise.all([
+        pool.query<RowDataPacket[]>(countQuery),
+        pool.query<RowDataPacket[]>(paginatedQuery)
+      ])
+
+      const executionTime = performance.now() - start
+      const [countRows] = countResult
+      const [pageRows, pageFields] = pageResult
+
+      const totalRow = (countRows as RowDataPacket[])[0]?.total
+      const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
+
+      const transformedResult = this.transformResult(pageRows, pageFields, executionTime)
+      return {
+        ...transformedResult,
+        totalRowCount,
+        limit: options.limit,
+        offset: options.offset
+      }
+    }
+
+    // For non-SELECT queries or when no pagination options provided
+    const [rows, fields] = await pool.query<RowDataPacket[]>(normalizedQuery)
     const executionTime = performance.now() - start
 
     return this.transformResult(rows, fields, executionTime)
