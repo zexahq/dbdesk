@@ -256,8 +256,8 @@ export const useTabStore = create<TabStore>((set, get) => ({
       } else {
         return {
           ...serializedTab,
-          limit: serializedTab.limit ?? 50,
-          offset: serializedTab.offset ?? 0,
+          limit: 50,
+          offset: 0,
           queryResults: undefined
         } as QueryTab
       }
@@ -290,9 +290,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
           name: tab.name,
           editorContent: tab.editorContent,
           isTemporary: false,
-          lastSavedContent: tab.lastSavedContent,
-          limit: tab.limit,
-          offset: tab.offset
+          lastSavedContent: tab.lastSavedContent
         } as SerializedQueryTab
       }
     })

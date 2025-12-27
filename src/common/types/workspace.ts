@@ -20,8 +20,6 @@ export interface SerializedQueryTab {
   editorContent: string
   isTemporary: boolean
   lastSavedContent?: string
-  limit?: number
-  offset?: number
 }
 
 export type SerializedTab = SerializedTableTab | SerializedQueryTab
