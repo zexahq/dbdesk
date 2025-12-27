@@ -428,12 +428,12 @@ export class PostgresAdapter implements SQLAdapter {
       return `'${str}'`
     }
 
-    const columnList = columnInfo.map((col) => `"${col.name.replace(/"/g, '""')}"`).join(', ')
+    const columnList = columnInfo.map((col) => quoteIdentifier(col.name)).join(', ')
 
     const statements = result.rows.map((row) => {
       const record = row as unknown as Record<string, unknown>
       const values = columnInfo.map((col) => serializeSqlValue(record[col.name])).join(', ')
-      return `INSERT INTO "${schema}"."${table}" (${columnList}) VALUES (${values});`
+      return `INSERT INTO ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnList}) VALUES (${values});`
     })
 
     const sql = statements.join('\n')

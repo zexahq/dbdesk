@@ -421,12 +421,12 @@ export class MySQLAdapter implements SQLAdapter {
       return `'${str}'`
     }
 
-    const columnList = columnInfo.map((col) => `\`${col.name}\``).join(', ')
+    const columnList = columnInfo.map((col) => quoteIdentifier(col.name)).join(', ')
 
     const statements = rows.map((row) => {
       const record = row as unknown as Record<string, unknown>
       const values = columnInfo.map((col) => serializeSqlValue(record[col.name])).join(', ')
-      return `INSERT INTO \`${schema}\`.\`${table}\` (${columnList}) VALUES (${values});`
+      return `INSERT INTO ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnList}) VALUES (${values});`
     })
 
     const sql = statements.join('\n')
@@ -444,7 +444,7 @@ export class MySQLAdapter implements SQLAdapter {
     const pool = this.ensurePool()
     const { schema, table } = options
 
-    const query = `DROP TABLE IF EXISTS \`${schema}\`.\`${table}\``
+    const query = `DROP TABLE IF EXISTS ${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
 
     try {
       await pool.query(query)
