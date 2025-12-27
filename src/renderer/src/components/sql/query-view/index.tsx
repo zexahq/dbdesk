@@ -1,5 +1,4 @@
 import type { SQLConnectionProfile } from '@common/types'
-import { dbdeskClient } from '@renderer/api/client'
 import { useRunQuery } from '@renderer/api/queries/query'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import SqlEditor from '@renderer/components/editor/sql-editor'
@@ -14,7 +13,6 @@ import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { QueryBottombar } from './query-bottombar'
 import { QueryResults } from './query-results'
-import { isSelectableQuery, normalizeQuery } from './utils'
 
 interface QueryViewProps {
   profile: SQLConnectionProfile
@@ -66,36 +64,12 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
       setExecutionError(null)
 
       try {
-        const shouldPaginate = isSelectableQuery(rawQuery)
-        const normalized = normalizeQuery(rawQuery)
-
-        if (!shouldPaginate) {
-          const result = await runQueryMutation(normalized)
-          updateQueryTab(activeTab.id, {
-            queryResults: result,
-            limit,
-            offset,
-            totalRowCount: result.rowCount
-          })
-          return
-        }
-
-        const countQuery = `SELECT COUNT(*) AS total FROM (${normalized}) AS subquery`
-        const paginatedQuery = `SELECT * FROM (${normalized}) AS subquery LIMIT ${limit} OFFSET ${offset}`
-
-        const [countResult, pageResult] = await Promise.all([
-          dbdeskClient.runQuery(profile.id, countQuery),
-          runQueryMutation(paginatedQuery)
-        ])
-
-        const totalRow = countResult.rows[0]?.total
-        const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
-
+        const result = await runQueryMutation({ query: rawQuery, options: { limit, offset } })
         updateQueryTab(activeTab.id, {
-          queryResults: pageResult,
-          limit,
-          offset,
-          totalRowCount
+          queryResults: result,
+          limit: result.limit,
+          offset: result.offset,
+          totalRowCount: result.totalRowCount
         })
       } catch (error) {
         const err = error instanceof Error ? error : new Error('Failed to execute query')
@@ -106,7 +80,7 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
         setIsExecuting(false)
       }
     },
-    [activeTab.editorContent, activeTab.id, profile.id, runQueryMutation, updateQueryTab]
+    [activeTab.editorContent, activeTab.id, runQueryMutation, updateQueryTab]
   )
 
   const handleRunQuery = async () => {

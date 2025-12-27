@@ -1,5 +1,3 @@
-'use client'
-
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
 import {
