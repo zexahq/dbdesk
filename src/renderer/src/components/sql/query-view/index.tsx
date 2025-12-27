@@ -49,7 +49,6 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isQueryTabSaved])
 
   const executeQueryWithPagination = useCallback(
