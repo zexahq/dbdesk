@@ -3,7 +3,10 @@ import type {
   ConnectionWorkspace,
   DatabaseType,
   DBConnectionOptions,
+  DeleteTableResult,
   DeleteTableRowsResult,
+  ExportTableOptions,
+  ExportTableResult,
   QueryResult,
   QueryResultRow,
   SavedQuery,
@@ -154,6 +157,32 @@ export const dbdeskClient = {
     content: string
   ): Promise<SavedQuery | undefined> {
     return getDbdesk().updateQuery(connectionId, queryId, name, content)
+  },
+
+  async exportTableAsCSV(
+    connectionId: string,
+    schema: string,
+    table: string,
+    options?: Pick<ExportTableOptions, 'sortRules' | 'filters'>
+  ): Promise<ExportTableResult> {
+    return getDbdesk().exportTableAsCSV(connectionId, schema, table, options)
+  },
+
+  async exportTableAsSQL(
+    connectionId: string,
+    schema: string,
+    table: string,
+    options?: Pick<ExportTableOptions, 'sortRules' | 'filters'>
+  ): Promise<ExportTableResult> {
+    return getDbdesk().exportTableAsSQL(connectionId, schema, table, options)
+  },
+
+  async deleteTable(
+    connectionId: string,
+    schema: string,
+    table: string
+  ): Promise<DeleteTableResult> {
+    return getDbdesk().deleteTable(connectionId, schema, table)
   }
 }
 
@@ -162,6 +191,8 @@ export type {
   DatabaseType,
   DBConnectionOptions,
   DeleteTableRowsResult,
+  ExportTableOptions,
+  ExportTableResult,
   QueryResult,
   QueryResultRow,
   SavedQuery,

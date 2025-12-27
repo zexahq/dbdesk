@@ -1,4 +1,6 @@
 import type {
+  DeleteTableOptions,
+  DeleteTableResult,
   DeleteTableRowsOptions,
   DeleteTableRowsResult,
   QueryResult,
@@ -13,7 +15,13 @@ import type { FieldPacket, Pool, ResultSetHeader, RowDataPacket } from 'mysql2/p
 import * as mysql from 'mysql2/promise'
 import { performance } from 'node:perf_hooks'
 
-import type { SchemaWithTables, TableDataOptions, TableDataResult } from '@common/types/sql'
+import type {
+  ExportTableOptions,
+  ExportTableResult,
+  SchemaWithTables,
+  TableDataOptions,
+  TableDataResult
+} from '@common/types/sql'
 import {
   QUERIES,
   buildTableCountQuery,
@@ -212,7 +220,7 @@ export class MySQLAdapter implements SQLAdapter {
     const totalCount = (countResult[0][0] as { total: number }).total ?? 0
 
     return {
-      rows: dataRows as Record<string, unknown>[],
+      rows: dataRows as unknown as Record<string, unknown>[],
       columns,
       totalCount,
       rowCount: dataRows.length,
@@ -342,6 +350,110 @@ export class MySQLAdapter implements SQLAdapter {
     }
   }
 
+  public async exportTableAsCSV(options: ExportTableOptions): Promise<ExportTableResult> {
+    const pool = this.ensurePool()
+    const { schema, table } = options
+
+    // Get column information first
+    const columnInfo = await this.queryColumns(pool, schema, table)
+
+    // Build the data query with all rows (no limit for export)
+    const dataOptions: TableDataOptions = {
+      ...options,
+      limit: undefined, // No limit for export
+      offset: undefined
+    }
+
+    const { query, params } = buildTableDataQuery(dataOptions)
+    const [rows] = await pool.query<RowDataPacket[]>(query, params)
+
+    // Serialize CSV
+    const serializeCsvValue = (value: unknown): string => {
+      if (value === null || value === undefined) return ''
+      const str = String(value)
+      const escaped = str.replace(/"/g, '""')
+      return `"${escaped}"`
+    }
+
+    // Create header
+    const header = columnInfo.map((col) => `"${col.name.replace(/"/g, '""')}"`).join(',')
+
+    // Create data rows
+    const lines = rows.map((row) => {
+      const record = row as unknown as Record<string, unknown>
+      return columnInfo.map((col) => serializeCsvValue(record[col.name])).join(',')
+    })
+
+    const csv = [header, ...lines].join('\n')
+    const base64Content = Buffer.from(csv, 'utf-8').toString('base64')
+    const filename = `${schema}.${table}.csv`
+
+    return {
+      base64Content,
+      filename,
+      mimeType: 'text/csv'
+    }
+  }
+
+  public async exportTableAsSQL(options: ExportTableOptions): Promise<ExportTableResult> {
+    const pool = this.ensurePool()
+    const { schema, table } = options
+
+    // Get column information first
+    const columnInfo = await this.queryColumns(pool, schema, table)
+
+    // Build the data query with all rows (no limit for export)
+    const dataOptions: TableDataOptions = {
+      ...options,
+      limit: undefined, // No limit for export
+      offset: undefined
+    }
+
+    const { query, params } = buildTableDataQuery(dataOptions)
+    const [rows] = await pool.query<RowDataPacket[]>(query, params)
+
+    // Serialize SQL
+    const serializeSqlValue = (value: unknown): string => {
+      if (value === null || value === undefined) return 'NULL'
+      if (typeof value === 'number' || typeof value === 'bigint') return String(value)
+      if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
+      const str = String(value).replace(/'/g, "''")
+      return `'${str}'`
+    }
+
+    const columnList = columnInfo.map((col) => quoteIdentifier(col.name)).join(', ')
+
+    const statements = rows.map((row) => {
+      const record = row as unknown as Record<string, unknown>
+      const values = columnInfo.map((col) => serializeSqlValue(record[col.name])).join(', ')
+      return `INSERT INTO ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnList}) VALUES (${values});`
+    })
+
+    const sql = statements.join('\n')
+    const base64Content = Buffer.from(sql, 'utf-8').toString('base64')
+    const filename = `${schema}.${table}.sql`
+
+    return {
+      base64Content,
+      filename,
+      mimeType: 'application/sql'
+    }
+  }
+
+  public async deleteTable(options: DeleteTableOptions): Promise<DeleteTableResult> {
+    const pool = this.ensurePool()
+    const { schema, table } = options
+
+    const query = `DROP TABLE IF EXISTS ${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
+
+    try {
+      await pool.query(query)
+      return { success: true }
+    } catch (error) {
+      throw new Error(`Failed to delete table "${schema}.${table}": ${error}`)
+    }
+  }
+
   private ensurePool(): Pool {
     if (!this.pool) {
       throw new Error('MySQL adapter is not connected')
@@ -358,7 +470,7 @@ export class MySQLAdapter implements SQLAdapter {
     const columns = fields.map((field) => field.name)
 
     return {
-      rows: rows as Record<string, unknown>[],
+      rows: rows as unknown as Record<string, unknown>[],
       columns,
       rowCount: rows.length,
       executionTime

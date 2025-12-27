@@ -3,7 +3,7 @@ import { useDeleteTableRows, useTableData, useUpdateTableCell } from '@renderer/
 import { TableTab, useTabStore } from '@renderer/store/tab-store'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from '@renderer/lib/toast'
 import { UpdateErrorDialog } from '../dialogs/update-error-dialog'
 import { SqlTable } from '../table'
 import { SqlBottombar } from './sql-bottombar'
@@ -53,11 +53,11 @@ export function TableView({ profile, activeTab }: TableViewProps) {
       .filter((row): row is QueryResultRow => Boolean(row))
   }, [activeTab.rowSelection, tableData])
 
-  const refreshTableData = () => {
+  const refreshTableData = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: ['table-data', profile.id, activeTab.schema, activeTab.table]
     })
-  }
+  }, [activeTab.schema, activeTab.table, profile.id, queryClient])
 
   const handleCellUpdate = useCallback(
     async (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => {
@@ -151,7 +151,7 @@ export function TableView({ profile, activeTab }: TableViewProps) {
         onRefresh={refreshTableData}
         isLoading={isLoadingTableData}
         columns={tableData?.columns}
-        onDeleteRows={handleDeleteSelectedRows}
+        onDelete={handleDeleteSelectedRows}
         isDeletePending={isDeletePending}
       />
       <div className="flex-1 overflow-hidden">
