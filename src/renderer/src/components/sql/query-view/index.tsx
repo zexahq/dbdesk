@@ -9,8 +9,9 @@ import {
 } from '@renderer/components/ui/resizable'
 import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import { QueryTab, useTabStore } from '@renderer/store/tab-store'
-import { useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from '@renderer/lib/toast'
+import { useCallback, useEffect, useState } from 'react'
+import { QueryBottombar } from './query-bottombar'
 import { QueryResults } from './query-results'
 
 interface QueryViewProps {
@@ -24,7 +25,7 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
   const [executionError, setExecutionError] = useState<Error | null>(null)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
-  const { mutateAsync: runQuery } = useRunQuery(profile.id)
+  const { mutateAsync: runQueryMutation } = useRunQuery(profile.id)
 
   const isQueryTabSaved = queries.some((q) => q.id === activeTab.id)
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
@@ -48,29 +49,44 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isQueryTabSaved])
 
+  const executeQueryWithPagination = useCallback(
+    async (limit: number, offset: number) => {
+      const rawQuery = activeTab.editorContent.trim()
+      if (!rawQuery) {
+        toast.error('Query cannot be empty')
+        return
+      }
+
+      setIsExecuting(true)
+      setExecutionError(null)
+
+      try {
+        const result = await runQueryMutation({ query: rawQuery, options: { limit, offset } })
+        updateQueryTab(activeTab.id, {
+          queryResults: result,
+          limit: result.limit,
+          offset: result.offset,
+          totalRowCount: result.totalRowCount
+        })
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error('Failed to execute query')
+        setExecutionError(err)
+        updateQueryTab(activeTab.id, { queryResults: undefined })
+        toast.error(err.message)
+      } finally {
+        setIsExecuting(false)
+      }
+    },
+    [activeTab.editorContent, activeTab.id, runQueryMutation, updateQueryTab]
+  )
+
   const handleRunQuery = async () => {
-    const query = activeTab.editorContent.trim()
-    if (!query) {
-      toast.error('Query cannot be empty')
-      return
-    }
-
-    setIsExecuting(true)
-    setExecutionError(null)
-
-    try {
-      const data = await runQuery(query)
-      updateQueryTab(activeTab.id, { queryResults: data })
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Failed to execute query')
-      setExecutionError(err)
-      updateQueryTab(activeTab.id, { queryResults: undefined })
-      toast.error(err.message)
-    } finally {
-      setIsExecuting(false)
-    }
+    const limit = activeTab.limit ?? 50
+    const offset = 0
+    await executeQueryWithPagination(limit, offset)
   }
 
   const handleUpdateQuery = async () => {
@@ -118,6 +134,21 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
           />
         </ResizablePanel>
       </ResizablePanelGroup>
+
+      {activeTab.queryResults && (
+        <QueryBottombar
+          totalRows={activeTab.totalRowCount ?? activeTab.queryResults.rowCount}
+          executionTime={activeTab.queryResults.executionTime}
+          limit={activeTab.limit}
+          offset={activeTab.offset}
+          onLimitChange={async (limit) => {
+            await executeQueryWithPagination(limit, 0)
+          }}
+          onOffsetChange={async (offset) => {
+            await executeQueryWithPagination(activeTab.limit, offset)
+          }}
+        />
+      )}
 
       <SaveQueryDialog
         open={saveDialogOpen}
