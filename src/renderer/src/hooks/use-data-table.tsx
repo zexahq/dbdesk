@@ -106,34 +106,6 @@ export function useDataTable<TData, TValue = unknown>({
     [tabId, updateTableTab, pendingUpdates]
   )
 
-  const toggleColumnSort = React.useCallback(
-    (columnName: string) => {
-      let nextSortRules: TableSortRule[] | undefined
-      const currentRule = sortRules?.find((rule) => rule.column === columnName)
-
-      if (!currentRule) {
-        nextSortRules = [
-          {
-            column: columnName,
-            direction: 'ASC'
-          }
-        ]
-      } else if (currentRule.direction === 'ASC') {
-        nextSortRules = [
-          {
-            column: columnName,
-            direction: 'DESC'
-          }
-        ]
-      } else {
-        nextSortRules = undefined
-      }
-
-      updateTableTab(tabId, { sortRules: nextSortRules, offset: 0 })
-    },
-    [sortRules, tabId, updateTableTab]
-  )
-
   const setColumnSortDirection = React.useCallback(
     (columnName: string, direction: 'ASC' | 'DESC') => {
       const nextSortRules: TableSortRule[] = [
@@ -192,7 +164,6 @@ export function useDataTable<TData, TValue = unknown>({
     meta: {
       activeTabId: tabId,
       sortRules,
-      toggleColumnSort,
       setColumnSortDirection
     },
     onColumnSizingChange: setColumnSizing,

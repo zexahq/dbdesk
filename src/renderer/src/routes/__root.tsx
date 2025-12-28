@@ -9,7 +9,7 @@ const RootLayout = () => (
     <div className="flex-1 h-full overflow-y-auto">
       <Outlet />
     </div>
-    <Toaster position="top-center" />
+    <Toaster position="top-right" />
     {/* <TanStackRouterDevtools position="bottom-right" /> */}
   </div>
 )

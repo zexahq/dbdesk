@@ -1,5 +1,4 @@
-import type { ExportTableResult, SQLConnectionProfile } from '@common/types'
-import { dbdeskClient } from '@renderer/api/client'
+import type { SQLConnectionProfile } from '@common/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import { TableOptionsDropdown } from '@renderer/components/sql/table-view/table-options-dropdown'
 import {
@@ -25,6 +24,7 @@ import {
   SidebarMenuSub,
   SidebarSeparator
 } from '@renderer/components/ui/sidebar'
+import { toast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
@@ -41,9 +41,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { toast } from '@renderer/lib/toast'
 import { Button } from '../ui/button'
-import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-query'
 
 type WorkspaceSidebarProps = {
   profile: SQLConnectionProfile
@@ -52,28 +50,6 @@ type WorkspaceSidebarProps = {
 type RenameMode = {
   open: boolean
   queryId: string | null
-}
-
-/**
- * Converts base64 content to a blob and triggers a download
- */
-function downloadExportedFile(result: ExportTableResult): void {
-  // Convert base64 to blob and download
-  const binaryContent = atob(result.base64Content)
-  const bytes = new Uint8Array(binaryContent.length)
-  for (let i = 0; i < binaryContent.length; i++) {
-    bytes[i] = binaryContent.charCodeAt(i)
-  }
-  const blob = new Blob([bytes], { type: result.mimeType })
-
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = result.filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
 }
 
 export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
@@ -91,21 +67,6 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   } = useTabStore()
 
   const activeTab = getActiveTab()
-  const queryClient = useQueryClient()
-
-  const exportMutation = useMutation({
-    mutationFn: ({ schema, table, type }: { schema: string; table: string; type: 'csv' | 'sql' }) =>
-      type === 'csv'
-        ? dbdeskClient.exportTableAsCSV(profile.id, schema, table)
-        : dbdeskClient.exportTableAsSQL(profile.id, schema, table),
-    onSuccess: (result) => {
-      downloadExportedFile(result)
-      toast.success(`Successfully exported ${result.filename}`)
-    },
-    onError: () => {
-      toast.error('Failed to export')
-    }
-  })
 
   const { queries, loadQueries, deleteQuery, updateQuery } = useSavedQueriesStore()
 
@@ -184,49 +145,6 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
     })
   }
 
-  const handleExportCSV = async (schema: string, table: string) => {
-    const toastId = toast.loading(`Exporting ${schema}.${table} as CSV...`)
-    try {
-      await exportMutation.mutateAsync({ schema, table, type: 'csv' })
-      toast.success(`Successfully exported`, { id: toastId })
-    } catch (error) {
-      console.error('CSV export failed:', error)
-      toast.error('Failed to export CSV', { id: toastId })
-    }
-  }
-
-  const handleExportSQL = async (schema: string, table: string) => {
-    const toastId = toast.loading(`Exporting ${schema}.${table} as SQL...`)
-    try {
-      await exportMutation.mutateAsync({ schema, table, type: 'sql' })
-      toast.success(`Successfully exported`, { id: toastId })
-    } catch (error) {
-      console.error('SQL export failed:', error)
-      toast.error('Failed to export SQL', { id: toastId })
-    }
-  }
-
-  const handleDeleteTable = async (schema: string, table: string) => {
-    try {
-      await dbdeskClient.deleteTable(profile.id, schema, table)
-
-      // Close any open tabs for this table
-      const tableTabId = `${schema}.${table}`
-      const tab = findQueryTabById(tableTabId)
-      if (tab) {
-        removeTab(tab.id)
-      }
-
-      toast.success(`Table ${schema}.${table} deleted successfully`)
-
-      // Refresh the schemas and tables by invalidating the query
-      queryClient.invalidateQueries({ queryKey: ['schemasWithTables', profile.id] })
-    } catch (error) {
-      console.error("Table delete failed: ", error)
-      toast.error('Failed to delete table')
-    }
-  }
-
   return (
     <>
       <Sidebar className="w-full h-full" collapsible="none">
@@ -265,15 +183,12 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
                       schemasWithTables.map((schemaData) => (
                         <SchemaTree
                           key={schemaData.schema}
+                          connectionId={profile.id}
                           schema={schemaData.schema}
                           tables={schemaData.tables}
                           activeTab={activeTab}
-                          exportMutation={exportMutation}
                           onTableClick={handleTableClick}
                           onDuplicateToQuery={handleDuplicateToQuery}
-                          onExportCSV={handleExportCSV}
-                          onExportSQL={handleExportSQL}
-                          onDelete={handleDeleteTable}
                         />
                       ))
                     )}
@@ -376,27 +291,15 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
 }
 
 type SchemaTreeProps = {
+  connectionId: string
   schema: string
   tables: string[]
   activeTab: Tab | undefined
-  exportMutation: UseMutationResult<ExportTableResult, Error, { schema: string; table: string; type: 'csv' | 'sql' }, unknown>
   onTableClick: (schema: string, table: string) => void
   onDuplicateToQuery: (schema: string, table: string) => void
-  onExportCSV: (schema: string, table: string) => void
-  onExportSQL: (schema: string, table: string) => void
-  onDelete: (schema: string, table: string) => void
 }
 
-function SchemaTree({
-  schema,
-  tables,
-  activeTab,
-  exportMutation,
-  onTableClick,
-  onExportCSV,
-  onExportSQL,
-  onDelete
-}: SchemaTreeProps) {
+function SchemaTree({ connectionId, schema, tables, activeTab, onTableClick }: SchemaTreeProps) {
   const isPublic = schema === 'public'
 
   return (
@@ -437,10 +340,9 @@ function SchemaTree({
                     </SidebarMenuButton>
                     <div className={`${isActive ? 'block!' : 'hidden'}`}>
                       <TableOptionsDropdown
-                        onExportCSV={() => onExportCSV(schema, table)}
-                        onExportSQL={() => onExportSQL(schema, table)}
-                        onDelete={() => onDelete(schema, table)}
-                        disabled={exportMutation.isPending && exportMutation.variables?.schema === schema && exportMutation.variables?.table === table}
+                        connectionId={connectionId}
+                        schema={schema}
+                        table={table}
                       />
                     </div>
                   </div>

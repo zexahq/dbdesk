@@ -60,7 +60,6 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
         const meta = table.options.meta as
           | {
               sortRules?: TableSortRule[]
-              toggleColumnSort?: (columnName: string) => void
               setColumnSortDirection?: (columnName: string, direction: 'ASC' | 'DESC') => void
             }
           | undefined
@@ -120,7 +119,9 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
                 className={cn(
                   'inline-flex items-center justify-center rounded-sm p-0.5 cursor-pointer',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  direction === 'ASC' ? 'text-foreground font-bold' : 'text-muted-foreground/40 hover:text-foreground/60'
+                  direction === 'ASC'
+                    ? 'text-foreground font-bold'
+                    : 'text-muted-foreground/40 hover:text-foreground/60'
                 )}
                 aria-label={`Sort by ${column.name} ascending`}
               >
@@ -132,7 +133,9 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
                 className={cn(
                   'inline-flex items-center justify-center rounded-sm p-0.5 cursor-pointer',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  direction === 'DESC' ? 'text-foreground font-bold' : 'text-muted-foreground/40 hover:text-foreground/60'
+                  direction === 'DESC'
+                    ? 'text-foreground font-bold'
+                    : 'text-muted-foreground/40 hover:text-foreground/60'
                 )}
                 aria-label={`Sort by ${column.name} descending`}
               >

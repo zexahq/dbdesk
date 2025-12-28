@@ -387,7 +387,7 @@ export class PostgresAdapter implements SQLAdapter {
 
     // Create data rows
     const lines = result.rows.map((row) => {
-      const record = row as unknown as Record<string, unknown>
+      const record = row as Record<string, unknown>
       return columnInfo.map((col) => serializeCsvValue(record[col.name])).join(',')
     })
 
@@ -431,7 +431,7 @@ export class PostgresAdapter implements SQLAdapter {
     const columnList = columnInfo.map((col) => quoteIdentifier(col.name)).join(', ')
 
     const statements = result.rows.map((row) => {
-      const record = row as unknown as Record<string, unknown>
+      const record = row as Record<string, unknown>
       const values = columnInfo.map((col) => serializeSqlValue(record[col.name])).join(', ')
       return `INSERT INTO ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnList}) VALUES (${values});`
     })
@@ -457,7 +457,7 @@ export class PostgresAdapter implements SQLAdapter {
       await pool.query(query)
       return { success: true }
     } catch (error) {
-      throw new Error(`Failed to delete table "${schema}.${table}": ${error}`)
+      throw new Error(`${error}`)
     }
   }
 

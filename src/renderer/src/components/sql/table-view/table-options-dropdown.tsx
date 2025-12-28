@@ -1,3 +1,6 @@
+import { useExportTableAsCSV, useExportTableAsSQL } from '@renderer/api/queries/export'
+import { useDeleteTable } from '@renderer/api/queries/schema'
+import { DeleteTableConfirmationDialog } from '@renderer/components/sql/dialogs/delete-table-confirmation-dialog'
 import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu,
@@ -7,21 +10,49 @@ import {
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { cn } from '@renderer/lib/utils'
+import { useTabStore } from '@renderer/store/tab-store'
 import { FileCode2, FileDown, MoreVertical, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 
 interface TableOptionsDropdownProps {
-  onExportCSV: () => void
-  onExportSQL: () => void
-  onDelete: () => void
+  connectionId: string
+  schema: string
+  table: string
   disabled?: boolean
 }
 
 export function TableOptionsDropdown({
-  onExportCSV,
-  onExportSQL,
-  onDelete,
+  connectionId,
+  schema,
+  table,
   disabled
 }: TableOptionsDropdownProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const exportCSVMutation = useExportTableAsCSV(connectionId)
+  const exportSQLMutation = useExportTableAsSQL(connectionId)
+  const deleteTableMutation = useDeleteTable(connectionId)
+
+  const removeTab = useTabStore((s) => s.removeTab)
+  const findTableTabById = useTabStore((s) => s.findTableTabById)
+
+  const handleDelete = () => {
+    deleteTableMutation.mutate(
+      { schema, table },
+      {
+        onSuccess: (result) => {
+          if (result.success) {
+            setDeleteDialogOpen(false)
+            const tableTabId = `${schema}.${table}`
+            const tab = findTableTabById(tableTabId)
+            if (tab) {
+              removeTab(tab.id)
+            }
+          }
+        }
+      }
+    )
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -38,7 +69,7 @@ export function TableOptionsDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="center"
+        align="start"
         side="bottom"
         className="w-52"
         sideOffset={4}
@@ -46,9 +77,8 @@ export function TableOptionsDropdown({
       >
         <DropdownMenuItem
           className="cursor-pointer text-sm flex items-center gap-2"
-          onSelect={(e) => {
-            e.preventDefault()
-            onExportCSV()
+          onSelect={() => {
+            exportCSVMutation.mutate({ schema, table })
           }}
         >
           <FileDown className="size-4" />
@@ -56,9 +86,8 @@ export function TableOptionsDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           className="cursor-pointer text-sm flex items-center gap-2"
-          onSelect={(e) => {
-            e.preventDefault()
-            onExportSQL()
+          onSelect={() => {
+            exportSQLMutation.mutate({ schema, table })
           }}
         >
           <FileCode2 className="size-4" />
@@ -67,15 +96,22 @@ export function TableOptionsDropdown({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer text-sm flex items-center gap-2"
-          onSelect={(e) => {
-            e.preventDefault()
-            onDelete()
+          onSelect={() => {
+            setDeleteDialogOpen(true)
           }}
         >
           <Trash2 className="size-4" />
           <span>Delete table</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <DeleteTableConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+        table={table}
+        schema={schema}
+        isPending={deleteTableMutation.isPending}
+      />
     </DropdownMenu>
   )
 }

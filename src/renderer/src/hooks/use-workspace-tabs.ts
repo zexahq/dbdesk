@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { toast } from '@renderer/lib/toast'
 import type { Tab } from '@renderer/store/tab-store'
 import { useTabStore } from '@renderer/store/tab-store'
-import { toast } from '@renderer/lib/toast'
+import { useMemo } from 'react'
 
 export function useWorkspaceTabs() {
   const tabs = useTabStore((s) => s.tabs)
@@ -12,18 +12,20 @@ export function useWorkspaceTabs() {
   const reset = useTabStore((s) => s.reset)
 
   // Type guard for query tabs
-  const isQueryTab = (tab: Tab): tab is Tab & { kind: 'query' } =>
-    tab.kind === 'query'
+  const isQueryTab = (tab: Tab): tab is Tab & { kind: 'query' } => tab.kind === 'query'
 
   const isQueryTabDirty = useTabStore((s) => s.isQueryTabDirty)
 
   // Memoized tab calculations to prevent unnecessary re-renders
-  const tabCalculations = useMemo(() =>
-    tabs.map(tab => ({
-      tab,
-      isActive: activeTabId === tab.id,
-      isDirty: isQueryTab(tab) ? isQueryTabDirty(tab) : false
-    })), [tabs, activeTabId, isQueryTabDirty])
+  const tabCalculations = useMemo(
+    () =>
+      tabs.map((tab) => ({
+        tab,
+        isActive: activeTabId === tab.id,
+        isDirty: isQueryTab(tab) ? isQueryTabDirty(tab) : false
+      })),
+    [tabs, activeTabId, isQueryTabDirty]
+  )
 
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId)

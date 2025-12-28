@@ -62,6 +62,7 @@ interface TabStore {
   updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => void
   makeTabPermanent: (tabId: string) => void
   getTableTabBySchemaTable: (schema: string, table: string) => TableTab | undefined
+  findTableTabById: (tabId: string) => TableTab | undefined
 
   // Query-specific actions
   addQueryTab: () => string
@@ -201,6 +202,11 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
   getTableTabBySchemaTable: (schema: string, table: string) => {
     const tabId = `${schema}.${table}`
+    const tab = get().tabs.find((t) => t.id === tabId)
+    return tab?.kind === 'table' ? tab : undefined
+  },
+
+  findTableTabById: (tabId: string) => {
     const tab = get().tabs.find((t) => t.id === tabId)
     return tab?.kind === 'table' ? tab : undefined
   },
