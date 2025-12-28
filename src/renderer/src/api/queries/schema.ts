@@ -11,6 +11,7 @@ import type {
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
 import { toast } from '../../lib/toast'
+import { cleanErrorMessage } from '../../lib/utils'
 
 const keys = {
   schemas: (connectionId: string) => ['schemas', connectionId] as const,
@@ -174,15 +175,6 @@ export function useDeleteTable(connectionId?: string) {
       }
     },
     onError: (error) => {
-      const cleanErrorMessage = (message: string): string => {
-        // Remove IPC wrapper
-        let cleaned = message.replace(/^Error invoking remote method '[^']+': (.+)$/, '$1')
-        // Remove "Error:" or "error:" prefix (case-insensitive)
-        cleaned = cleaned.replace(/^[Ee]rror:\s*/i, '')
-        // Capitalize first letter
-        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
-        return cleaned
-      }
       toast.error('Failed to delete table', { description: cleanErrorMessage(error.message) })
     }
   })

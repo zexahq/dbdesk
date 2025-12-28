@@ -1,5 +1,6 @@
 import type { QueryResult } from '@common/types'
 import { Button } from '@renderer/components/ui/button'
+import { cleanErrorMessage } from '@renderer/lib/utils'
 import { Play } from 'lucide-react'
 import { SimpleTable } from './simple-table'
 
@@ -34,10 +35,7 @@ export function QueryResults({ queryResults, isLoading, error, onRun }: QueryRes
           </div>
         ) : error ? (
           <div className="flex w-full items-center justify-center text-center text-destructive">
-            <div>
-              <p className="text-lg font-medium">Error</p>
-              <p className="text-sm">{error.message}</p>
-            </div>
+            <p>Error: {cleanErrorMessage(error.message)}</p>
           </div>
         ) : queryResults ? (
           <div className="w-full h-full">

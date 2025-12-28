@@ -204,7 +204,8 @@ export const registerIpcHandlers = () => {
     try {
       return await adapter.runQuery(query, { limit, offset })
     } catch (error) {
-      throw new QueryError('Failed to execute query', error)
+      const message = error instanceof Error ? error.message : 'Failed to execute query'
+      throw new QueryError(message, error)
     }
   })
 

@@ -23,11 +23,13 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
   const queries = useSavedQueriesStore((s) => s.queries)
   const saveQuery = useSavedQueriesStore((s) => s.saveQuery)
   const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
-  const [isExecuting, setIsExecuting] = useState(false)
-  const [executionError, setExecutionError] = useState<Error | null>(null)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
-  const { mutateAsync: runQueryMutation } = useRunQuery(profile.id)
+  const {
+    mutateAsync: runQueryMutation,
+    isPending: isExecuting,
+    error: executionError
+  } = useRunQuery(profile.id)
 
   const isQueryTabSaved = queries.some((q) => q.id === activeTab.id)
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
@@ -61,9 +63,6 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
         return
       }
 
-      setIsExecuting(true)
-      setExecutionError(null)
-
       try {
         const result = await runQueryMutation({ query: rawQuery, options: { limit, offset } })
         updateQueryTab(activeTab.id, {
@@ -72,13 +71,8 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
           offset: result.offset,
           totalRowCount: result.totalRowCount
         })
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error('Failed to execute query')
-        setExecutionError(err)
+      } catch {
         updateQueryTab(activeTab.id, { queryResults: undefined })
-        toast.error(err.message)
-      } finally {
-        setIsExecuting(false)
       }
     },
     [activeTab.editorContent, activeTab.id, runQueryMutation, updateQueryTab]

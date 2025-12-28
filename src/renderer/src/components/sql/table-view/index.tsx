@@ -1,6 +1,7 @@
 import type { QueryResultRow, SQLConnectionProfile } from '@common/types'
 import { useDeleteTableRows, useTableData, useUpdateTableCell } from '@renderer/api/queries/schema'
 import { toast } from '@renderer/lib/toast'
+import { cleanErrorMessage } from '@renderer/lib/utils'
 import type { TableTab } from '@renderer/store/tab-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useQueryClient } from '@tanstack/react-query'
@@ -81,12 +82,6 @@ export function TableView({ profile, activeTab }: TableViewProps) {
         refreshTableData()
       } catch (error) {
         const err = error as Error & { query?: string }
-
-        const cleanErrorMessage = (message: string): string => {
-          const match = message.match(/^Error invoking remote method '[^']+': (.+)$/)
-          return match ? match[1] : message
-        }
-
         setUpdateError({
           query: err.query,
           error: cleanErrorMessage(err.message)
