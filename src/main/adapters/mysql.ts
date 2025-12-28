@@ -220,7 +220,7 @@ export class MySQLAdapter implements SQLAdapter {
     const totalCount = (countResult[0][0] as { total: number }).total ?? 0
 
     return {
-      rows: dataRows as unknown as Record<string, unknown>[],
+      rows: dataRows as Record<string, unknown>[],
       columns,
       totalCount,
       rowCount: dataRows.length,
@@ -470,7 +470,7 @@ export class MySQLAdapter implements SQLAdapter {
     const columns = fields.map((field) => field.name)
 
     return {
-      rows: rows as unknown as Record<string, unknown>[],
+      rows: rows as Record<string, unknown>[],
       columns,
       rowCount: rows.length,
       executionTime
