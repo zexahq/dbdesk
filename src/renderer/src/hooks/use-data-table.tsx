@@ -11,8 +11,7 @@ import {
   type Updater,
   useReactTable
 } from '@tanstack/react-table'
-import * as React from 'react'
-import { useState } from 'react'
+import { useState, useRef, useMemo, useCallback, useEffect, type MouseEvent } from 'react'
 
 import type { QueryResultRow } from '@renderer/api/client'
 
@@ -44,9 +43,9 @@ export function useDataTable<TData, TValue = unknown>({
   onSortChange,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
-  const tableContainerRef = React.useRef<HTMLDivElement>(null)
-  const tableRef = React.useRef<ReturnType<typeof useReactTable<TData>>>(null)
-  const rowMapRef = React.useRef<Map<number, HTMLTableRowElement>>(new Map())
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const tableRef = useRef<ReturnType<typeof useReactTable<TData>>>(null)
+  const rowMapRef = useRef<Map<number, HTMLTableRowElement>>(new Map())
 
   // All state is local - no Zustand syncing for ephemeral UI state
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
@@ -54,7 +53,7 @@ export function useDataTable<TData, TValue = unknown>({
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({})
 
   // Sorting support - only if tabId and onSortChange are provided
-  const setColumnSortDirection = React.useCallback(
+  const setColumnSortDirection = useCallback(
     (columnName: string, direction: 'ASC' | 'DESC') => {
       if (!onSortChange) return
       const nextSortRules: TableSortRule[] = [
@@ -69,7 +68,7 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Get column IDs
-  const columnIds = React.useMemo(() => {
+  const columnIds = useMemo(() => {
     return columns
       .map((c) => {
         if (c.id) return c.id
@@ -80,12 +79,12 @@ export function useDataTable<TData, TValue = unknown>({
   }, [columns])
 
   // Get navigable column IDs (exclude select and actions columns)
-  const navigableColumnIds = React.useMemo(() => {
+  const navigableColumnIds = useMemo(() => {
     return columnIds.filter((c) => !NON_NAVIGABLE_COLUMN_IDS.includes(c))
   }, [columnIds])
 
   // Handle row selection change (keep separate from cell selection)
-  const handleRowSelectionChange = React.useCallback(
+  const handleRowSelectionChange = useCallback(
     (updater: Updater<RowSelectionState>) => {
       const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater
       onRowSelectionChange(newSelection)
@@ -121,7 +120,7 @@ export function useDataTable<TData, TValue = unknown>({
   }
 
   // Scroll cell into view
-  const scrollCellIntoView = React.useCallback(
+  const scrollCellIntoView = useCallback(
     (rowIndex: number, columnId: string, direction?: NavigationDirection) => {
       const container = tableContainerRef.current
       if (!container) return
@@ -226,7 +225,7 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Focus cell
-  const focusCell = React.useCallback(
+  const focusCell = useCallback(
     (rowIndex: number, columnId: string, scrollDirection?: NavigationDirection) => {
       setFocusedCell({ rowIndex, columnId })
       setEditingCell(null)
@@ -248,7 +247,7 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Navigate cell - use refs for state to avoid recreating callback
-  const navigateCellRef = React.useRef<(direction: NavigationDirection) => void>(null)
+  const navigateCellRef = useRef<(direction: NavigationDirection) => void>(null)
 
   navigateCellRef.current = (direction: NavigationDirection) => {
     if (!focusedCell) return
@@ -333,12 +332,12 @@ export function useDataTable<TData, TValue = unknown>({
     }
   }
 
-  const navigateCell = React.useCallback((direction: NavigationDirection) => {
+  const navigateCell = useCallback((direction: NavigationDirection) => {
     navigateCellRef.current?.(direction)
   }, [])
 
   // Start editing cell
-  const onCellEditingStart = React.useCallback(
+  const onCellEditingStart = useCallback(
     (rowIndex: number, columnId: string) => {
       setFocusedCell({ rowIndex, columnId })
       setEditingCell({ rowIndex, columnId })
@@ -349,7 +348,7 @@ export function useDataTable<TData, TValue = unknown>({
 
   // Stop editing cell - use ref to avoid stale closure
   const onCellEditingStopRef =
-    React.useRef<(opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => void>(
+    useRef<(opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => void>(
       null
     )
 
@@ -379,7 +378,7 @@ export function useDataTable<TData, TValue = unknown>({
     }
   }
 
-  const onCellEditingStop = React.useCallback(
+  const onCellEditingStop = useCallback(
     (opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => {
       onCellEditingStopRef.current?.(opts)
     },
@@ -387,10 +386,10 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Handle data updates - use ref to avoid table dependency
-  const tableRef2 = React.useRef(table)
+  const tableRef2 = useRef(table)
   tableRef2.current = table
 
-  const onDataUpdate = React.useCallback(
+  const onDataUpdate = useCallback(
     (updates: UpdateCell | Array<UpdateCell>) => {
       const updateArray = Array.isArray(updates) ? updates : [updates]
 
@@ -413,8 +412,8 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Handle cell click - only focuses, never starts editing
-  const onCellClick = React.useCallback(
-    (rowIndex: number, columnId: string, event?: React.MouseEvent) => {
+  const onCellClick = useCallback(
+    (rowIndex: number, columnId: string, event?: MouseEvent) => {
       // Ignore right-click
       if (event?.button === 2) {
         return
@@ -432,8 +431,8 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Handle cell double click - starts editing
-  const onCellDoubleClick = React.useCallback(
-    (rowIndex: number, columnId: string, event?: React.MouseEvent) => {
+  const onCellDoubleClick = useCallback(
+    (rowIndex: number, columnId: string, event?: MouseEvent) => {
       if (event?.defaultPrevented) return
       onCellEditingStart(rowIndex, columnId)
     },
@@ -441,7 +440,7 @@ export function useDataTable<TData, TValue = unknown>({
   )
 
   // Handle keyboard events - use refs to get latest state
-  const onKeyDownRef = React.useRef<(event: KeyboardEvent) => void>(null)
+  const onKeyDownRef = useRef<(event: KeyboardEvent) => void>(null)
 
   onKeyDownRef.current = (event: KeyboardEvent) => {
     const { key, ctrlKey, metaKey, shiftKey } = event
@@ -516,7 +515,7 @@ export function useDataTable<TData, TValue = unknown>({
   }
 
   // Set up keyboard event listeners
-  React.useEffect(() => {
+  useEffect(() => {
     const container = tableContainerRef.current
     if (!container) return
 

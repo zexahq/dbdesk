@@ -1,7 +1,7 @@
 'use client'
 
 import type { DataTableCellVariant } from '@renderer/lib/data-table'
-import * as React from 'react'
+import { memo } from 'react'
 
 import { areCellPropsEqual } from './data-table-cell-variants/base'
 import { BooleanDataTableCell } from './data-table-cell-variants/boolean-cell'
@@ -36,7 +36,7 @@ function DataTableCellInner<TData, TValue>(props: DataTableCellProps<TData, TVal
   }
 }
 
-export const DataTableCell = React.memo(
+export const DataTableCell = memo(
   DataTableCellInner,
   areCellPropsEqual
 ) as typeof DataTableCellInner

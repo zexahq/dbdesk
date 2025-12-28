@@ -148,7 +148,6 @@ export const useTabStore = create<TabStore>((set, get) => ({
     const temporaryTableTab = get().tabs.find((t) => t.kind === 'table' && t.isTemporary)
 
     if (temporaryTableTab) {
-      console.log('temporaryTableTab', temporaryTableTab)
       const newTab = createDefaultTableTab(schema, table, true)
       set((state) => ({
         tabs: state.tabs.map((t) => (t.id === temporaryTableTab.id ? newTab : t)),
@@ -158,7 +157,6 @@ export const useTabStore = create<TabStore>((set, get) => ({
     }
 
     const newTab = createDefaultTableTab(schema, table, true)
-    console.log('newTab', newTab)
     set((state) => ({
       tabs: [...state.tabs, newTab],
       activeTabId: tabId

@@ -4,7 +4,7 @@ import type { TableCell } from '@renderer/components/ui/table'
 import { formatCellValue, getEditorLanguage } from '@renderer/lib/data-table'
 import { cn } from '@renderer/lib/utils'
 import { flexRender } from '@tanstack/react-table'
-import * as React from 'react'
+import { useRef, useMemo, useCallback, type ComponentProps } from 'react'
 
 import type { DataTableCellProps } from '../data-table-cell.types'
 
@@ -20,16 +20,16 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
     onCellDoubleClick
   } = props
 
-  const cellRef = React.useRef<HTMLTableCellElement>(null)
+  const cellRef = useRef<HTMLTableCellElement>(null)
   const isSelectColumn = columnId === 'select'
 
   // Memoize focus/edit state checks
-  const isFocused = React.useMemo(
+  const isFocused = useMemo(
     () => focusedCell?.rowIndex === rowIndex && focusedCell?.columnId === columnId,
     [focusedCell?.rowIndex, focusedCell?.columnId, rowIndex, columnId]
   )
 
-  const isEditing = React.useMemo(
+  const isEditing = useMemo(
     () => editingCell?.rowIndex === rowIndex && editingCell?.columnId === columnId,
     [editingCell?.rowIndex, editingCell?.columnId, rowIndex, columnId]
   )
@@ -38,16 +38,16 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   const dataType = (cell.column.columnDef.meta as { dataType?: string } | undefined)?.dataType
 
   // Memoize expensive computations
-  const cellValueString = React.useMemo(
+  const cellValueString = useMemo(
     () => formatCellValue(cellValue, dataType),
     [cellValue, dataType]
   )
 
-  const editorLanguage = React.useMemo(() => getEditorLanguage(dataType), [dataType])
+  const editorLanguage = useMemo(() => getEditorLanguage(dataType), [dataType])
 
   // Don't memoize for select column - it needs to re-render when row selection changes
   // For other columns, memoize based on cell reference
-  const renderedCell = React.useMemo(
+  const renderedCell = useMemo(
     () => flexRender(cell.column.columnDef.cell, cell.getContext()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     isSelectColumn ? [cell, cell.row.getIsSelected()] : [cell]
@@ -56,7 +56,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   const allowCellInteraction = !isSelectColumn && !isEditing
 
   // Memoize click handlers
-  const handleClick = React.useCallback(
+  const handleClick = useCallback(
     (e: React.MouseEvent) => {
       if (allowCellInteraction) {
         onCellClick(rowIndex, columnId, e)
@@ -65,7 +65,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
     [allowCellInteraction, onCellClick, rowIndex, columnId]
   )
 
-  const handleDoubleClick = React.useCallback(
+  const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       if (allowCellInteraction) {
         onCellDoubleClick(rowIndex, columnId, e)
@@ -75,7 +75,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   )
 
   // Memoize style object
-  const cellStyle = React.useMemo(
+  const cellStyle = useMemo(
     () => ({
       width: cell.column.getSize(),
       minWidth: cell.column.columnDef.minSize,
@@ -85,7 +85,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   )
 
   // Memoize className
-  const cellClassName = React.useMemo(
+  const cellClassName = useMemo(
     () =>
       cn(
         'border-border border-x first:border-l last:border-r',
@@ -96,9 +96,9 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
     [isSelectColumn, isFocused]
   )
 
-  const tableCellProps: React.ComponentProps<typeof TableCell> & {
+  const tableCellProps: ComponentProps<typeof TableCell> & {
     'data-column-id'?: string
-  } = React.useMemo(
+  } = useMemo(
     () => ({
       ref: cellRef,
       'data-column-id': columnId,
