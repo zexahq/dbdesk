@@ -28,7 +28,7 @@ import { toast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
-import { Tab, useTabStore } from '@renderer/store/tab-store'
+import { Tab, useActiveTab, useTabStore } from '@renderer/store/tab-store'
 import {
   ChevronRight,
   DatabaseIcon,
@@ -55,20 +55,19 @@ type RenameMode = {
 export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const [renameMode, setRenameMode] = useState<RenameMode>({ open: false, queryId: null })
 
-  const { schemasWithTables } = useSqlWorkspaceStore()
-  const {
-    addTableTab,
-    addQueryTab,
-    setActiveTab,
-    findQueryTabById,
-    updateQueryTab,
-    getActiveTab,
-    removeTab
-  } = useTabStore()
+  const schemasWithTables = useSqlWorkspaceStore((s) => s.schemasWithTables)
+  const addTableTab = useTabStore((s) => s.addTableTab)
+  const addQueryTab = useTabStore((s) => s.addQueryTab)
+  const setActiveTab = useTabStore((s) => s.setActiveTab)
+  const findQueryTabById = useTabStore((s) => s.findQueryTabById)
+  const updateQueryTab = useTabStore((s) => s.updateQueryTab)
+  const removeTab = useTabStore((s) => s.removeTab)
+  const activeTab = useActiveTab()
 
-  const activeTab = getActiveTab()
-
-  const { queries, loadQueries, deleteQuery, updateQuery } = useSavedQueriesStore()
+  const queries = useSavedQueriesStore((s) => s.queries)
+  const loadQueries = useSavedQueriesStore((s) => s.loadQueries)
+  const deleteQuery = useSavedQueriesStore((s) => s.deleteQuery)
+  const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
 
   useEffect(() => {
     loadQueries(profile.id).catch((error) => {
@@ -294,7 +293,7 @@ type SchemaTreeProps = {
   connectionId: string
   schema: string
   tables: string[]
-  activeTab: Tab | undefined
+  activeTab: Tab | null
   onTableClick: (schema: string, table: string) => void
   onDuplicateToQuery: (schema: string, table: string) => void
 }

@@ -14,17 +14,15 @@ export function useWorkspaceTabs() {
   // Type guard for query tabs
   const isQueryTab = (tab: Tab): tab is Tab & { kind: 'query' } => tab.kind === 'query'
 
-  const isQueryTabDirty = useTabStore((s) => s.isQueryTabDirty)
-
   // Memoized tab calculations to prevent unnecessary re-renders
   const tabCalculations = useMemo(
     () =>
       tabs.map((tab) => ({
         tab,
         isActive: activeTabId === tab.id,
-        isDirty: isQueryTab(tab) ? isQueryTabDirty(tab) : false
+        isDirty: isQueryTab(tab) ? tab.isDirty : false
       })),
-    [tabs, activeTabId, isQueryTabDirty]
+    [tabs, activeTabId]
   )
 
   const handleTabClick = (tabId: string) => {

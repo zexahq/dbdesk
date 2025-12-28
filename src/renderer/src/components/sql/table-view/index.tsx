@@ -1,9 +1,11 @@
 import type { QueryResultRow, SQLConnectionProfile } from '@common/types'
 import { useDeleteTableRows, useTableData, useUpdateTableCell } from '@renderer/api/queries/schema'
-import { TableTab, useTabStore } from '@renderer/store/tab-store'
-import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
 import { toast } from '@renderer/lib/toast'
+import type { TableTab } from '@renderer/store/tab-store'
+import { useTabStore } from '@renderer/store/tab-store'
+import { useQueryClient } from '@tanstack/react-query'
+import type { RowSelectionState } from '@tanstack/react-table'
+import { useCallback, useEffect, useState } from 'react'
 import { UpdateErrorDialog } from '../dialogs/update-error-dialog'
 import { SqlTable } from '../table'
 import { SqlBottombar } from './sql-bottombar'
@@ -17,9 +19,16 @@ interface TableViewProps {
 
 export function TableView({ profile, activeTab }: TableViewProps) {
   const queryClient = useQueryClient()
+  const updateTableTab = useTabStore((s) => s.updateTableTab)
+  const makeTabPermanent = useTabStore((s) => s.makeTabPermanent)
   const [updateErrorDialogOpen, setUpdateErrorDialogOpen] = useState(false)
   const [updateError, setUpdateError] = useState<{ query?: string; error?: string }>({})
-  const updateTableTab = useTabStore((s) => s.updateTableTab)
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+
+  // Reset ephemeral state when tab changes
+  useEffect(() => {
+    setRowSelection({})
+  }, [activeTab.id])
   const {
     data: tableData,
     isLoading: isLoadingTableData,
@@ -43,21 +52,11 @@ export function TableView({ profile, activeTab }: TableViewProps) {
   )
   const { mutateAsync: updateCellMutation } = useUpdateTableCell(profile.id)
 
-  const selectedRows = useMemo<QueryResultRow[]>(() => {
-    if (!tableData) {
-      return []
-    }
-    return Object.entries(activeTab.rowSelection)
-      .filter(([, isSelected]) => Boolean(isSelected))
-      .map(([rowId]) => tableData.rows[Number(rowId)])
-      .filter((row): row is QueryResultRow => Boolean(row))
-  }, [activeTab.rowSelection, tableData])
-
   const refreshTableData = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: ['table-data', profile.id, activeTab.schema, activeTab.table]
     })
-  }, [activeTab.schema, activeTab.table, profile.id, queryClient])
+  }, [queryClient, profile.id, activeTab.schema, activeTab.table])
 
   const handleCellUpdate = useCallback(
     async (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => {
@@ -95,7 +94,7 @@ export function TableView({ profile, activeTab }: TableViewProps) {
         setUpdateErrorDialogOpen(true)
       }
     },
-    [activeTab.schema, activeTab.table, tableData, updateCellMutation]
+    [activeTab.schema, activeTab.table, tableData, updateCellMutation, refreshTableData]
   )
 
   const handleDeleteSelectedRows = useCallback(async () => {
@@ -108,7 +107,12 @@ export function TableView({ profile, activeTab }: TableViewProps) {
       return
     }
 
-    if (selectedRows.length === 0) {
+    const rowsToDelete = Object.entries(rowSelection)
+      .filter(([, isSelected]) => Boolean(isSelected))
+      .map(([rowId]) => tableData.rows[Number(rowId)])
+      .filter((row): row is QueryResultRow => Boolean(row))
+
+    if (rowsToDelete.length === 0) {
       toast.error('Select at least one row to delete.')
       return
     }
@@ -117,18 +121,25 @@ export function TableView({ profile, activeTab }: TableViewProps) {
       const result = await deleteRowsMutation({
         schema: activeTab.schema,
         table: activeTab.table,
-        rows: selectedRows
+        rows: rowsToDelete
       })
       toast.success(
         `Deleted ${result.deletedRowCount} row${result.deletedRowCount === 1 ? '' : 's'}.`
       )
-      updateTableTab(activeTab.id, { rowSelection: {} })
+      setRowSelection({})
       refreshTableData()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete rows.'
       toast.error(message)
     }
-  }, [deleteRowsMutation, selectedRows, activeTab, tableData, updateTableTab])
+  }, [
+    deleteRowsMutation,
+    rowSelection,
+    activeTab.schema,
+    activeTab.table,
+    tableData,
+    refreshTableData
+  ])
 
   const handleLimitChange = useCallback(
     (limit: number) => {
@@ -144,6 +155,12 @@ export function TableView({ profile, activeTab }: TableViewProps) {
     [activeTab.id, updateTableTab]
   )
 
+  const handleTableInteract = useCallback(() => {
+    if (activeTab.isTemporary) {
+      makeTabPermanent(activeTab.id)
+    }
+  }, [activeTab.id, activeTab.isTemporary, makeTabPermanent])
+
   return (
     <>
       <SqlTopbar
@@ -153,15 +170,23 @@ export function TableView({ profile, activeTab }: TableViewProps) {
         columns={tableData?.columns}
         onDelete={handleDeleteSelectedRows}
         isDeletePending={isDeletePending}
+        rowSelectionCount={Object.keys(rowSelection).length}
       />
       <div className="flex-1 overflow-hidden">
         {activeTab.view === 'tables' && (
           <SqlTable
-            activeTab={activeTab}
             isLoading={isLoadingTableData}
             error={tableError}
             tableData={tableData}
             onCellUpdate={handleCellUpdate}
+            onTableInteract={handleTableInteract}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            tabId={activeTab.id}
+            sortRules={activeTab.sortRules}
+            onSortChange={(sortRules) => {
+              updateTableTab(activeTab.id, { sortRules, offset: 0 })
+            }}
           />
         )}
         {activeTab.view === 'structure' && (

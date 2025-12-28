@@ -6,8 +6,6 @@ import type {
   TableFilterCondition,
   TableSortRule
 } from '@common/types'
-import type { CellPosition, UpdateCell } from '@renderer/types/data-table'
-import type { ColumnSizingState, RowSelectionState, VisibilityState } from '@tanstack/react-table'
 import { create } from 'zustand'
 
 export interface BaseTab {
@@ -25,12 +23,6 @@ export interface TableTab extends BaseTab {
   offset: number
   filters?: TableFilterCondition[]
   sortRules?: TableSortRule[]
-  rowSelection: RowSelectionState
-  columnSizing: ColumnSizingState
-  columnVisibility: VisibilityState
-  focusedCell: CellPosition | null
-  editingCell: CellPosition | null
-  pendingUpdates: UpdateCell[]
 }
 
 export interface QueryTab extends BaseTab {
@@ -42,6 +34,7 @@ export interface QueryTab extends BaseTab {
   totalRowCount?: number
   lastSavedContent?: string
   queryResults?: QueryResult
+  isDirty: boolean
 }
 
 export type Tab = TableTab | QueryTab
@@ -53,7 +46,6 @@ interface TabStore {
   // Common actions
   removeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
-  getActiveTab: () => Tab | undefined
   reset: () => void
   moveTab: (fromIndex: number, toIndex: number) => void
 
@@ -68,7 +60,6 @@ interface TabStore {
   addQueryTab: () => string
   updateQueryTab: (tabId: string, updates: Partial<Omit<QueryTab, 'kind'>>) => void
   findQueryTabById: (tabId: string) => QueryTab | undefined
-  isQueryTabDirty: (tab: QueryTab) => boolean
 
   // Persistence
   loadFromSerialized: (tabs: SerializedTab[], activeTabId: string | null) => void
@@ -85,13 +76,7 @@ const createDefaultTableTab = (schema: string, table: string, isTemporary = true
   limit: 50,
   offset: 0,
   filters: undefined,
-  sortRules: undefined,
-  rowSelection: {},
-  columnSizing: {},
-  columnVisibility: {},
-  focusedCell: null,
-  editingCell: null,
-  pendingUpdates: []
+  sortRules: undefined
 })
 
 const createDefaultQueryTab = (): QueryTab => ({
@@ -102,7 +87,8 @@ const createDefaultQueryTab = (): QueryTab => ({
   limit: 50,
   offset: 0,
   queryResults: undefined,
-  lastSavedContent: undefined
+  lastSavedContent: undefined,
+  isDirty: false
 })
 
 export const useTabStore = create<TabStore>((set, get) => ({
@@ -134,11 +120,6 @@ export const useTabStore = create<TabStore>((set, get) => ({
     if (tab) {
       set({ activeTabId: tabId })
     }
-  },
-
-  getActiveTab: () => {
-    const { tabs, activeTabId } = get()
-    return tabs.find((t) => t.id === activeTabId)
   },
 
   reset: () => {
@@ -185,11 +166,9 @@ export const useTabStore = create<TabStore>((set, get) => ({
   },
 
   updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => {
-    get().makeTabPermanent(tabId)
-
     set((state) => ({
       tabs: state.tabs.map((tab) =>
-        tab.id === tabId && tab.kind === 'table' ? { ...tab, ...updates } : tab
+        tab.id === tabId && tab.kind === 'table' ? { ...tab, ...updates, isTemporary: false } : tab
       )
     }))
   },
@@ -223,9 +202,17 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
   updateQueryTab: (tabId: string, updates: Partial<Omit<QueryTab, 'kind'>>) => {
     set((state) => {
-      const newTabs = state.tabs.map((tab) =>
-        tab.id === tabId && tab.kind === 'query' ? { ...tab, ...updates } : tab
-      )
+      const newTabs = state.tabs.map((tab) => {
+        if (tab.id !== tabId || tab.kind !== 'query') {
+          return tab
+        }
+        const next: QueryTab = { ...tab, ...updates }
+        const lastSaved = next.lastSavedContent ?? ''
+        const current = next.editorContent ?? ''
+        next.isDirty =
+          next.lastSavedContent !== undefined ? current !== lastSaved : current.trim().length > 0
+        return next
+      })
       const newActiveTabId =
         state.activeTabId === tabId && updates.id ? updates.id : state.activeTabId
       return { tabs: newTabs, activeTabId: newActiveTabId }
@@ -237,34 +224,26 @@ export const useTabStore = create<TabStore>((set, get) => ({
     return tab?.kind === 'query' ? tab : undefined
   },
 
-  isQueryTabDirty: (tab: QueryTab) => {
-    // Tab is dirty if it was previously saved and content changed
-    if (tab.lastSavedContent !== undefined) {
-      return tab.editorContent !== tab.lastSavedContent
-    }
-    // Or if it's unsaved but has content
-    return tab.editorContent.trim().length > 0
-  },
-
   // Persistence
   loadFromSerialized: (serializedTabs: SerializedTab[], activeTabId: string | null) => {
     const tabs: Tab[] = serializedTabs.map((serializedTab) => {
       if (serializedTab.kind === 'table') {
         return {
-          ...serializedTab,
-          rowSelection: {},
-          columnSizing: {},
-          columnVisibility: {},
-          focusedCell: null,
-          editingCell: null,
-          pendingUpdates: []
+          ...serializedTab
         } as TableTab
       } else {
+        const lastSaved = serializedTab.lastSavedContent ?? ''
+        const current = serializedTab.editorContent ?? ''
+        const isDirty =
+          serializedTab.lastSavedContent !== undefined
+            ? current !== lastSaved
+            : current.trim().length > 0
         return {
           ...serializedTab,
           limit: 50,
           offset: 0,
-          queryResults: undefined
+          queryResults: undefined,
+          isDirty
         } as QueryTab
       }
     })
@@ -304,3 +283,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     return { tabs: serializedTabs, activeTabId }
   }
 }))
+
+// Custom hooks for idiomatic selector usage
+export const useActiveTab = () =>
+  useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId) ?? null)

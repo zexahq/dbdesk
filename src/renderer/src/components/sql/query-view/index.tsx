@@ -20,7 +20,9 @@ interface QueryViewProps {
 }
 
 export function QueryView({ profile, activeTab }: QueryViewProps) {
-  const { queries, saveQuery, updateQuery } = useSavedQueriesStore()
+  const queries = useSavedQueriesStore((s) => s.queries)
+  const saveQuery = useSavedQueriesStore((s) => s.saveQuery)
+  const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
   const [isExecuting, setIsExecuting] = useState(false)
   const [executionError, setExecutionError] = useState<Error | null>(null)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)

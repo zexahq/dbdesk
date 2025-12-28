@@ -11,14 +11,14 @@ import { cn } from '@renderer/lib/utils'
 import * as React from 'react'
 
 import type { DataTableCellProps } from '../data-table-cell.types'
-import { useDataTableCellContext } from './base'
+import { areCellPropsEqual, useDataTableCellContext } from './base'
 
 function parseBooleanString(value: 'true' | 'false' | 'null'): boolean | null {
   if (value === 'null') return null
   return value === 'true'
 }
 
-export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
+function BooleanDataTableCellInner<TData, TValue>(props: DataTableCellProps<TData, TValue>) {
   const {
     tableCellProps,
     renderedCell,
@@ -105,3 +105,8 @@ export function BooleanDataTableCell<TData, TValue>(props: DataTableCellProps<TD
     </TableCell>
   )
 }
+
+export const BooleanDataTableCell = React.memo(
+  BooleanDataTableCellInner,
+  areCellPropsEqual
+) as typeof BooleanDataTableCellInner
