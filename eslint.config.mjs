@@ -15,7 +15,7 @@ export default defineConfig(
       }
     },
     rules: {
-      '@typescript-eslint/explicit-function-return-type': 'off'
+      '@typescript-eslint/explicit-function-return-type': 'off',
     }
   },
   {
@@ -24,7 +24,8 @@ export default defineConfig(
       'react-hooks': eslintPluginReactHooks
     },
     rules: {
-      ...eslintPluginReactHooks.configs.recommended.rules
+      ...eslintPluginReactHooks.configs.recommended.rules,
+      'react-hooks/exhaustive-deps': 'off'
     }
   },
   {

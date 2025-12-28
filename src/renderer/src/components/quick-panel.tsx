@@ -24,9 +24,13 @@ import { Button } from './ui/button'
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
-  const { schemasWithTables, currentConnectionId, setCurrentConnection } = useSqlWorkspaceStore()
+  const schemasWithTables = useSqlWorkspaceStore((s) => s.schemasWithTables)
+  const currentConnectionId = useSqlWorkspaceStore((s) => s.currentConnectionId)
+  const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
 
-  const { addTableTab, reset, loadFromSerialized } = useTabStore()
+  const addTableTab = useTabStore((s) => s.addTableTab)
+  const reset = useTabStore((s) => s.reset)
+  const loadFromSerialized = useTabStore((s) => s.loadFromSerialized)
   const { theme, toggleTheme } = useTheme()
 
   const { data: connections } = useConnections()

@@ -3,7 +3,10 @@ import type {
   ConnectionWorkspace,
   DatabaseType,
   DBConnectionOptions,
+  DeleteTableResult,
   DeleteTableRowsResult,
+  ExportTableOptions,
+  ExportTableResult,
   QueryResult,
   QueryResultRow,
   SavedQuery,
@@ -65,8 +68,12 @@ export const dbdeskClient = {
     return getDbdesk().deleteConnection(connectionId)
   },
 
-  async runQuery(connectionId: string, query: string): Promise<QueryResult> {
-    return getDbdesk().runQuery(connectionId, query)
+  async runQuery(
+    connectionId: string,
+    query: string,
+    options?: { limit?: number; offset?: number }
+  ): Promise<QueryResult> {
+    return getDbdesk().runQuery(connectionId, query, options)
   },
 
   async listSchemas(connectionId: string): Promise<string[]> {
@@ -130,7 +137,12 @@ export const dbdeskClient = {
     return getDbdesk().loadQueries(connectionId)
   },
 
-  async saveQuery(connectionId: string, id: string, name: string, content: string): Promise<SavedQuery> {
+  async saveQuery(
+    connectionId: string,
+    id: string,
+    name: string,
+    content: string
+  ): Promise<SavedQuery> {
     return getDbdesk().saveQuery(connectionId, id, name, content)
   },
 
@@ -145,6 +157,32 @@ export const dbdeskClient = {
     content: string
   ): Promise<SavedQuery | undefined> {
     return getDbdesk().updateQuery(connectionId, queryId, name, content)
+  },
+
+  async exportTableAsCSV(
+    connectionId: string,
+    schema: string,
+    table: string,
+    options?: Pick<ExportTableOptions, 'sortRules' | 'filters'>
+  ): Promise<ExportTableResult> {
+    return getDbdesk().exportTableAsCSV(connectionId, schema, table, options)
+  },
+
+  async exportTableAsSQL(
+    connectionId: string,
+    schema: string,
+    table: string,
+    options?: Pick<ExportTableOptions, 'sortRules' | 'filters'>
+  ): Promise<ExportTableResult> {
+    return getDbdesk().exportTableAsSQL(connectionId, schema, table, options)
+  },
+
+  async deleteTable(
+    connectionId: string,
+    schema: string,
+    table: string
+  ): Promise<DeleteTableResult> {
+    return getDbdesk().deleteTable(connectionId, schema, table)
   }
 }
 
@@ -153,6 +191,8 @@ export type {
   DatabaseType,
   DBConnectionOptions,
   DeleteTableRowsResult,
+  ExportTableOptions,
+  ExportTableResult,
   QueryResult,
   QueryResultRow,
   SavedQuery,

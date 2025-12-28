@@ -1,7 +1,7 @@
 import { createRootRoute, Navigate, Outlet } from '@tanstack/react-router'
 // import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { MainSidebar } from '@renderer/components/main-sidebar'
-import { Toaster } from 'react-hot-toast'
+import { Toaster } from '@renderer/components/ui/sonner'
 
 const RootLayout = () => (
   <div className="flex h-screen overflow-hidden select-none">
@@ -9,7 +9,7 @@ const RootLayout = () => (
     <div className="flex-1 h-full overflow-y-auto">
       <Outlet />
     </div>
-    <Toaster position="top-center" />
+    <Toaster position="top-right" />
     {/* <TanStackRouterDevtools position="bottom-right" /> */}
   </div>
 )

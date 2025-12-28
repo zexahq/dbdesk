@@ -2,7 +2,10 @@ import type {
   ConnectionProfile,
   DatabaseType,
   DBConnectionOptions,
+  DeleteTableResult,
   DeleteTableRowsResult,
+  ExportTableOptions,
+  ExportTableResult,
   QueryResult,
   QueryResultRow,
   SavedQuery,
@@ -127,7 +130,7 @@ export const dbdeskAPI = {
   /**
    * Execute a SQL query on a connected database
    */
-  async runQuery(connectionId: string, query: string): Promise<QueryResult> {
+  async runQuery(connectionId: string, query: string, options?: { limit?: number; offset?: number }): Promise<QueryResult> {
     if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
       throw new Error('Connection ID is required')
     }
@@ -137,7 +140,9 @@ export const dbdeskAPI = {
 
     return ipcRenderer.invoke('query:run', {
       connectionId: connectionId.trim(),
-      query: query.trim()
+      query: query.trim(),
+      limit: options?.limit,
+      offset: options?.offset
     })
   },
 
@@ -428,6 +433,105 @@ export const dbdeskAPI = {
       queryId: queryId.trim(),
       name: name.trim(),
       content: content.trim()
+    })
+  },
+
+  /**
+   * Export table data as CSV
+   */
+  async exportTableAsCSV(
+    connectionId: string,
+    schema: string,
+    table: string,
+    options: Pick<ExportTableOptions, 'sortRules' | 'filters'> = {
+      sortRules: undefined,
+      filters: undefined
+    }
+  ): Promise<ExportTableResult> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!schema || typeof schema !== 'string' || schema.trim() === '') {
+      throw new Error('Schema name is required')
+    }
+    if (!table || typeof table !== 'string' || table.trim() === '') {
+      throw new Error('Table name is required')
+    }
+
+    const payload: Record<string, unknown> = {
+      connectionId: connectionId.trim(),
+      schema: schema.trim(),
+      table: table.trim()
+    }
+
+    if (options.sortRules && options.sortRules.length > 0) {
+      payload.sortRules = options.sortRules
+    }
+
+    if (options.filters && options.filters.length > 0) {
+      payload.filters = options.filters
+    }
+
+    return ipcRenderer.invoke('table:exportCSV', payload)
+  },
+
+  /**
+   * Export table data as SQL INSERT statements
+   */
+  async exportTableAsSQL(
+    connectionId: string,
+    schema: string,
+    table: string,
+    options: Pick<ExportTableOptions, 'sortRules' | 'filters'> = {
+      sortRules: undefined,
+      filters: undefined
+    }
+  ): Promise<ExportTableResult> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!schema || typeof schema !== 'string' || schema.trim() === '') {
+      throw new Error('Schema name is required')
+    }
+    if (!table || typeof table !== 'string' || table.trim() === '') {
+      throw new Error('Table name is required')
+    }
+
+    const payload: Record<string, unknown> = {
+      connectionId: connectionId.trim(),
+      schema: schema.trim(),
+      table: table.trim()
+    }
+
+    if (options.sortRules && options.sortRules.length > 0) {
+      payload.sortRules = options.sortRules
+    }
+
+    if (options.filters && options.filters.length > 0) {
+      payload.filters = options.filters
+    }
+
+    return ipcRenderer.invoke('table:exportSQL', payload)
+  },
+
+  /**
+   * Delete a table from the database
+   */
+  async deleteTable(connectionId: string, schema: string, table: string): Promise<DeleteTableResult> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!schema || typeof schema !== 'string' || schema.trim() === '') {
+      throw new Error('Schema name is required')
+    }
+    if (!table || typeof table !== 'string' || table.trim() === '') {
+      throw new Error('Table name is required')
+    }
+
+    return ipcRenderer.invoke('table:delete', {
+      connectionId: connectionId.trim(),
+      schema: schema.trim(),
+      table: table.trim()
     })
   }
 }

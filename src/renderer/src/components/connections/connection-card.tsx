@@ -17,7 +17,7 @@ import { useTabStore } from '@renderer/store/tab-store'
 import { useNavigate } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from '@renderer/lib/toast'
 import mysqlImage from '../../assets/mysql.svg'
 import postgresImage from '../../assets/postgres.svg'
 
@@ -37,8 +37,9 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
   const { mutateAsync: connect, isPending: isConnecting } = useConnect()
   const { mutateAsync: deleteConnection, isPending: isDeleting } = useDeleteConnection()
   const navigate = useNavigate()
-  const { setCurrentConnection } = useSqlWorkspaceStore()
-  const { reset, loadFromSerialized } = useTabStore()
+  const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
+  const reset = useTabStore((s) => s.reset)
+  const loadFromSerialized = useTabStore((s) => s.loadFromSerialized)
 
   const isBusy = isConnecting || isDeleting
 

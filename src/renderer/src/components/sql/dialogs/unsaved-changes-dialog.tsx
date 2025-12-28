@@ -14,7 +14,7 @@ import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import type { QueryTab } from '@renderer/store/tab-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useState } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from '@renderer/lib/toast'
 
 interface UnsavedChangesDialogProps {
   open: boolean
@@ -31,8 +31,11 @@ export function UnsavedChangesDialog({
   onOpenChange,
   onClose
 }: UnsavedChangesDialogProps) {
-  const { queries, saveQuery, updateQuery } = useSavedQueriesStore()
-  const { removeTab, updateQueryTab } = useTabStore()
+  const queries = useSavedQueriesStore((s) => s.queries)
+  const saveQuery = useSavedQueriesStore((s) => s.saveQuery)
+  const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
+  const removeTab = useTabStore((s) => s.removeTab)
+  const updateQueryTab = useTabStore((s) => s.updateQueryTab)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
   const handleCloseWithoutSave = () => {

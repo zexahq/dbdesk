@@ -5,13 +5,17 @@
 
 // Base adapter types
 export type { QueryResultRow } from 'pg'
-export type { BaseAdapter, DBAdapter, QueryResult } from './adapter'
+export type { BaseAdapter, DBAdapter, QueryResult, RunQueryOptions } from './adapter'
 
 // SQL types
 export type {
   ColumnInfo,
+  DeleteTableOptions,
+  DeleteTableResult,
   DeleteTableRowsOptions,
   DeleteTableRowsResult,
+  ExportTableOptions,
+  ExportTableResult,
   IndexInfo,
   SQLAdapter,
   SQLConnectionOptions,
@@ -51,8 +55,8 @@ export type {
 // Workspace types
 export type {
   ConnectionWorkspace,
-  SavedQuery,
   SavedQueriesStorage,
+  SavedQuery,
   SerializedQueryTab,
   SerializedTab,
   SerializedTableTab,

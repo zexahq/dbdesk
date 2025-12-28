@@ -6,7 +6,6 @@ import { TableTab, useTabStore } from '@renderer/store/tab-store'
 import { Layers, RefreshCcw, Table } from 'lucide-react'
 import { useState } from 'react'
 import { DeleteConfirmationDialog } from '../dialogs/delete-confirmation-dialog'
-import { TableColumnVisibilityDropdown } from './table-column-visibility-dropdown'
 import { TableFilterPopover } from './table-filter-popover'
 import { TableSortPopover } from './table-sort-popover'
 
@@ -15,8 +14,9 @@ interface SqlTopbarProps {
   onRefresh: () => void
   isLoading: boolean
   columns?: TableDataColumn[]
-  onDeleteRows: () => Promise<void> | void
+  onDelete: () => Promise<void> | void
   isDeletePending: boolean
+  rowSelectionCount: number
 }
 
 export function SqlTopbar({
@@ -24,8 +24,9 @@ export function SqlTopbar({
   onRefresh,
   isLoading,
   columns = [],
-  onDeleteRows,
-  isDeletePending
+  onDelete,
+  isDeletePending,
+  rowSelectionCount
 }: SqlTopbarProps) {
   const [open, setOpen] = useState(false)
 
@@ -33,7 +34,7 @@ export function SqlTopbar({
 
   const handleDelete = async () => {
     try {
-      await onDeleteRows()
+      await onDelete()
     } finally {
       setOpen(false)
     }
@@ -90,14 +91,17 @@ export function SqlTopbar({
             open={open}
             onOpenChange={setOpen}
             onDelete={handleDelete}
-            selectedRowsCount={Object.keys(activeTab.rowSelection).length}
+            selectedRowsCount={rowSelectionCount}
             isPending={isDeletePending}
           />
         </div>
         <div className="flex items-center gap-2 pt-1.5">
-          {activeTab.view === 'tables' && (
-            <TableColumnVisibilityDropdown activeTab={activeTab} columns={columns} />
-          )}
+          {/* TODO: Re-enable column visibility feature */}
+          {/* {activeTab.view === 'tables' && (
+           <TableColumnVisibilityDropdown
+             columns={columns}
+           />
+          )} */}
           <Button variant="ghost" size="icon" className="cursor-pointer" onClick={onRefresh}>
             <RefreshCcw className={cn('size-4 cursor-pointer', isLoading && 'animate-spin')} />
           </Button>
