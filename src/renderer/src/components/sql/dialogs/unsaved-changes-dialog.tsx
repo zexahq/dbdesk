@@ -14,7 +14,7 @@ import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import type { QueryTab } from '@renderer/store/tab-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useState } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from '@renderer/lib/toast'
 
 interface UnsavedChangesDialogProps {
   open: boolean

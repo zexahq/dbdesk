@@ -188,6 +188,34 @@ export interface UpdateTableCellResult {
 }
 
 /**
+ * Options for exporting table data
+ */
+export interface ExportTableOptions {
+  schema: string
+  table: string
+  filters?: TableFilterCondition[]
+  sortRules?: TableSortRule[]
+}
+
+/**
+ * Result of exporting table data
+ */
+export interface ExportTableResult {
+  base64Content: string
+  filename: string
+  mimeType: string
+}
+
+export interface DeleteTableOptions {
+  schema: string
+  table: string
+}
+
+export interface DeleteTableResult {
+  success: boolean
+}
+
+/**
  * Schema with its tables
  */
 export interface SchemaWithTables {
@@ -233,4 +261,19 @@ export interface SQLAdapter extends BaseAdapter {
    * Update a single cell in a table using primary keys to identify the row
    */
   updateTableCell(options: UpdateTableCellOptions): Promise<UpdateTableCellResult>
+
+  /**
+   * Export table data as CSV
+   */
+  exportTableAsCSV(options: ExportTableOptions): Promise<ExportTableResult>
+
+  /**
+   * Export table data as SQL INSERT statements
+   */
+  exportTableAsSQL(options: ExportTableOptions): Promise<ExportTableResult>
+
+  /**
+   * Delete a table from the database
+   */
+  deleteTable(options: DeleteTableOptions): Promise<DeleteTableResult>
 }

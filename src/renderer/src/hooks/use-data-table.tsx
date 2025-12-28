@@ -1,5 +1,6 @@
 'use client'
 
+import type { TableSortRule } from '@common/types'
 import { TableTab, useTabStore } from '@renderer/store/tab-store'
 import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/types/data-table'
 import {
@@ -45,7 +46,8 @@ export function useDataTable<TData, TValue = unknown>({
     rowSelection,
     columnSizing,
     columnVisibility,
-    pendingUpdates
+    pendingUpdates,
+    sortRules
   } = activeTab
 
   // Setters that update tab state
@@ -104,6 +106,19 @@ export function useDataTable<TData, TValue = unknown>({
     [tabId, updateTableTab, pendingUpdates]
   )
 
+  const setColumnSortDirection = React.useCallback(
+    (columnName: string, direction: 'ASC' | 'DESC') => {
+      const nextSortRules: TableSortRule[] = [
+        {
+          column: columnName,
+          direction
+        }
+      ]
+      updateTableTab(tabId, { sortRules: nextSortRules, offset: 0 })
+    },
+    [tabId, updateTableTab]
+  )
+
   // Get column IDs
   const columnIds = React.useMemo(() => {
     return columns
@@ -145,6 +160,11 @@ export function useDataTable<TData, TValue = unknown>({
       columnSizing,
       columnVisibility,
       rowSelection
+    },
+    meta: {
+      activeTabId: tabId,
+      sortRules,
+      setColumnSortDirection
     },
     onColumnSizingChange: setColumnSizing,
     onColumnVisibilityChange: setColumnVisibility,
@@ -532,11 +552,8 @@ export function useDataTable<TData, TValue = unknown>({
     [
       editingCell,
       focusedCell,
-      navigableColumnIds,
-      table,
       onDataUpdate,
       navigateCell,
-      focusCell,
       onCellEditingStart,
       setFocusedCell,
       setEditingCell

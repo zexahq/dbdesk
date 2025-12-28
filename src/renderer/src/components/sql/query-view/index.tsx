@@ -9,8 +9,8 @@ import {
 } from '@renderer/components/ui/resizable'
 import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import { QueryTab, useTabStore } from '@renderer/store/tab-store'
+import { toast } from '@renderer/lib/toast'
 import { useCallback, useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
 import { QueryBottombar } from './query-bottombar'
 import { QueryResults } from './query-results'
 
@@ -49,7 +49,6 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isQueryTabSaved])
 
   const executeQueryWithPagination = useCallback(

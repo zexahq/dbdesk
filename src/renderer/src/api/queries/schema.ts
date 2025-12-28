@@ -1,4 +1,5 @@
 import type {
+  DeleteTableResult,
   DeleteTableRowsResult,
   QueryResultRow,
   SchemaWithTables,
@@ -7,8 +8,9 @@ import type {
   TableInfo,
   UpdateTableCellResult
 } from '@common/types'
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
+import { toast } from '../../lib/toast'
 
 const keys = {
   schemas: (connectionId: string) => ['schemas', connectionId] as const,
@@ -138,7 +140,50 @@ export function useUpdateTableCell(connectionId?: string) {
       if (!connectionId) {
         throw new Error('Connection ID is required to update cell')
       }
-      return dbdeskClient.updateTableCell(connectionId, schema, table, columnToUpdate, newValue, row)
+      return dbdeskClient.updateTableCell(
+        connectionId,
+        schema,
+        table,
+        columnToUpdate,
+        newValue,
+        row
+      )
+    }
+  })
+}
+
+export function useDeleteTable(connectionId?: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      schema,
+      table
+    }: {
+      schema: string
+      table: string
+    }): Promise<DeleteTableResult> => {
+      if (!connectionId) {
+        throw new Error('Connection ID is required to delete table')
+      }
+      return dbdeskClient.deleteTable(connectionId, schema, table)
+    },
+    onSuccess: (result, variables) => {
+      if (result.success) {
+        toast.success(`Table ${variables.schema}.${variables.table} deleted successfully`)
+        queryClient.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
+      }
+    },
+    onError: (error) => {
+      const cleanErrorMessage = (message: string): string => {
+        // Remove IPC wrapper
+        let cleaned = message.replace(/^Error invoking remote method '[^']+': (.+)$/, '$1')
+        // Remove "Error:" or "error:" prefix (case-insensitive)
+        cleaned = cleaned.replace(/^[Ee]rror:\s*/i, '')
+        // Capitalize first letter
+        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+        return cleaned
+      }
+      toast.error('Failed to delete table', { description: cleanErrorMessage(error.message) })
     }
   })
 }
