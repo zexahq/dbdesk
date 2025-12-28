@@ -2,6 +2,7 @@ import type {
   ConnectionProfile,
   ConnectionWorkspace,
   DatabaseType,
+  DeleteTableResult,
   DeleteTableRowsResult,
   QueryResult,
   SavedQuery,
@@ -12,6 +13,7 @@ import type {
   TableInfo,
   UpdateTableCellResult
 } from '@common/types'
+import type { ExportTableOptions, ExportTableResult } from '@common/types/sql'
 import { ipcMain } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { adapterRegistry, listRegisteredAdapters } from './adapters'
@@ -192,7 +194,7 @@ export const registerIpcHandlers = () => {
   })
 
   safeHandle('query:run', async (payload): Promise<QueryResult> => {
-    const { connectionId, query } = validateQueryInput(payload)
+    const { connectionId, query, limit, offset } = validateQueryInput(payload)
     const adapter = connectionManager.getConnection(connectionId)
 
     if (!adapter) {
@@ -200,7 +202,7 @@ export const registerIpcHandlers = () => {
     }
 
     try {
-      return await adapter.runQuery(query)
+      return await adapter.runQuery(query, { limit, offset })
     } catch (error) {
       throw new QueryError('Failed to execute query', error)
     }
@@ -291,6 +293,90 @@ export const registerIpcHandlers = () => {
       newValue,
       row
     })
+  })
+
+  safeHandle('table:exportCSV', async (payload): Promise<ExportTableResult> => {
+    const { connectionId, schema, table, sortRules, filters } = payload as {
+      connectionId: string
+      schema: string
+      table: string
+      sortRules?: TableDataOptions['sortRules']
+      filters?: TableDataOptions['filters']
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!schema || typeof schema !== 'string') {
+      throw new ValidationError('schema is required')
+    }
+    if (!table || typeof table !== 'string') {
+      throw new ValidationError('table is required')
+    }
+
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    const options: ExportTableOptions = {
+      schema,
+      table,
+      sortRules,
+      filters
+    }
+
+    return adapter.exportTableAsCSV(options)
+  })
+
+  safeHandle('table:exportSQL', async (payload): Promise<ExportTableResult> => {
+    const { connectionId, schema, table, sortRules, filters } = payload as {
+      connectionId: string
+      schema: string
+      table: string
+      sortRules?: TableDataOptions['sortRules']
+      filters?: TableDataOptions['filters']
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!schema || typeof schema !== 'string') {
+      throw new ValidationError('schema is required')
+    }
+    if (!table || typeof table !== 'string') {
+      throw new ValidationError('table is required')
+    }
+
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    const options: ExportTableOptions = {
+      schema,
+      table,
+      sortRules,
+      filters
+    }
+
+    return adapter.exportTableAsSQL(options)
+  })
+
+  safeHandle('table:delete', async (payload): Promise<DeleteTableResult> => {
+    const { connectionId, schema, table } = payload as {
+      connectionId: string
+      schema: string
+      table: string
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!schema || typeof schema !== 'string') {
+      throw new ValidationError('schema is required')
+    }
+    if (!table || typeof table !== 'string') {
+      throw new ValidationError('table is required')
+    }
+
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    return adapter.deleteTable({ schema, table })
   })
 
   // Workspace handlers

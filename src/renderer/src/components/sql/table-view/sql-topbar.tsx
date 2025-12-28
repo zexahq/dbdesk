@@ -14,7 +14,7 @@ interface SqlTopbarProps {
   onRefresh: () => void
   isLoading: boolean
   columns?: TableDataColumn[]
-  onDeleteRows: () => Promise<void> | void
+  onDelete: () => Promise<void> | void
   isDeletePending: boolean
   rowSelectionCount: number
 }
@@ -24,7 +24,7 @@ export function SqlTopbar({
   onRefresh,
   isLoading,
   columns = [],
-  onDeleteRows,
+  onDelete,
   isDeletePending,
   rowSelectionCount
 }: SqlTopbarProps) {
@@ -34,7 +34,7 @@ export function SqlTopbar({
 
   const handleDelete = async () => {
     try {
-      await onDeleteRows()
+      await onDelete()
     } finally {
       setOpen(false)
     }

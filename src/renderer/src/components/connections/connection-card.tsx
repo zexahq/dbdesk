@@ -17,7 +17,7 @@ import { useTabStore } from '@renderer/store/tab-store'
 import { useNavigate } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from '@renderer/lib/toast'
 import mysqlImage from '../../assets/mysql.svg'
 import postgresImage from '../../assets/postgres.svg'
 

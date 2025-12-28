@@ -1,11 +1,11 @@
 import type { QueryResultRow, SQLConnectionProfile } from '@common/types'
 import { useDeleteTableRows, useTableData, useUpdateTableCell } from '@renderer/api/queries/schema'
+import { toast } from '@renderer/lib/toast'
 import type { TableTab } from '@renderer/store/tab-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useQueryClient } from '@tanstack/react-query'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { useCallback, useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
 import { UpdateErrorDialog } from '../dialogs/update-error-dialog'
 import { SqlTable } from '../table'
 import { SqlBottombar } from './sql-bottombar'
@@ -132,7 +132,14 @@ export function TableView({ profile, activeTab }: TableViewProps) {
       const message = error instanceof Error ? error.message : 'Failed to delete rows.'
       toast.error(message)
     }
-  }, [deleteRowsMutation, rowSelection, activeTab.schema, activeTab.table, tableData, refreshTableData])
+  }, [
+    deleteRowsMutation,
+    rowSelection,
+    activeTab.schema,
+    activeTab.table,
+    tableData,
+    refreshTableData
+  ])
 
   const handleLimitChange = useCallback(
     (limit: number) => {
@@ -161,7 +168,7 @@ export function TableView({ profile, activeTab }: TableViewProps) {
         onRefresh={refreshTableData}
         isLoading={isLoadingTableData}
         columns={tableData?.columns}
-        onDeleteRows={handleDeleteSelectedRows}
+        onDelete={handleDeleteSelectedRows}
         isDeletePending={isDeletePending}
         rowSelectionCount={Object.keys(rowSelection).length}
       />
@@ -175,6 +182,11 @@ export function TableView({ profile, activeTab }: TableViewProps) {
             onTableInteract={handleTableInteract}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
+            tabId={activeTab.id}
+            sortRules={activeTab.sortRules}
+            onSortChange={(sortRules) => {
+              updateTableTab(activeTab.id, { sortRules, offset: 0 })
+            }}
           />
         )}
         {activeTab.view === 'structure' && (

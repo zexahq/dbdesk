@@ -27,6 +27,8 @@ type UpdateConnectionInput = {
 export type RunQueryInput = {
   connectionId: string
   query: string
+  limit?: number
+  offset?: number
 }
 
 export type SchemaInput = {
@@ -138,8 +140,10 @@ export const validateQueryInput = (input: unknown): RunQueryInput => {
 
   const connectionId = toNonEmptyString(input.connectionId, 'connectionId')
   const query = toNonEmptyString(input.query, 'query')
+  const limit = toOptionalInteger(input.limit, 'limit', { min: 1, defaultValue: 50 })
+  const offset = toOptionalInteger(input.offset, 'offset', { min: 0, defaultValue: 0 })
 
-  return { connectionId, query }
+  return { connectionId, query, limit, offset }
 }
 
 export const validateSchemaInput = (

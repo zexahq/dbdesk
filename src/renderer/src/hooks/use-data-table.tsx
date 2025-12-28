@@ -1,5 +1,6 @@
 'use client'
 
+import type { TableSortRule } from '@common/types'
 import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/types/data-table'
 import {
   type ColumnDef,
@@ -23,6 +24,10 @@ interface UseDataTableProps<TData, TValue = unknown>
   onTableInteract?: () => void
   rowSelection: RowSelectionState
   onRowSelectionChange: OnChangeFn<RowSelectionState>
+  // Optional sorting support
+  tabId?: string
+  sortRules?: TableSortRule[]
+  onSortChange?: (sortRules: TableSortRule[]) => void
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
@@ -34,6 +39,9 @@ export function useDataTable<TData, TValue = unknown>({
   onTableInteract,
   rowSelection,
   onRowSelectionChange,
+  tabId,
+  sortRules,
+  onSortChange,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = React.useRef<HTMLDivElement>(null)
@@ -44,6 +52,21 @@ export function useDataTable<TData, TValue = unknown>({
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({})
+
+  // Sorting support - only if tabId and onSortChange are provided
+  const setColumnSortDirection = React.useCallback(
+    (columnName: string, direction: 'ASC' | 'DESC') => {
+      if (!onSortChange) return
+      const nextSortRules: TableSortRule[] = [
+        {
+          column: columnName,
+          direction
+        }
+      ]
+      onSortChange(nextSortRules)
+    },
+    [onSortChange]
+  )
 
   // Get column IDs
   const columnIds = React.useMemo(() => {
@@ -70,8 +93,6 @@ export function useDataTable<TData, TValue = unknown>({
     [rowSelection, onRowSelectionChange]
   )
 
-
-
   // Table instance
   const table = useReactTable({
     ...tableOptions,
@@ -85,6 +106,11 @@ export function useDataTable<TData, TValue = unknown>({
       ...tableOptions.state,
       columnSizing,
       rowSelection
+    },
+    meta: {
+      ...(tabId && { activeTabId: tabId }),
+      ...(sortRules && { sortRules }),
+      ...(onSortChange && { setColumnSortDirection })
     },
     onColumnSizingChange: setColumnSizing,
     onRowSelectionChange: handleRowSelectionChange

@@ -29,6 +29,9 @@ export interface QueryTab extends BaseTab {
   kind: 'query'
   name: string
   editorContent: string
+  limit: number
+  offset: number
+  totalRowCount?: number
   lastSavedContent?: string
   queryResults?: QueryResult
   isDirty: boolean
@@ -51,6 +54,7 @@ interface TabStore {
   updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => void
   makeTabPermanent: (tabId: string) => void
   getTableTabBySchemaTable: (schema: string, table: string) => TableTab | undefined
+  findTableTabById: (tabId: string) => TableTab | undefined
 
   // Query-specific actions
   addQueryTab: () => string
@@ -80,6 +84,8 @@ const createDefaultQueryTab = (): QueryTab => ({
   kind: 'query',
   name: 'Untitled Query',
   editorContent: '',
+  limit: 50,
+  offset: 0,
   queryResults: undefined,
   lastSavedContent: undefined,
   isDirty: false
@@ -164,9 +170,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
   updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => {
     set((state) => ({
       tabs: state.tabs.map((tab) =>
-        tab.id === tabId && tab.kind === 'table'
-          ? { ...tab, ...updates, isTemporary: false }
-          : tab
+        tab.id === tabId && tab.kind === 'table' ? { ...tab, ...updates, isTemporary: false } : tab
       )
     }))
   },
@@ -179,6 +183,11 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
   getTableTabBySchemaTable: (schema: string, table: string) => {
     const tabId = `${schema}.${table}`
+    const tab = get().tabs.find((t) => t.id === tabId)
+    return tab?.kind === 'table' ? tab : undefined
+  },
+
+  findTableTabById: (tabId: string) => {
     const tab = get().tabs.find((t) => t.id === tabId)
     return tab?.kind === 'table' ? tab : undefined
   },
@@ -203,9 +212,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
         const lastSaved = next.lastSavedContent ?? ''
         const current = next.editorContent ?? ''
         next.isDirty =
-          next.lastSavedContent !== undefined
-            ? current !== lastSaved
-            : current.trim().length > 0
+          next.lastSavedContent !== undefined ? current !== lastSaved : current.trim().length > 0
         return next
       })
       const newActiveTabId =
@@ -235,6 +242,8 @@ export const useTabStore = create<TabStore>((set, get) => ({
             : current.trim().length > 0
         return {
           ...serializedTab,
+          limit: 50,
+          offset: 0,
           queryResults: undefined,
           isDirty
         } as QueryTab
@@ -267,6 +276,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
           id: tab.id,
           name: tab.name,
           editorContent: tab.editorContent,
+          isTemporary: false,
           lastSavedContent: tab.lastSavedContent
         } as SerializedQueryTab
       }

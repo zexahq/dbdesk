@@ -1,5 +1,6 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
+import { TableOptionsDropdown } from '@renderer/components/sql/table-view/table-options-dropdown'
 import {
   Collapsible,
   CollapsibleContent,
@@ -23,6 +24,7 @@ import {
   SidebarMenuSub,
   SidebarSeparator
 } from '@renderer/components/ui/sidebar'
+import { toast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 import { useSavedQueriesStore } from '@renderer/store/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
@@ -39,7 +41,6 @@ import {
   Trash2
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
 import { Button } from '../ui/button'
 
 type WorkspaceSidebarProps = {
@@ -135,9 +136,17 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
     addQueryTab()
   }
 
+  const handleDuplicateToQuery = (schema: string, table: string) => {
+    const newTabId = addQueryTab()
+    updateQueryTab(newTabId, {
+      editorContent: `SELECT * FROM "${schema}"."${table}" LIMIT 50`,
+      name: `${table} copy`
+    })
+  }
+
   return (
     <>
-      <Sidebar className="border-r w-full h-full" collapsible="none">
+      <Sidebar className="w-full h-full" collapsible="none">
         <SidebarHeader>
           <SidebarGroup className="flex flex-col gap-2">
             <div className="text-sm font-medium text-foreground px-2">{profile.name}</div>
@@ -173,10 +182,12 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
                       schemasWithTables.map((schemaData) => (
                         <SchemaTree
                           key={schemaData.schema}
+                          connectionId={profile.id}
                           schema={schemaData.schema}
                           tables={schemaData.tables}
                           activeTab={activeTab}
                           onTableClick={handleTableClick}
+                          onDuplicateToQuery={handleDuplicateToQuery}
                         />
                       ))
                     )}
@@ -279,13 +290,15 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
 }
 
 type SchemaTreeProps = {
+  connectionId: string
   schema: string
   tables: string[]
   activeTab: Tab | null
   onTableClick: (schema: string, table: string) => void
+  onDuplicateToQuery: (schema: string, table: string) => void
 }
 
-function SchemaTree({ schema, tables, activeTab, onTableClick }: SchemaTreeProps) {
+function SchemaTree({ connectionId, schema, tables, activeTab, onTableClick }: SchemaTreeProps) {
   const isPublic = schema === 'public'
 
   return (
@@ -302,22 +315,36 @@ function SchemaTree({ schema, tables, activeTab, onTableClick }: SchemaTreeProps
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <SidebarMenuSub className="!ml-3 !mr-0">
+          <SidebarMenuSub className="ml-3! mr-0!">
             {tables.length === 0 ? (
               <SidebarMenuButton aria-disabled>No tables</SidebarMenuButton>
             ) : (
               tables.map((table) => {
                 const isActive = activeTab?.id === `${schema}.${table}`
                 return (
-                  <SidebarMenuButton
+                  <div
                     key={table}
-                    onClick={() => onTableClick(schema, table)}
-                    className="cursor-pointer h-9"
-                    isActive={isActive}
+                    className={cn(
+                      'flex items-center justify-between w-full px-2 rounded-md hover:bg-accent group',
+                      isActive && 'bg-accent'
+                    )}
                   >
-                    <Table2Icon className="size-4" />
-                    <span>{table}</span>
-                  </SidebarMenuButton>
+                    <SidebarMenuButton
+                      onClick={() => onTableClick(schema, table)}
+                      className="flex-1 cursor-pointer gap-2 h-9"
+                      isActive={isActive}
+                    >
+                      <Table2Icon className="size-4" />
+                      <span>{table}</span>
+                    </SidebarMenuButton>
+                    <div className={`${isActive ? 'block!' : 'hidden'}`}>
+                      <TableOptionsDropdown
+                        connectionId={connectionId}
+                        schema={schema}
+                        table={table}
+                      />
+                    </div>
+                  </div>
                 )
               })
             )}

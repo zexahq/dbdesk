@@ -1,5 +1,6 @@
 'use client'
 
+import type { TableSortRule } from '@common/types'
 import {
   type ColumnDef,
   flexRender,
@@ -22,6 +23,9 @@ interface DataTableProps<TData, TValue> {
   onTableInteract?: () => void
   rowSelection: RowSelectionState
   onRowSelectionChange: OnChangeFn<RowSelectionState>
+  tabId?: string
+  sortRules?: TableSortRule[]
+  onSortChange?: (sortRules: TableSortRule[]) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -30,7 +34,10 @@ export function DataTable<TData, TValue>({
   onCellUpdate,
   onTableInteract,
   rowSelection,
-  onRowSelectionChange
+  onRowSelectionChange,
+  tabId,
+  sortRules,
+  onSortChange
 }: DataTableProps<TData, TValue>) {
   const {
     table,
@@ -48,7 +55,10 @@ export function DataTable<TData, TValue>({
     onCellUpdate,
     onTableInteract,
     rowSelection,
-    onRowSelectionChange
+    onRowSelectionChange,
+    tabId,
+    sortRules,
+    onSortChange
   })
 
   const rowModel = table.getRowModel()

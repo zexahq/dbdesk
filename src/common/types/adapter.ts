@@ -4,6 +4,14 @@ import type { RedisAdapter } from './redis'
 import type { SQLAdapter } from './sql'
 
 /**
+ * Options for running a query
+ */
+export interface RunQueryOptions {
+  limit?: number
+  offset?: number
+}
+
+/**
  * Interface for query execution results
  */
 export interface QueryResult {
@@ -11,6 +19,10 @@ export interface QueryResult {
   columns: string[]
   rowCount: number
   executionTime?: number
+  // Pagination metadata (only present for SELECT queries)
+  totalRowCount?: number
+  limit?: number
+  offset?: number
 }
 
 /**
@@ -30,7 +42,7 @@ export interface BaseAdapter {
   /**
    * Execute a query and return results
    */
-  runQuery(query: string): Promise<QueryResult>
+  runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult>
 }
 
 /**

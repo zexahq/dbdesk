@@ -8,13 +8,26 @@ import * as React from 'react'
 interface TabNavigationProps {
   profile: SQLConnectionProfile
   requestCloseTab: (tab: Tab) => void
+  onTabClick?: (tabId: string) => void
+  onAddQueryTab?: () => void
 }
 
-export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
+export function TabNavigation({ requestCloseTab, onTabClick, onAddQueryTab }: TabNavigationProps) {
   const tabs = useTabStore((s) => s.tabs)
   const activeTabId = useTabStore((s) => s.activeTabId)
   const setActiveTab = useTabStore((s) => s.setActiveTab)
   const activeTab = useActiveTab()
+
+  const handleTabClick = React.useCallback(
+    (tabId: string) => {
+      if (onTabClick) {
+        onTabClick(tabId)
+      } else {
+        setActiveTab(tabId)
+      }
+    },
+    [onTabClick, setActiveTab]
+  )
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -29,11 +42,11 @@ export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
         if (event.shiftKey) {
           // Ctrl+Shift+Tab: Previous tab
           const prevIndex = currentIndex <= 0 ? tabs.length - 1 : currentIndex - 1
-          setActiveTab(tabs[prevIndex].id)
+          handleTabClick(tabs[prevIndex].id)
         } else {
           // Ctrl+Tab: Next tab
           const nextIndex = currentIndex >= tabs.length - 1 ? 0 : currentIndex + 1
-          setActiveTab(tabs[nextIndex].id)
+          handleTabClick(tabs[nextIndex].id)
         }
         return
       }
@@ -55,7 +68,16 @@ export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
         const tabIndex = parseInt(event.key, 10) - 1
         if (tabIndex < tabs.length) {
           event.preventDefault()
-          setActiveTab(tabs[tabIndex].id)
+          handleTabClick(tabs[tabIndex].id)
+        }
+        return
+      }
+
+      // Ctrl+T: New tab
+      if ((event.ctrlKey || event.metaKey) && event.key === 't') {
+        event.preventDefault()
+        if (onAddQueryTab) {
+          onAddQueryTab()
         }
         return
       }
@@ -65,7 +87,7 @@ export function TabNavigation({ requestCloseTab }: TabNavigationProps) {
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [tabs, activeTabId, activeTab, setActiveTab, requestCloseTab])
+  }, [tabs, activeTabId, activeTab, handleTabClick, requestCloseTab, onAddQueryTab])
 
   return null
 }
