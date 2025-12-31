@@ -1,5 +1,6 @@
 import type { TableSortRule } from '@common/types'
 import { QueryResultRow, TableDataResult } from '@renderer/api/client'
+import { useTabStore } from '@renderer/store/tab-store'
 import type { OnChangeFn, RowSelectionState } from '@tanstack/react-table'
 import * as React from 'react'
 import { getColumns } from './columns'
@@ -15,7 +16,6 @@ interface SqlTableProps {
   onRowSelectionChange: OnChangeFn<RowSelectionState>
   tabId?: string
   sortRules?: TableSortRule[]
-  onSortChange?: (sortRules: TableSortRule[]) => void
 }
 
 export const SqlTable = ({
@@ -27,14 +27,17 @@ export const SqlTable = ({
   rowSelection,
   onRowSelectionChange,
   tabId,
-  sortRules,
-  onSortChange
+  sortRules
 }: SqlTableProps) => {
+  const updateTableTab = useTabStore((s) => s.updateTableTab)
+
   // Memoize columns to prevent recreation on every render
   const columns = React.useMemo(() => {
-    if (!tableData) return []
-    return getColumns(tableData.columns)
-  }, [tableData])
+    if (!tableData || !tabId) return []
+    return getColumns(tableData.columns, (nextSortRules) => {
+      updateTableTab(tabId, { sortRules: nextSortRules, offset: 0 })
+    })
+  }, [tableData, tabId, updateTableTab])
 
   if (isLoading) {
     return (
@@ -66,9 +69,7 @@ export const SqlTable = ({
           onTableInteract={onTableInteract}
           rowSelection={rowSelection}
           onRowSelectionChange={onRowSelectionChange}
-          tabId={tabId}
           sortRules={sortRules}
-          onSortChange={onSortChange}
         />
       </div>
     </div>

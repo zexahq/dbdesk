@@ -179,9 +179,6 @@ export function TableView({ profile, activeTab }: TableViewProps) {
             onRowSelectionChange={setRowSelection}
             tabId={activeTab.id}
             sortRules={activeTab.sortRules}
-            onSortChange={(sortRules) => {
-              updateTableTab(activeTab.id, { sortRules, offset: 0 })
-            }}
           />
         )}
         {activeTab.view === 'structure' && (

@@ -11,7 +11,7 @@ import {
   type Updater,
   useReactTable
 } from '@tanstack/react-table'
-import { useState, useRef, useMemo, useCallback, useEffect, type MouseEvent } from 'react'
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { QueryResultRow } from '@renderer/api/client'
 
@@ -24,9 +24,7 @@ interface UseDataTableProps<TData, TValue = unknown>
   rowSelection: RowSelectionState
   onRowSelectionChange: OnChangeFn<RowSelectionState>
   // Optional sorting support
-  tabId?: string
   sortRules?: TableSortRule[]
-  onSortChange?: (sortRules: TableSortRule[]) => void
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
@@ -38,9 +36,7 @@ export function useDataTable<TData, TValue = unknown>({
   onTableInteract,
   rowSelection,
   onRowSelectionChange,
-  tabId,
   sortRules,
-  onSortChange,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -51,21 +47,6 @@ export function useDataTable<TData, TValue = unknown>({
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({})
-
-  // Sorting support - only if tabId and onSortChange are provided
-  const setColumnSortDirection = useCallback(
-    (columnName: string, direction: 'ASC' | 'DESC') => {
-      if (!onSortChange) return
-      const nextSortRules: TableSortRule[] = [
-        {
-          column: columnName,
-          direction
-        }
-      ]
-      onSortChange(nextSortRules)
-    },
-    [onSortChange]
-  )
 
   // Get column IDs
   const columnIds = useMemo(() => {
@@ -107,9 +88,7 @@ export function useDataTable<TData, TValue = unknown>({
       rowSelection
     },
     meta: {
-      ...(tabId && { activeTabId: tabId }),
-      ...(sortRules && { sortRules }),
-      ...(onSortChange && { setColumnSortDirection })
+      ...(sortRules && { sortRules })
     },
     onColumnSizingChange: setColumnSizing,
     onRowSelectionChange: handleRowSelectionChange
@@ -348,9 +327,7 @@ export function useDataTable<TData, TValue = unknown>({
 
   // Stop editing cell - use ref to avoid stale closure
   const onCellEditingStopRef =
-    useRef<(opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => void>(
-      null
-    )
+    useRef<(opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => void>(null)
 
   onCellEditingStopRef.current = (opts?: {
     moveToNextRow?: boolean

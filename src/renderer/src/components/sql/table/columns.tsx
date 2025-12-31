@@ -9,7 +9,10 @@ import { ChevronDown, ChevronUp, Key, Link } from 'lucide-react'
 const DEFAULT_COLUMN_WIDTH = 240
 const DEFAULT_MIN_COLUMN_WIDTH = 120
 
-export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow>[] => {
+export const getColumns = (
+  columns: TableDataColumn[],
+  onSortChange?: (sortRules: TableSortRule[] | undefined) => void
+): ColumnDef<QueryResultRow>[] => {
   return [
     {
       id: 'select',
@@ -60,7 +63,6 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
         const meta = table.options.meta as
           | {
               sortRules?: TableSortRule[]
-              setColumnSortDirection?: (columnName: string, direction: 'ASC' | 'DESC') => void
             }
           | undefined
 
@@ -68,14 +70,26 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
         const currentRule = sortRules?.find((rule) => rule.column === column.name)
         const direction = currentRule?.direction
 
-        const handleSortAscending = (event: React.MouseEvent<HTMLButtonElement>) => {
+        const handleSortClick = (event: React.MouseEvent<HTMLButtonElement>) => {
           event.stopPropagation()
-          meta?.setColumnSortDirection?.(column.name, 'ASC')
-        }
+          if (!onSortChange) return
 
-        const handleSortDescending = (event: React.MouseEvent<HTMLButtonElement>) => {
-          event.stopPropagation()
-          meta?.setColumnSortDirection?.(column.name, 'DESC')
+          let nextSortRules: TableSortRule[] | undefined
+
+          // Cycle through: no sort (null) → ASC → DESC → no sort (null)
+          if (!direction) {
+            // Set to ascending
+            nextSortRules = [{ column: column.name, direction: 'ASC' }]
+          } else if (direction === 'ASC') {
+            // Set to descending
+            nextSortRules = [{ column: column.name, direction: 'DESC' }]
+          } else {
+            // direction === 'DESC', clear sort for this column
+            const remainingRules = (sortRules ?? []).filter((rule) => rule.column !== column.name)
+            nextSortRules = remainingRules.length > 0 ? remainingRules : undefined
+          }
+
+          onSortChange(nextSortRules)
         }
 
         return (
@@ -112,36 +126,30 @@ export const getColumns = (columns: TableDataColumn[]): ColumnDef<QueryResultRow
                 <span className="text-xs text-muted-foreground font-normal">{column.dataType}</span>
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center gap-0.5">
-              <button
-                type="button"
-                onClick={handleSortAscending}
-                className={cn(
-                  'inline-flex items-center justify-center rounded-sm p-0.5 cursor-pointer',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  direction === 'ASC'
-                    ? 'text-foreground font-bold'
-                    : 'text-muted-foreground/40 hover:text-foreground/60'
-                )}
-                aria-label={`Sort by ${column.name} ascending`}
-              >
-                <ChevronUp className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleSortDescending}
-                className={cn(
-                  'inline-flex items-center justify-center rounded-sm p-0.5 cursor-pointer',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  direction === 'DESC'
-                    ? 'text-foreground font-bold'
-                    : 'text-muted-foreground/40 hover:text-foreground/60'
-                )}
-                aria-label={`Sort by ${column.name} descending`}
-              >
+            <button
+              type="button"
+              onClick={handleSortClick}
+              className={cn(
+                'inline-flex items-center justify-center rounded-sm p-0.5 cursor-pointer',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                direction
+                  ? 'text-foreground font-bold'
+                  : 'text-muted-foreground/40 hover:text-foreground/60'
+              )}
+              aria-label={
+                direction === 'ASC'
+                  ? `Sort by ${column.name} ascending`
+                  : direction === 'DESC'
+                    ? `Sort by ${column.name} descending`
+                    : `Sort by ${column.name}`
+              }
+            >
+              {direction === 'DESC' ? (
                 <ChevronDown className="size-4" />
-              </button>
-            </div>
+              ) : (
+                <ChevronUp className="size-4" />
+              )}
+            </button>
           </div>
         )
       },
