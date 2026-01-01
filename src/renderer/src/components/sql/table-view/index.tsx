@@ -1,13 +1,11 @@
 import type { QueryResultRow, SQLConnectionProfile } from '@common/types'
 import { useDeleteTableRows, useTableData, useUpdateTableCell } from '@renderer/api/queries/schema'
 import { toast } from '@renderer/lib/toast'
-import { cleanErrorMessage } from '@renderer/lib/utils'
 import type { TableTab } from '@renderer/store/tab-store'
 import { useTabStore } from '@renderer/store/tab-store'
 import { useQueryClient } from '@tanstack/react-query'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { useCallback, useEffect, useState } from 'react'
-import { UpdateErrorDialog } from '../dialogs/update-error-dialog'
 import { SqlTable } from '../table'
 import { SqlBottombar } from './sql-bottombar'
 import { SqlStructure } from './sql-structure'
@@ -22,8 +20,7 @@ export function TableView({ profile, activeTab }: TableViewProps) {
   const queryClient = useQueryClient()
   const updateTableTab = useTabStore((s) => s.updateTableTab)
   const makeTabPermanent = useTabStore((s) => s.makeTabPermanent)
-  const [updateErrorDialogOpen, setUpdateErrorDialogOpen] = useState(false)
-  const [updateError, setUpdateError] = useState<{ query?: string; error?: string }>({})
+
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
 
   // Reset ephemeral state when tab changes
@@ -70,26 +67,15 @@ export function TableView({ profile, activeTab }: TableViewProps) {
         return
       }
 
-      try {
-        await updateCellMutation({
-          schema: activeTab.schema,
-          table: activeTab.table,
-          columnToUpdate,
-          newValue,
-          row
-        })
-        toast.success('Cell updated successfully.')
-        refreshTableData()
-      } catch (error) {
-        const err = error as Error & { query?: string }
-        setUpdateError({
-          query: err.query,
-          error: cleanErrorMessage(err.message)
-        })
-        setUpdateErrorDialogOpen(true)
-      }
+      await updateCellMutation({
+        schema: activeTab.schema,
+        table: activeTab.table,
+        columnToUpdate,
+        newValue,
+        row
+      })
     },
-    [activeTab.schema, activeTab.table, tableData, updateCellMutation, refreshTableData]
+    [activeTab.schema, activeTab.table, tableData, updateCellMutation]
   )
 
   const handleDeleteSelectedRows = useCallback(async () => {
@@ -198,12 +184,7 @@ export function TableView({ profile, activeTab }: TableViewProps) {
           onOffsetChange={handleOffsetChange}
         />
       )}
-      <UpdateErrorDialog
-        open={updateErrorDialogOpen}
-        onOpenChange={setUpdateErrorDialogOpen}
-        query={updateError.query}
-        error={updateError.error}
-      />
+
     </>
   )
 }

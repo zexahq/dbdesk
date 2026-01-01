@@ -342,16 +342,11 @@ export class PostgresAdapter implements SQLAdapter {
       await client.query('COMMIT')
 
       return {
-        updatedRowCount: result.rowCount ?? 0,
-        query
+        updatedRowCount: result.rowCount ?? 0
       }
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {})
-
-      // Attach the query to the error for frontend display
-      const errorWithQuery = error as Error & { query?: string }
-      errorWithQuery.query = query
-      throw errorWithQuery
+      throw error
     } finally {
       client.release()
     }

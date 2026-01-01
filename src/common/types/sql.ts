@@ -184,7 +184,6 @@ export interface UpdateTableCellOptions {
  */
 export interface UpdateTableCellResult {
   updatedRowCount: number
-  query?: string // For error reporting
 }
 
 /**

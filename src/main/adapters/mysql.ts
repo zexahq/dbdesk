@@ -335,16 +335,11 @@ export class MySQLAdapter implements SQLAdapter {
       await connection.commit()
 
       return {
-        updatedRowCount: result.affectedRows ?? 0,
-        query
+        updatedRowCount: result.affectedRows ?? 0
       }
     } catch (error) {
       await connection.rollback().catch(() => {})
-
-      // Attach the query to the error for frontend display
-      const errorWithQuery = error as Error & { query?: string }
-      errorWithQuery.query = query
-      throw errorWithQuery
+      throw error
     } finally {
       connection.release()
     }

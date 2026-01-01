@@ -124,6 +124,7 @@ export function useDeleteTableRows(connectionId?: string) {
 }
 
 export function useUpdateTableCell(connectionId?: string) {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       schema,
@@ -149,6 +150,15 @@ export function useUpdateTableCell(connectionId?: string) {
         newValue,
         row
       )
+    },
+    onSuccess: (_, variables) => {
+      toast.success('Cell updated successfully.')
+      queryClient.invalidateQueries({
+        queryKey: ['table-data', connectionId, variables.schema, variables.table]
+      })
+    },
+    onError: (error) => {
+      toast.error('Failed to update cell', { description: cleanErrorMessage(error.message) })
     }
   })
 }
