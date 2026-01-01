@@ -108,7 +108,7 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
   return (
     <>
       <ResizablePanelGroup direction="vertical" className="flex-1">
-        <ResizablePanel defaultSize={50} minSize={30}>
+        <ResizablePanel defaultSize={50} minSize={20}>
           <div className="h-full w-full">
             <SqlEditor
               tabId={activeTab.id}
@@ -136,6 +136,7 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
           executionTime={activeTab.queryResults.executionTime}
           limit={activeTab.limit}
           offset={activeTab.offset}
+          isPaginationEnabled={activeTab.totalRowCount !== undefined}
           onLimitChange={async (limit) => {
             await executeQueryWithPagination(limit, 0)
           }}

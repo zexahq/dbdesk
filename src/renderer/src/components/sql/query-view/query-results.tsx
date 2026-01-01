@@ -39,7 +39,13 @@ export function QueryResults({ queryResults, isLoading, error, onRun }: QueryRes
           </div>
         ) : queryResults ? (
           <div className="w-full h-full">
-            <SimpleTable columns={queryResults.columns} data={queryResults.rows} />
+            {queryResults.totalRowCount !== undefined ? (
+              <SimpleTable columns={queryResults.columns} data={queryResults.rows} />
+            ) : (
+              <div className="flex p-2 w-full items-center text-center text-muted-foreground">
+                <p>Statement executed successfully</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex w-full items-center justify-center text-center text-muted-foreground">

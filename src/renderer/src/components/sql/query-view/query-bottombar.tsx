@@ -15,6 +15,7 @@ interface QueryBottombarProps {
   executionTime?: number
   limit: number
   offset: number
+  isPaginationEnabled?: boolean
   onLimitChange: (limit: number) => void
   onOffsetChange: (offset: number) => void
 }
@@ -24,6 +25,7 @@ export const QueryBottombar = ({
   executionTime,
   limit,
   offset,
+  isPaginationEnabled = true,
   onLimitChange,
   onOffsetChange
 }: QueryBottombarProps) => {
@@ -73,61 +75,65 @@ export const QueryBottombar = ({
   const canGoNext = currentPage < totalPages
 
   return (
-    <div className="border-t">
+    <div className="border-t min-h-10">
       <div className="flex items-center justify-between gap-4 p-2">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-7 cursor-pointer"
-            onClick={handlePrev}
-            disabled={!canGoPrev}
-          >
-            <ArrowLeft className="size-3" />
-            <span className="sr-only">Previous page</span>
-          </Button>
+        {isPaginationEnabled ? (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-7 cursor-pointer"
+              onClick={handlePrev}
+              disabled={!canGoPrev}
+            >
+              <ArrowLeft className="size-3" />
+              <span className="sr-only">Previous page</span>
+            </Button>
 
-          <span className="text-sm text-muted-foreground">Page</span>
+            <span className="text-sm text-muted-foreground">Page</span>
 
-          <Input
-            value={pageInput}
-            onChange={handlePageChange}
-            onBlur={handlePageBlur}
-            onKeyDown={handlePageKeyDown}
-            className="w-12 text-center font-semibold"
-            min={1}
-            max={totalPages}
-          />
+            <Input
+              value={pageInput}
+              onChange={handlePageChange}
+              onBlur={handlePageBlur}
+              onKeyDown={handlePageKeyDown}
+              className="w-12 text-center font-semibold"
+              min={1}
+              max={totalPages}
+            />
 
-          <span className="text-sm text-muted-foreground">of {totalPages}</span>
+            <span className="text-sm text-muted-foreground">of {totalPages}</span>
 
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-7 cursor-pointer"
-            onClick={handleNext}
-            disabled={!canGoNext}
-          >
-            <ArrowRight className="size-3" />
-            <span className="sr-only">Next page</span>
-          </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-7 cursor-pointer"
+              onClick={handleNext}
+              disabled={!canGoNext}
+            >
+              <ArrowRight className="size-3" />
+              <span className="sr-only">Next page</span>
+            </Button>
 
-          <Select
-            value={safeLimit.toString()}
-            onValueChange={(value) => onLimitChange(Number(value))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Rows per page" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-              <SelectItem value="200">200</SelectItem>
-              <SelectItem value="500">500</SelectItem>
-              <SelectItem value="1000">1000</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            <Select
+              value={safeLimit.toString()}
+              onValueChange={(value) => onLimitChange(Number(value))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Rows per page" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="200">200</SelectItem>
+                <SelectItem value="500">500</SelectItem>
+                <SelectItem value="1000">1000</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div />
+        )}
 
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">{totalRows} records</span>

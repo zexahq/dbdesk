@@ -36,10 +36,12 @@ import {
   MoreVertical,
   Pencil,
   Plus,
+  RotateCw,
   SquareCode,
   Table2Icon,
   Trash2
 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
 
@@ -68,6 +70,23 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const loadQueries = useSavedQueriesStore((s) => s.loadQueries)
   const deleteQuery = useSavedQueriesStore((s) => s.deleteQuery)
   const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
+
+  const queryClient = useQueryClient()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefreshSchemas = async () => {
+    setIsRefreshing(true)
+    try {
+      await queryClient.invalidateQueries({
+        queryKey: ['schemasWithTables', profile.id]
+      })
+      toast.success('Schemas refreshed')
+    } catch {
+      toast.error('Failed to refresh schemas')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   useEffect(() => {
     loadQueries(profile.id).catch((error) => {
@@ -164,13 +183,23 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
         <SidebarContent className="gap-0 py-2">
           <Collapsible defaultOpen className="group/schema">
             <SidebarGroup className="gap-2 py-0">
-              <CollapsibleTrigger className="cursor-pointer w-full h-10 px-3 flex items-center justify-between text-sm font-medium border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-                <span className="flex items-center gap-2">
-                  <DatabaseIcon className="size-4" />
-                  Schemas
-                </span>
-                <ChevronRight className="size-4 transition-transform group-data-[state=open]/schema:rotate-90" />
-              </CollapsibleTrigger>
+              <div className="flex items-center gap-2">
+                <CollapsibleTrigger className="flex-1 cursor-pointer h-10 px-3 flex items-center justify-between text-sm font-medium border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
+                  <span className="flex items-center gap-2">
+                    <DatabaseIcon className="size-4" />
+                    <span>Schemas</span>
+                  </span>
+                  <ChevronRight className="size-4 transition-transform group-data-[state=open]/schema:rotate-90" />
+                </CollapsibleTrigger>
+                <button
+                  onClick={handleRefreshSchemas}
+                  disabled={isRefreshing}
+                  className="h-10 w-10 flex items-center justify-center border rounded-md hover:bg-accent transition-colors cursor-pointer disabled:opacity-50"
+                  title="Refresh schemas"
+                >
+                  <RotateCw className={cn('size-4', isRefreshing && 'animate-spin')} />
+                </button>
+              </div>
               <CollapsibleContent>
                 <SidebarGroupContent className="mt-2">
                   <SidebarMenu>
