@@ -25,7 +25,7 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "monaco-sql-languages": "^0.15.1",
-    "mysql2": "^3.15.3",
+    "mysql2": "^3.16.0",
     "pg": "^8.16.3"
   },
   "devDependencies": {
