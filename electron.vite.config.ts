@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
-import { bytecodePlugin, defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { resolve } from 'path'
 import type { Plugin } from 'vite'
 
@@ -72,10 +72,10 @@ function monacoSelectiveLanguageRegistration(): Plugin {
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin(), bytecodePlugin()]
+    plugins: [externalizeDepsPlugin()]
   },
   preload: {
-    plugins: [externalizeDepsPlugin(), bytecodePlugin()]
+    plugins: [externalizeDepsPlugin()]
   },
   renderer: {
     resolve: {
