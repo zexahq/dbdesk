@@ -215,6 +215,55 @@ export interface DeleteTableResult {
 }
 
 /**
+ * Column definition for creating/altering tables
+ */
+export interface ColumnDefinition {
+  name: string
+  type: string
+  nullable?: boolean
+  defaultValue?: string
+  isPrimaryKey?: boolean
+  isUnique?: boolean
+  autoIncrement?: boolean
+}
+
+/**
+ * Options for creating a new table
+ */
+export interface CreateTableOptions {
+  schema: string
+  table: string
+  columns: ColumnDefinition[]
+}
+
+/**
+ * Result of creating a table
+ */
+export interface CreateTableResult {
+  success: boolean
+}
+
+/**
+ * Options for altering an existing table
+ */
+export interface AlterTableOptions {
+  schema: string
+  table: string
+  newName?: string
+  columnsToAdd?: ColumnDefinition[]
+  columnsToModify?: ColumnDefinition[]
+  columnsToRename?: Array<{ oldName: string; newName: string }>
+  columnsToDrop?: string[]
+}
+
+/**
+ * Result of altering a table
+ */
+export interface AlterTableResult {
+  success: boolean
+}
+
+/**
  * Schema with its tables
  */
 export interface SchemaWithTables {
@@ -275,4 +324,14 @@ export interface SQLAdapter extends BaseAdapter {
    * Delete a table from the database
    */
   deleteTable(options: DeleteTableOptions): Promise<DeleteTableResult>
+
+  /**
+   * Create a new table in the database
+   */
+  createTable(options: CreateTableOptions): Promise<CreateTableResult>
+
+  /**
+   * Alter an existing table in the database
+   */
+  alterTable(options: AlterTableOptions): Promise<AlterTableResult>
 }

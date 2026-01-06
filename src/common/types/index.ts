@@ -9,7 +9,12 @@ export type { BaseAdapter, DBAdapter, QueryResult, RunQueryOptions } from './ada
 
 // SQL types
 export type {
+  AlterTableOptions,
+  AlterTableResult,
+  ColumnDefinition,
   ColumnInfo,
+  CreateTableOptions,
+  CreateTableResult,
   DeleteTableOptions,
   DeleteTableResult,
   DeleteTableRowsOptions,

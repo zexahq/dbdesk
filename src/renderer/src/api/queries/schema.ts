@@ -1,4 +1,8 @@
 import type {
+  AlterTableOptions,
+  AlterTableResult,
+  ColumnDefinition,
+  CreateTableResult,
   DeleteTableResult,
   DeleteTableRowsResult,
   QueryResultRow,
@@ -186,6 +190,59 @@ export function useDeleteTable(connectionId?: string) {
     },
     onError: (error) => {
       toast.error('Failed to delete table', { description: cleanErrorMessage(error.message) })
+    }
+  })
+}
+export function useCreateTable(connectionId?: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      schema,
+      table,
+      columns
+    }: {
+      schema: string
+      table: string
+      columns: ColumnDefinition[]
+    }): Promise<CreateTableResult> => {
+      if (!connectionId) {
+        throw new Error('Connection ID is required to create table')
+      }
+      return dbdeskClient.createTable(connectionId, schema, table, columns)
+    },
+    onSuccess: (result, variables) => {
+      if (result.success) {
+        toast.success(`Table ${variables.schema}.${variables.table} created successfully`)
+        queryClient.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
+      }
+    },
+    onError: (error) => {
+      toast.error('Failed to create table', { description: cleanErrorMessage(error.message) })
+    }
+  })
+}
+
+export function useAlterTable(connectionId?: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (options: Omit<AlterTableOptions, 'connectionId'>): Promise<AlterTableResult> => {
+      if (!connectionId) {
+        throw new Error('Connection ID is required to alter table')
+      }
+      return dbdeskClient.alterTable(connectionId, options)
+    },
+    onSuccess: (result, variables) => {
+      if (result.success) {
+        const tableName = variables.newName || variables.table
+        toast.success(`Table ${variables.schema}.${tableName} updated successfully`)
+        queryClient.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
+        queryClient.invalidateQueries({
+          queryKey: keys.tableInfo(connectionId!, variables.schema, variables.table)
+        })
+      }
+    },
+    onError: (error) => {
+      toast.error('Failed to alter table', { description: cleanErrorMessage(error.message) })
     }
   })
 }

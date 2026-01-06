@@ -1,5 +1,9 @@
 import type {
+  AlterTableOptions,
+  AlterTableResult,
+  ColumnDefinition,
   ConnectionProfile,
+  CreateTableResult,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableResult,
@@ -532,6 +536,59 @@ export const dbdeskAPI = {
       connectionId: connectionId.trim(),
       schema: schema.trim(),
       table: table.trim()
+    })
+  },
+
+  /**
+   * Create a new table in the database
+   */
+  async createTable(
+    connectionId: string,
+    schema: string,
+    table: string,
+    columns: ColumnDefinition[]
+  ): Promise<CreateTableResult> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!schema || typeof schema !== 'string' || schema.trim() === '') {
+      throw new Error('Schema name is required')
+    }
+    if (!table || typeof table !== 'string' || table.trim() === '') {
+      throw new Error('Table name is required')
+    }
+    if (!Array.isArray(columns) || columns.length === 0) {
+      throw new Error('At least one column is required')
+    }
+
+    return ipcRenderer.invoke('table:create', {
+      connectionId: connectionId.trim(),
+      schema: schema.trim(),
+      table: table.trim(),
+      columns
+    })
+  },
+
+  /**
+   * Alter an existing table in the database
+   */
+  async alterTable(
+    connectionId: string,
+    options: Omit<AlterTableOptions, 'connectionId'>
+  ): Promise<AlterTableResult> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!options.schema || typeof options.schema !== 'string' || options.schema.trim() === '') {
+      throw new Error('Schema name is required')
+    }
+    if (!options.table || typeof options.table !== 'string' || options.table.trim() === '') {
+      throw new Error('Table name is required')
+    }
+
+    return ipcRenderer.invoke('table:alter', {
+      connectionId: connectionId.trim(),
+      ...options
     })
   }
 }

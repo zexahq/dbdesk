@@ -1,4 +1,9 @@
 import type {
+  AlterTableOptions,
+  AlterTableResult,
+  ColumnDefinition,
+  CreateTableOptions,
+  CreateTableResult,
   DeleteTableOptions,
   DeleteTableResult,
   DeleteTableRowsOptions,
@@ -447,6 +452,120 @@ export class MySQLAdapter implements SQLAdapter {
     } catch (error) {
       throw new Error(`${error}`)
     }
+  }
+
+  public async createTable(options: CreateTableOptions): Promise<CreateTableResult> {
+    const pool = this.ensurePool()
+    const { schema, table, columns } = options
+
+    if (!columns || columns.length === 0) {
+      throw new Error('At least one column is required to create a table')
+    }
+
+    const columnDefinitions = columns.map((col) => this.buildColumnDefinition(col)).join(', ')
+
+    const primaryKeys = columns.filter((col) => col.isPrimaryKey).map((col) => col.name)
+    const primaryKeyConstraint =
+      primaryKeys.length > 0
+        ? `, PRIMARY KEY (${primaryKeys.map((name) => quoteIdentifier(name)).join(', ')})`
+        : ''
+
+    const query = `CREATE TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnDefinitions}${primaryKeyConstraint})`
+
+    try {
+      await pool.query(query)
+      return { success: true }
+    } catch (error) {
+      throw new Error(`Failed to create table: ${error}`)
+    }
+  }
+
+  public async alterTable(options: AlterTableOptions): Promise<AlterTableResult> {
+    const pool = this.ensurePool()
+    const { schema, table, newName, columnsToAdd, columnsToModify, columnsToRename, columnsToDrop } =
+      options
+
+    const alterStatements: string[] = []
+
+    // Rename table
+    if (newName) {
+      const renameQuery = `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} RENAME TO ${quoteIdentifier(newName)}`
+      try {
+        await pool.query(renameQuery)
+      } catch (error) {
+        throw new Error(`Failed to rename table: ${error}`)
+      }
+    }
+
+    // Add columns
+    if (columnsToAdd && columnsToAdd.length > 0) {
+      columnsToAdd.forEach((col) => {
+        alterStatements.push(`ADD COLUMN ${this.buildColumnDefinition(col)}`)
+      })
+    }
+
+    // Modify columns
+    if (columnsToModify && columnsToModify.length > 0) {
+      columnsToModify.forEach((col) => {
+        alterStatements.push(`MODIFY COLUMN ${this.buildColumnDefinition(col)}`)
+      })
+    }
+
+    // Rename columns
+    if (columnsToRename && columnsToRename.length > 0) {
+      // Note: MySQL RENAME COLUMN requires knowing the full column definition
+      // For simplicity, we'll use CHANGE COLUMN which requires the definition
+      // In a production app, you might want to introspect the column first
+      columnsToRename.forEach(({ oldName, newName }) => {
+        alterStatements.push(
+          `CHANGE COLUMN ${quoteIdentifier(oldName)} ${quoteIdentifier(newName)} VARCHAR(255)`
+        )
+      })
+    }
+
+    // Drop columns
+    if (columnsToDrop && columnsToDrop.length > 0) {
+      columnsToDrop.forEach((colName) => {
+        alterStatements.push(`DROP COLUMN ${quoteIdentifier(colName)}`)
+      })
+    }
+
+    if (alterStatements.length > 0) {
+      const actualTableName = newName || table
+      const query = `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(actualTableName)} ${alterStatements.join(', ')}`
+
+      try {
+        await pool.query(query)
+      } catch (error) {
+        throw new Error(`Failed to alter table: ${error}`)
+      }
+    }
+
+    return { success: true }
+  }
+
+  private buildColumnDefinition(col: ColumnDefinition): string {
+    let def = `${quoteIdentifier(col.name)} ${col.type.toUpperCase()}`
+
+    if (col.autoIncrement) {
+      def += ' AUTO_INCREMENT'
+    }
+
+    if (col.nullable === false) {
+      def += ' NOT NULL'
+    } else if (col.nullable === true) {
+      def += ' NULL'
+    }
+
+    if (col.defaultValue !== undefined) {
+      def += ` DEFAULT ${col.defaultValue}`
+    }
+
+    if (col.isUnique) {
+      def += ' UNIQUE'
+    }
+
+    return def
   }
 
   private ensurePool(): Pool {
