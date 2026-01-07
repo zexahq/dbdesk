@@ -1,6 +1,7 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import { TableOptionsDropdown } from '@renderer/components/sql/table-view/table-options-dropdown'
+import { AddTableSheet } from '@renderer/components/sql/table/add-table-sheet'
 import {
   Collapsible,
   CollapsibleContent,
@@ -169,14 +170,17 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
         <SidebarHeader>
           <SidebarGroup className="flex flex-col gap-2">
             <div className="text-sm font-medium text-foreground px-2">{profile.name}</div>
-            <Button
-              variant="outline"
-              className="w-full justify-start h-10 gap-2 cursor-pointer"
-              onClick={handleNewQuery}
-            >
-              <Plus className="size-4 text-muted-foreground" />
-              New Query
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 justify-start h-10 gap-2 cursor-pointer"
+                onClick={handleNewQuery}
+              >
+                <Plus className="size-4 text-muted-foreground" />
+                New Query
+              </Button>
+              <AddTableSheet />
+            </div>
           </SidebarGroup>
         </SidebarHeader>
         <SidebarSeparator />
