@@ -9,24 +9,52 @@ import { AssetServer } from './protocols/asset-server'
 import { AssetUrl } from './protocols/asset-url'
 
 function createWindow() {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
-    show: false,
-    autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  })
+   // Create the browser window.
+   const mainWindow = new BrowserWindow({
+     width: 900,
+     height: 670,
+     show: false,
+     frame: false,
+     autoHideMenuBar: true,
+     ...(process.platform === 'linux' ? { icon } : {}),
+     webPreferences: {
+       preload: join(__dirname, '../preload/index.js'),
+       sandbox: false,
+       contextIsolation: true,
+       nodeIntegration: false
+     }
+   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-  })
+   mainWindow.on('ready-to-show', () => {
+     mainWindow.show()
+   })
+
+   // Window control handlers
+   ipcMain.handle('window:minimize', () => {
+     mainWindow.minimize()
+   })
+
+   ipcMain.handle('window:maximize', () => {
+     if (mainWindow.isMaximized()) {
+       mainWindow.unmaximize()
+     } else {
+       mainWindow.maximize()
+     }
+   })
+
+   ipcMain.handle('window:close', () => {
+     mainWindow.close()
+   })
+
+   ipcMain.handle('window:move', (_, { deltaX, deltaY }) => {
+     const bounds = mainWindow.getBounds()
+     mainWindow.setBounds({
+       x: bounds.x + deltaX,
+       y: bounds.y + deltaY,
+       width: bounds.width,
+       height: bounds.height
+     })
+   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
