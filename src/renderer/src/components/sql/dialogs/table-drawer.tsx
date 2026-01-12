@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
 import { Label } from '@renderer/components/ui/label'
+import { showWarning } from '@renderer/lib/toast'
 import {
   Sheet,
   SheetClose,
@@ -99,10 +100,19 @@ export const TableDrawer = ({
   }, [columns])
 
   const addColumn = () => {
+    // Find a unique column name that doesn't conflict with existing ones (case-insensitive)
+    let newColumnName = `column_${columns.length + 1}`
+    let counter = 1
+    const existingNames = columns.map((c) => c.name.toLowerCase())
+    while (existingNames.includes(newColumnName.toLowerCase())) {
+      counter++
+      newColumnName = `column_${counter}`
+    }
+
     setColumns([
       ...columns,
       {
-        name: `column_${columns.length + 1}`,
+        name: newColumnName,
         type: 'VARCHAR(255)',
         nullable: true,
         isPrimaryKey: false
@@ -119,6 +129,18 @@ export const TableDrawer = ({
   const updateColumn = (index: number, field: keyof ColumnDefinition, value: unknown) => {
     // Prevent modifying the id column (first column)
     if (index === 0) return
+
+    // Prevent duplicate column names (case-insensitive)
+    if (field === 'name' && typeof value === 'string') {
+      const lowerValue = value.toLowerCase()
+      const isDuplicate = columns.some(
+        (col, colIndex) => colIndex !== index && col.name.toLowerCase() === lowerValue
+      )
+      if (isDuplicate) {
+        showWarning('Duplicate column name', `A column named "${value}" already exists`)
+        return
+      }
+    }
 
     const newColumns = [...columns]
     newColumns[index] = { ...newColumns[index], [field]: value }
@@ -147,7 +169,13 @@ export const TableDrawer = ({
     onSubmit(tableName.trim(), columns)
   }
 
-  const isValid = tableName.trim() !== '' && columns.length > 0 && columns.every((col) => col.name.trim() !== '')
+  // Check for duplicate column names (case-insensitive)
+  const hasDuplicateColumns = (() => {
+    const names = columns.map((c) => c.name.toLowerCase())
+    return names.length !== new Set(names).size
+  })()
+
+  const isValid = tableName.trim() !== '' && columns.length > 0 && columns.every((col) => col.name.trim() !== '') && !hasDuplicateColumns
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
