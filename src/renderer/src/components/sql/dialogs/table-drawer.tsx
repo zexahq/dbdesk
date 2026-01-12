@@ -111,10 +111,15 @@ export const TableDrawer = ({
   }
 
   const removeColumn = (index: number) => {
+    // Prevent removing the id column (first column) and last remaining column
+    if (index === 0 || columns.length === 1) return
     setColumns(columns.filter((_, i) => i !== index))
   }
 
   const updateColumn = (index: number, field: keyof ColumnDefinition, value: unknown) => {
+    // Prevent modifying the id column (first column)
+    if (index === 0) return
+
     const newColumns = [...columns]
     newColumns[index] = { ...newColumns[index], [field]: value }
 
@@ -185,7 +190,48 @@ export const TableDrawer = ({
 
             <div className="relative">
               <div ref={scrollContainerRef} className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-2">
-                {columns.map((column, index) => (
+                {/* ID Column - Always present and immutable */}
+                <div className="flex flex-col gap-3 rounded-md border border-border bg-primary/20 dark:bg-secondary/50 p-3 opacity-75">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Input
+                        value="id"
+                        disabled
+                        className="h-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 focus:border-input bg-muted cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="w-40">
+                      <Input
+                        value="integer IDENTITY PRIMARY KEY"
+                        disabled
+                        className="h-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 focus:border-input bg-muted cursor-not-allowed text-xs"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        value="Auto-generated"
+                        disabled
+                        className="h-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 focus:border-input bg-muted cursor-not-allowed text-xs"
+                      />
+                    </div>
+                    <div className="w-10">
+                      <div className="h-9 flex items-center justify-center text-xs text-muted-foreground font-medium bg-muted/50 rounded">
+                        Auto
+                      </div>
+                    </div>
+                    <Button disabled variant="ghost" size="icon" className="h-9 w-9 opacity-50">
+                      <Trash2Icon className="size-4" />
+                    </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground px-2">
+                    The id column is auto-generated and immutable
+                  </div>
+                </div>
+
+                {/* Other columns */}
+                {columns.slice(1).map((column, mapIndex) => {
+                  const index = mapIndex + 1
+                  return (
                 <div
                   key={index}
                   className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 p-3"
@@ -297,7 +343,7 @@ export const TableDrawer = ({
                       onClick={() => removeColumn(index)}
                       variant="ghost"
                       size="icon"
-                      disabled={columns.length === 1 || isPending}
+                      disabled={index === 0 || columns.length === 1 || isPending}
                       className="h-9 w-9"
                     >
                       <Trash2Icon className="size-4" />
@@ -407,7 +453,8 @@ export const TableDrawer = ({
                     </div>
                   ) : null}
                 </div>
-              ))}
+                  )
+                })}
               </div>
               {/* Fade out overlay at the bottom - only shown when content is scrollable */}
               {isScrollable && (

@@ -434,9 +434,20 @@ export const registerIpcHandlers = () => {
       throw new ValidationError('At least one column is required')
     }
 
+    // Filter out any user-provided id column and ensure id is always first with auto-increment
+    const filteredColumns = (columns as any[]).filter((col) => col.name !== 'id')
+    const idColumn = {
+      name: 'id',
+      type: 'INT',
+      nullable: false,
+      isPrimaryKey: true,
+      autoIncrement: true
+    }
+    const finalColumns = [idColumn, ...filteredColumns]
+
     const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
 
-    return adapter.createTable({ schema, table, columns: columns as never[] })
+    return adapter.createTable({ schema, table, columns: finalColumns as never[] })
   })
 
   safeHandle('table:alter', async (payload): Promise<AlterTableResult> => {
