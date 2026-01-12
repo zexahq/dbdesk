@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap');
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
-  margin: 0;
 }
 
 ul {
@@ -15,6 +15,7 @@ body {
   min-height: 100vh;
   line-height: 1.6;
   font-family:
+    'Bricolage Grotesque',
     Inter,
     -apple-system,
     BlinkMacSystemFont,
@@ -40,7 +41,9 @@ body {
 
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
+  border-radius: 0.5rem !important;
 }
 ::-webkit-scrollbar-thumb {
   background: #888;
+  border-radius: 0.5rem !important;
 }

@@ -1,11 +1,14 @@
 import type { ConnectionProfile, DBConnectionOptions } from '@common/types'
 import { useCreateConnection, useUpdateConnection } from '@renderer/api/queries/connections'
+import { dbdeskClient } from '@renderer/api/client'
+import { error as showError, success as showSuccess } from '@renderer/lib/toast'
 import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { FieldError, FieldGroup, FieldLabel, Field as UIField } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
 import { Separator } from '@renderer/components/ui/separator'
 import { useForm } from '@tanstack/react-form'
+import { useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import * as z from 'zod'
@@ -64,10 +67,12 @@ export interface MySQLConnectionFormProps {
 export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFormProps) {
   const createMutation = useCreateConnection()
   const updateMutation = useUpdateConnection()
+  const navigate = useNavigate()
 
   const defaults = useMemo(() => toDefaults(connection), [connection])
 
   const [showPassword, setShowPassword] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
 
   const form = useForm({
     defaultValues: defaults,
@@ -108,7 +113,29 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
         })
       }
 
-      onSuccess(profile)
+      // Connect to the database
+      setIsConnecting(true)
+      try {
+        const connectResult = await dbdeskClient.connect(profile.id)
+        if (!connectResult.success) {
+          showError('Failed to connect to database. Please check your connection details.')
+          setIsConnecting(false)
+          return
+        }
+
+        showSuccess('Connected successfully!')
+        onSuccess(profile)
+
+        // Navigate to the connection view
+        navigate({
+          to: '/connections/$connectionId',
+          params: { connectionId: profile.id }
+        })
+      } catch (error) {
+        console.error('Connection error:', error)
+        showError(error instanceof Error ? error.message : 'Failed to connect')
+        setIsConnecting(false)
+      }
     }
   })
 
@@ -320,12 +347,14 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
         <Button type="reset" variant="outline" onClick={() => form.reset()}>
           Reset
         </Button>
-        <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+        <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || isConnecting}>
           {createMutation.isPending || updateMutation.isPending
             ? 'Saving…'
-            : connection
-              ? 'Update Connection'
-              : 'Save Connection'}
+            : isConnecting
+              ? 'Connecting…'
+              : connection
+                ? 'Open Connection'
+                : 'Save Connection'}
         </Button>
       </div>
     </form>

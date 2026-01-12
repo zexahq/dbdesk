@@ -1,9 +1,12 @@
 import type {
+  AlterTableResult,
   ConnectionProfile,
   ConnectionWorkspace,
+  CreateTableResult,
   DatabaseType,
   DeleteTableResult,
   DeleteTableRowsResult,
+  InsertTableRowResult,
   QueryResult,
   SavedQuery,
   SchemaWithTables,
@@ -296,6 +299,36 @@ export const registerIpcHandlers = () => {
     })
   })
 
+  safeHandle('table:insertRow', async (payload): Promise<InsertTableRowResult> => {
+    const { connectionId, schema, table, values } = payload as {
+      connectionId: string
+      schema: string
+      table: string
+      values: Record<string, unknown>
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!schema || typeof schema !== 'string') {
+      throw new ValidationError('schema is required')
+    }
+    if (!table || typeof table !== 'string') {
+      throw new ValidationError('table is required')
+    }
+    if (!values || typeof values !== 'object') {
+      throw new ValidationError('values is required and must be an object')
+    }
+
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    return adapter.insertTableRow({
+      schema,
+      table,
+      values
+    })
+  })
+
   safeHandle('table:exportCSV', async (payload): Promise<ExportTableResult> => {
     const { connectionId, schema, table, sortRules, filters } = payload as {
       connectionId: string
@@ -378,6 +411,68 @@ export const registerIpcHandlers = () => {
     const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
 
     return adapter.deleteTable({ schema, table })
+  })
+
+  safeHandle('table:create', async (payload): Promise<CreateTableResult> => {
+    const { connectionId, schema, table, columns } = payload as {
+      connectionId: string
+      schema: string
+      table: string
+      columns: unknown[]
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!schema || typeof schema !== 'string') {
+      throw new ValidationError('schema is required')
+    }
+    if (!table || typeof table !== 'string') {
+      throw new ValidationError('table is required')
+    }
+    if (!Array.isArray(columns) || columns.length === 0) {
+      throw new ValidationError('At least one column is required')
+    }
+
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    return adapter.createTable({ schema, table, columns: columns as never[] })
+  })
+
+  safeHandle('table:alter', async (payload): Promise<AlterTableResult> => {
+    const { connectionId, schema, table, newName, columnsToAdd, columnsToModify, columnsToRename, columnsToDrop } =
+      payload as {
+        connectionId: string
+        schema: string
+        table: string
+        newName?: string
+        columnsToAdd?: unknown[]
+        columnsToModify?: unknown[]
+        columnsToRename?: Array<{ oldName: string; newName: string }>
+        columnsToDrop?: string[]
+      }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!schema || typeof schema !== 'string') {
+      throw new ValidationError('schema is required')
+    }
+    if (!table || typeof table !== 'string') {
+      throw new ValidationError('table is required')
+    }
+
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    return adapter.alterTable({
+      schema,
+      table,
+      newName,
+      columnsToAdd: columnsToAdd as never[],
+      columnsToModify: columnsToModify as never[],
+      columnsToRename,
+      columnsToDrop
+    })
   })
 
   // Workspace handlers

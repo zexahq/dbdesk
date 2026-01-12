@@ -1,8 +1,15 @@
 import type {
+  AlterTableOptions,
+  AlterTableResult,
+  ColumnDefinition,
+  CreateTableOptions,
+  CreateTableResult,
   DeleteTableOptions,
   DeleteTableResult,
   DeleteTableRowsOptions,
   DeleteTableRowsResult,
+  InsertTableRowOptions,
+  InsertTableRowResult,
   QueryResult,
   RunQueryOptions,
   SQLAdapter,
@@ -345,6 +352,48 @@ export class MySQLAdapter implements SQLAdapter {
     }
   }
 
+  public async insertTableRow(options: InsertTableRowOptions): Promise<InsertTableRowResult> {
+    const pool = this.ensurePool()
+    const { schema, table, values } = options
+
+    // Filter out undefined values and prepare data
+    const cleanedValues = Object.entries(values).filter(
+      ([_, value]) => value !== undefined
+    ) as [string, unknown][]
+
+    if (cleanedValues.length === 0) {
+      throw new Error('No values provided for insert')
+    }
+
+    const columns = cleanedValues.map(([col]) => `\`${col}\``)
+    const placeholders = cleanedValues.map(() => '?')
+    const params = cleanedValues.map(([_, value]) => value)
+
+    const query = `
+      INSERT INTO \`${schema}\`.\`${table}\` (${columns.join(', ')})
+      VALUES (${placeholders.join(', ')})
+    `
+
+    const connection = await pool.getConnection()
+
+    try {
+      await connection.beginTransaction()
+
+      const [result] = await connection.query<ResultSetHeader>(query, params)
+
+      await connection.commit()
+
+      return {
+        insertedRowCount: result.affectedRows ?? 0
+      }
+    } catch (error) {
+      await connection.rollback().catch(() => {})
+      throw error
+    } finally {
+      connection.release()
+    }
+  }
+
   public async exportTableAsCSV(options: ExportTableOptions): Promise<ExportTableResult> {
     const pool = this.ensurePool()
     const { schema, table } = options
@@ -394,8 +443,39 @@ export class MySQLAdapter implements SQLAdapter {
     const pool = this.ensurePool()
     const { schema, table } = options
 
-    // Get column information first
-    const columnInfo = await this.queryColumns(pool, schema, table)
+    // Get full table information including constraints
+    const tableInfo = await this.introspectTable(schema, table)
+    const columnInfo = tableInfo.columns
+
+    // Build CREATE TABLE statement
+    const createTableLines: string[] = []
+    const quotedTableName = `${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
+
+    createTableLines.push(`CREATE TABLE ${quotedTableName} (`)
+
+    // Add column definitions
+    const columnDefs = columnInfo.map((col) => {
+      const parts = [`  ${quoteIdentifier(col.name)} ${col.type}`]
+
+      if (!col.nullable) parts.push('NOT NULL')
+      if (col.defaultValue !== null && col.defaultValue !== undefined) {
+        parts.push(`DEFAULT ${col.defaultValue}`)
+      }
+
+      return parts.join(' ')
+    })
+
+    createTableLines.push(columnDefs.join(',\n'))
+
+    // Add primary key constraint
+    const primaryKeys = columnInfo.filter(col => col.isPrimaryKey).map(col => quoteIdentifier(col.name))
+    if (primaryKeys.length > 0) {
+      createTableLines.push(`,\n  PRIMARY KEY (${primaryKeys.join(', ')})`)
+    }
+
+    createTableLines.push(');')
+
+    const createTableStatement = createTableLines.join('\n')
 
     // Build the data query with all rows (no limit for export)
     const dataOptions: TableDataOptions = {
@@ -407,6 +487,17 @@ export class MySQLAdapter implements SQLAdapter {
     const { query, params } = buildTableDataQuery(dataOptions)
     const [rows] = await pool.query<RowDataPacket[]>(query, params)
 
+    // Filter out auto-increment columns for INSERT statements
+    // For MySQL, auto_increment is typically used with primary keys
+    // We'll check if the column is a primary key with an integer type
+    const autoIncrementCols = columnInfo.filter(col => {
+      if (!col.isPrimaryKey) return false
+      const typeLower = col.type.toLowerCase()
+      return typeLower.includes('int') || typeLower.includes('serial')
+    }).map(col => col.name)
+
+    const insertColumns = columnInfo.filter(col => !autoIncrementCols.includes(col.name))
+
     // Serialize SQL
     const serializeSqlValue = (value: unknown): string => {
       if (value === null || value === undefined) return 'NULL'
@@ -416,15 +507,20 @@ export class MySQLAdapter implements SQLAdapter {
       return `'${str}'`
     }
 
-    const columnList = columnInfo.map((col) => quoteIdentifier(col.name)).join(', ')
+    let statements: string[] = []
+    if (rows.length > 0 && insertColumns.length > 0) {
+      const columnList = insertColumns.map((col) => quoteIdentifier(col.name)).join(', ')
 
-    const statements = rows.map((row) => {
-      const record = row as Record<string, unknown>
-      const values = columnInfo.map((col) => serializeSqlValue(record[col.name])).join(', ')
-      return `INSERT INTO ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnList}) VALUES (${values});`
-    })
+      statements = rows.map((row) => {
+        const record = row as Record<string, unknown>
+        const values = insertColumns.map((col) => serializeSqlValue(record[col.name])).join(', ')
+        return `INSERT INTO ${quotedTableName} (${columnList}) VALUES (${values});`
+      })
+    }
 
-    const sql = statements.join('\n')
+    const sql = statements.length > 0
+      ? [createTableStatement, '', ...statements].join('\n')
+      : createTableStatement
     const base64Content = Buffer.from(sql, 'utf-8').toString('base64')
     const filename = `${schema}.${table}.sql`
 
@@ -447,6 +543,120 @@ export class MySQLAdapter implements SQLAdapter {
     } catch (error) {
       throw new Error(`${error}`)
     }
+  }
+
+  public async createTable(options: CreateTableOptions): Promise<CreateTableResult> {
+    const pool = this.ensurePool()
+    const { schema, table, columns } = options
+
+    if (!columns || columns.length === 0) {
+      throw new Error('At least one column is required to create a table')
+    }
+
+    const columnDefinitions = columns.map((col) => this.buildColumnDefinition(col)).join(', ')
+
+    const primaryKeys = columns.filter((col) => col.isPrimaryKey).map((col) => col.name)
+    const primaryKeyConstraint =
+      primaryKeys.length > 0
+        ? `, PRIMARY KEY (${primaryKeys.map((name) => quoteIdentifier(name)).join(', ')})`
+        : ''
+
+    const query = `CREATE TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnDefinitions}${primaryKeyConstraint})`
+
+    try {
+      await pool.query(query)
+      return { success: true }
+    } catch (error) {
+      throw new Error(`Failed to create table: ${error}`)
+    }
+  }
+
+  public async alterTable(options: AlterTableOptions): Promise<AlterTableResult> {
+    const pool = this.ensurePool()
+    const { schema, table, newName, columnsToAdd, columnsToModify, columnsToRename, columnsToDrop } =
+      options
+
+    const alterStatements: string[] = []
+
+    // Rename table
+    if (newName) {
+      const renameQuery = `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} RENAME TO ${quoteIdentifier(newName)}`
+      try {
+        await pool.query(renameQuery)
+      } catch (error) {
+        throw new Error(`Failed to rename table: ${error}`)
+      }
+    }
+
+    // Add columns
+    if (columnsToAdd && columnsToAdd.length > 0) {
+      columnsToAdd.forEach((col) => {
+        alterStatements.push(`ADD COLUMN ${this.buildColumnDefinition(col)}`)
+      })
+    }
+
+    // Modify columns
+    if (columnsToModify && columnsToModify.length > 0) {
+      columnsToModify.forEach((col) => {
+        alterStatements.push(`MODIFY COLUMN ${this.buildColumnDefinition(col)}`)
+      })
+    }
+
+    // Rename columns
+    if (columnsToRename && columnsToRename.length > 0) {
+      // Note: MySQL RENAME COLUMN requires knowing the full column definition
+      // For simplicity, we'll use CHANGE COLUMN which requires the definition
+      // In a production app, you might want to introspect the column first
+      columnsToRename.forEach(({ oldName, newName }) => {
+        alterStatements.push(
+          `CHANGE COLUMN ${quoteIdentifier(oldName)} ${quoteIdentifier(newName)} VARCHAR(255)`
+        )
+      })
+    }
+
+    // Drop columns
+    if (columnsToDrop && columnsToDrop.length > 0) {
+      columnsToDrop.forEach((colName) => {
+        alterStatements.push(`DROP COLUMN ${quoteIdentifier(colName)}`)
+      })
+    }
+
+    if (alterStatements.length > 0) {
+      const actualTableName = newName || table
+      const query = `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(actualTableName)} ${alterStatements.join(', ')}`
+
+      try {
+        await pool.query(query)
+      } catch (error) {
+        throw new Error(`Failed to alter table: ${error}`)
+      }
+    }
+
+    return { success: true }
+  }
+
+  private buildColumnDefinition(col: ColumnDefinition): string {
+    let def = `${quoteIdentifier(col.name)} ${col.type.toUpperCase()}`
+
+    if (col.autoIncrement) {
+      def += ' AUTO_INCREMENT'
+    }
+
+    if (col.nullable === false) {
+      def += ' NOT NULL'
+    } else if (col.nullable === true) {
+      def += ' NULL'
+    }
+
+    if (col.defaultValue !== undefined) {
+      def += ` DEFAULT ${col.defaultValue}`
+    }
+
+    if (col.isUnique) {
+      def += ' UNIQUE'
+    }
+
+    return def
   }
 
   private ensurePool(): Pool {

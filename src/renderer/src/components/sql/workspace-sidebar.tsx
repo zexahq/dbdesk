@@ -1,5 +1,6 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
+import { TableDrawer } from '@renderer/components/sql/dialogs/table-drawer'
 import { TableOptionsDropdown } from '@renderer/components/sql/table-view/table-options-dropdown'
 import {
   Collapsible,
@@ -44,6 +45,8 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
+import { useCreateTable } from '@renderer/api/queries/schema'
+import type { ColumnDefinition } from '@common/types'
 
 type WorkspaceSidebarProps = {
   profile: SQLConnectionProfile
@@ -266,9 +269,13 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
                               </SidebarMenuButton>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded cursor-pointer">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 hover:bg-accent/80"
+                                  >
                                     <MoreVertical className="size-4" />
-                                  </button>
+                                  </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem
@@ -329,57 +336,92 @@ type SchemaTreeProps = {
 
 function SchemaTree({ connectionId, schema, tables, activeTab, onTableClick }: SchemaTreeProps) {
   const isPublic = schema === 'public'
+  const [createTableDrawerOpen, setCreateTableDrawerOpen] = useState(false)
+  const createTableMutation = useCreateTable(connectionId)
+
+  const handleCreateTable = (tableName: string, columns: ColumnDefinition[]) => {
+    createTableMutation.mutate(
+      { schema, table: tableName, columns },
+      {
+        onSuccess: () => {
+          setCreateTableDrawerOpen(false)
+        }
+      }
+    )
+  }
 
   return (
-    <SidebarMenuItem>
-      <Collapsible
-        className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
-        defaultOpen={isPublic}
-      >
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton className="cursor-pointer h-9">
-            <ChevronRight className="size-4 transition-transform" />
-            <DatabaseIcon className="size-4" />
-            <span>{schema}</span>
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarMenuSub className="ml-3! mr-0!">
-            {tables.length === 0 ? (
-              <SidebarMenuButton aria-disabled>No tables</SidebarMenuButton>
-            ) : (
-              tables.map((table) => {
-                const isActive = activeTab?.id === `${schema}.${table}`
-                return (
-                  <div
-                    key={table}
-                    className={cn(
-                      'flex items-center justify-between w-full px-2 rounded-md hover:bg-accent group',
-                      isActive && 'bg-accent'
-                    )}
-                  >
-                    <SidebarMenuButton
-                      onClick={() => onTableClick(schema, table)}
-                      className="flex-1 cursor-pointer gap-2 h-9"
-                      isActive={isActive}
+    <>
+      <SidebarMenuItem>
+        <Collapsible
+          className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
+          defaultOpen={isPublic}
+        >
+          <div className="flex items-center gap-1">
+            <CollapsibleTrigger asChild>
+              <SidebarMenuButton className="cursor-pointer h-9 flex-1">
+                <ChevronRight className="size-4 transition-transform" />
+                <DatabaseIcon className="size-4" />
+                <span>{schema}</span>
+              </SidebarMenuButton>
+            </CollapsibleTrigger>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="opacity-50 hover:opacity-100 transition-all h-8 w-8 cursor-pointer"
+              onClick={() => setCreateTableDrawerOpen(true)}
+              title="Create new table"
+            >
+              <Plus className="size-4" />
+            </Button>
+          </div>
+          <CollapsibleContent>
+            <SidebarMenuSub className="ml-3! mr-0!">
+              {tables.length === 0 ? (
+                <SidebarMenuButton aria-disabled>No tables</SidebarMenuButton>
+              ) : (
+                tables.map((table) => {
+                  const isActive = activeTab?.id === `${schema}.${table}`
+                  return (
+                    <div
+                      key={table}
+                      className={cn(
+                        'flex items-center justify-between w-full px-2 rounded-md hover:bg-accent group',
+                        isActive && 'bg-accent'
+                      )}
                     >
-                      <Table2Icon className="size-4" />
-                      <span>{table}</span>
-                    </SidebarMenuButton>
-                    <div className={`${isActive ? 'block!' : 'hidden'}`}>
-                      <TableOptionsDropdown
-                        connectionId={connectionId}
-                        schema={schema}
-                        table={table}
-                      />
+                      <SidebarMenuButton
+                        onClick={() => onTableClick(schema, table)}
+                        className="flex-1 cursor-pointer gap-2 h-9"
+                        isActive={isActive}
+                      >
+                        <Table2Icon className="size-4" />
+                        <span>{table}</span>
+                      </SidebarMenuButton>
+                      <div className={`${isActive ? 'block!' : 'hidden'}`}>
+                        <TableOptionsDropdown
+                          connectionId={connectionId}
+                          schema={schema}
+                          table={table}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )
-              })
-            )}
-          </SidebarMenuSub>
-        </CollapsibleContent>
-      </Collapsible>
-    </SidebarMenuItem>
+                  )
+                })
+              )}
+            </SidebarMenuSub>
+          </CollapsibleContent>
+        </Collapsible>
+      </SidebarMenuItem>
+
+      <TableDrawer
+        open={createTableDrawerOpen}
+        onOpenChange={setCreateTableDrawerOpen}
+        mode="create"
+        schema={schema}
+        onSubmit={handleCreateTable}
+        isPending={createTableMutation.isPending}
+      />
+    </>
   )
 }

@@ -22,7 +22,7 @@ export function ConnectionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg w-2xl max-w-none!">
         <DialogHeader>
-          <DialogTitle>{connection ? 'Edit Connection' : 'New Connection'}</DialogTitle>
+          <DialogTitle>{connection ? 'Open Connection' : 'New Connection'}</DialogTitle>
           <DialogDescription>
             {connection
               ? 'Update the connection details.'
