@@ -8,7 +8,7 @@ import type {
   TableInfo,
   UpdateTableCellResult
 } from '@common/types'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
 import { toast } from '../../lib/toast'
 import { cleanErrorMessage } from '../../lib/utils'
@@ -124,7 +124,6 @@ export function useDeleteTableRows(connectionId?: string) {
 }
 
 export function useUpdateTableCell(connectionId?: string) {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       schema,
@@ -151,20 +150,21 @@ export function useUpdateTableCell(connectionId?: string) {
         row
       )
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (_, variables, _ctx, client) => {
       toast.success('Cell updated successfully.')
-      queryClient.invalidateQueries({
+      client.client.invalidateQueries({
         queryKey: ['table-data', connectionId, variables.schema, variables.table]
       })
     },
     onError: (error) => {
-      toast.error('Failed to update cell', { description: cleanErrorMessage(error.message) })
+      toast.error('Failed to update cell', {
+        description: cleanErrorMessage(error.message)
+      })
     }
   })
 }
 
 export function useDeleteTable(connectionId?: string) {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       schema,
@@ -178,14 +178,18 @@ export function useDeleteTable(connectionId?: string) {
       }
       return dbdeskClient.deleteTable(connectionId, schema, table)
     },
-    onSuccess: (result, variables) => {
+    onSuccess: (result, variables, _ctx, client) => {
       if (result.success) {
         toast.success(`Table ${variables.schema}.${variables.table} deleted successfully`)
-        queryClient.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
+        client.client.invalidateQueries({
+          queryKey: keys.schemasWithTables(connectionId!)
+        })
       }
     },
     onError: (error) => {
-      toast.error('Failed to delete table', { description: cleanErrorMessage(error.message) })
+      toast.error('Failed to delete table', {
+        description: cleanErrorMessage(error.message)
+      })
     }
   })
 }
