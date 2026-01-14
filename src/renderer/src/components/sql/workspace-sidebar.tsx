@@ -1,6 +1,6 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
-import { TableDrawer } from '@renderer/components/sql/dialogs/table-drawer'
+import { TableDrawer } from '@renderer/components/sql/drawers/table-drawer'
 import { TableOptionsDropdown } from '@renderer/components/sql/table-view/table-options-dropdown'
 import {
   Collapsible,

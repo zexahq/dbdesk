@@ -1,8 +1,8 @@
 import { useExportTableAsCSV, useExportTableAsSQL } from '@renderer/api/queries/export'
 import { useAlterTable, useDeleteTable, useInsertTableRow, useTableIntrospection } from '@renderer/api/queries/schema'
-import { AddRowDialog } from '@renderer/components/sql/dialogs/add-row-dialog'
+import { AddRowDialog } from '@renderer/components/sql/drawers/add-row-drawer'
 import { DeleteTableConfirmationDialog } from '@renderer/components/sql/dialogs/delete-table-confirmation-dialog'
-import { TableDrawer } from '@renderer/components/sql/dialogs/table-drawer'
+import { TableDrawer } from '@renderer/components/sql/drawers/table-drawer'
 import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu,

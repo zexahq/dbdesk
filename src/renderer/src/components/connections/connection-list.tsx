@@ -2,7 +2,7 @@ import type { ConnectionProfile, DatabaseType } from '@common/types'
 import { useConnections, useDeleteConnection } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { error as showError, success as showSuccess } from '@renderer/lib/toast'
-import { Calendar, ChevronDown, Database, Folder, Globe, Tag, User, X } from 'lucide-react'
+import { ChevronDown, Database, Folder, Globe, Tag, X } from 'lucide-react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { dbdeskClient } from '@renderer/api/client'
@@ -316,25 +316,6 @@ export function ConnectionList() {
                                 </>
                               ) : null}
                             </div>
-                            {profile.type === 'postgres' || profile.type === 'mysql' ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border bg-amber-500/20 text-amber-400 border-amber-500/30">
-                                  <User className="size-3" />
-                                  {profile.options.user}
-                                </span>
-                                {profile.lastConnectedAt && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border bg-gray-500/20 text-gray-400 border-gray-500/30">
-                                    <Calendar className="size-3" />
-                                    {new Date(profile.lastConnectedAt).toLocaleDateString()}
-                                  </span>
-                                )}
-                              </div>
-                            ) : profile.lastConnectedAt ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border bg-gray-500/20 text-gray-400 border-gray-500/30">
-                                <Calendar className="size-3" />
-                                {new Date(profile.lastConnectedAt).toLocaleDateString()}
-                              </span>
-                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -377,20 +358,22 @@ export function ConnectionList() {
                     <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
                       Create New
                     </div>
-                    <Button
-                      variant={"ghost"}
-                      className="w-full text-left px-3 py-2 text-sm rounded-xs hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
-                      onClick={() => handleNewConnection('postgres')}
-                    >
-                      + New PostgreSQL Connection
-                    </Button>
-                    <Button
-                      variant={"ghost"}
-                      className="w-full text-left px-3 py-2 text-sm rounded-xs hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
-                      onClick={() => handleNewConnection('mysql')}
-                    >
-                      + New MySQL Connection
-                    </Button>
+                    <div className="flex gap-2 px-2">
+                      <Button
+                        variant={"ghost"}
+                        className="flex-1 text-center px-3 py-2 text-sm rounded-xs bg-muted hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                        onClick={() => handleNewConnection('postgres')}
+                      >
+                        + New PostgreSQL Connection
+                      </Button>
+                      <Button
+                        variant={"ghost"}
+                        className="flex-1 text-center px-3 py-2 text-sm rounded-xs bg-muted hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                        onClick={() => handleNewConnection('mysql')}
+                      >
+                        + New MySQL Connection
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Saved Connections List */}
@@ -456,25 +439,6 @@ export function ConnectionList() {
                                       </>
                                     ) : null}
                                   </div>
-                                  {profile.type === 'postgres' || profile.type === 'mysql' ? (
-                                    <div className="flex flex-wrap gap-1.5">
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border bg-amber-500/20 text-amber-400 border-amber-500/30">
-                                        <User className="size-3" />
-                                        {profile.options.user}
-                                      </span>
-                                      {profile.lastConnectedAt && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border bg-gray-500/20 text-gray-400 border-gray-500/30">
-                                          <Calendar className="size-3" />
-                                          {new Date(profile.lastConnectedAt).toLocaleDateString()}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ) : profile.lastConnectedAt ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border bg-gray-500/20 text-gray-400 border-gray-500/30">
-                                      <Calendar className="size-3" />
-                                      {new Date(profile.lastConnectedAt).toLocaleDateString()}
-                                    </span>
-                                  ) : null}
                                 </div>
                               </div>
                             </div>
