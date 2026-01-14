@@ -358,7 +358,7 @@ export function ConnectionList() {
                     <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
                       Create New
                     </div>
-                    <div className="flex gap-2 px-2">
+                    <div className="flex gap-2 px-2 pb-2 h-fit relative">
                       <Button
                         variant={"ghost"}
                         className="flex-1 text-center px-3 py-2 text-sm rounded-xs bg-muted hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
@@ -366,6 +366,7 @@ export function ConnectionList() {
                       >
                         + New PostgreSQL Connection
                       </Button>
+                      <div className='w-[1.5px] h-9 bg-white/20' />
                       <Button
                         variant={"ghost"}
                         className="flex-1 text-center px-3 py-2 text-sm rounded-xs bg-muted hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
