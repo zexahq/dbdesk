@@ -528,11 +528,11 @@ export function useDataTable<TData, TValue = unknown>({
     const container = tableContainerRef.current
     if (!container) return
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      onKeyDownRef.current?.(event)
+    const handleKeyDown = (event: Event) => {
+      onKeyDownRef.current?.(event as KeyboardEvent)
     }
 
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: Event) => {
       const target = event.target as HTMLElement
       // Check if click is on a table cell
       const cellElement = target.closest('[data-column-id]')
