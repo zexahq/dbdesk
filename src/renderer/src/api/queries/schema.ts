@@ -13,7 +13,7 @@ import type {
   TableInfo,
   UpdateTableCellResult
 } from '@common/types'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
 import { toast } from '../../lib/toast'
 import { cleanErrorMessage } from '../../lib/utils'
@@ -129,7 +129,6 @@ export function useDeleteTableRows(connectionId?: string) {
 }
 
 export function useUpdateTableCell(connectionId?: string) {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       schema,
@@ -156,20 +155,21 @@ export function useUpdateTableCell(connectionId?: string) {
         row
       )
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (_, variables, _ctx, client) => {
       toast.success('Cell updated successfully.')
-      queryClient.invalidateQueries({
+      client.client.invalidateQueries({
         queryKey: ['table-data', connectionId, variables.schema, variables.table]
       })
     },
     onError: (error) => {
-      toast.error('Failed to update cell', { description: cleanErrorMessage(error.message) })
+      toast.error('Failed to update cell', {
+        description: cleanErrorMessage(error.message)
+      })
     }
   })
 }
 
 export function useDeleteTable(connectionId?: string) {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       schema,
@@ -183,19 +183,22 @@ export function useDeleteTable(connectionId?: string) {
       }
       return dbdeskClient.deleteTable(connectionId, schema, table)
     },
-    onSuccess: (result, variables) => {
+    onSuccess: (result, variables, _ctx, client) => {
       if (result.success) {
         toast.success(`Table ${variables.schema}.${variables.table} deleted successfully`)
-        queryClient.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
+        client.client.invalidateQueries({
+          queryKey: keys.schemasWithTables(connectionId!)
+        })
       }
     },
     onError: (error) => {
-      toast.error('Failed to delete table', { description: cleanErrorMessage(error.message) })
+      toast.error('Failed to delete table', {
+        description: cleanErrorMessage(error.message)
+      })
     }
   })
 }
 export function useCreateTable(connectionId?: string) {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       schema,
@@ -211,10 +214,10 @@ export function useCreateTable(connectionId?: string) {
       }
       return dbdeskClient.createTable(connectionId, schema, table, columns)
     },
-    onSuccess: (result, variables) => {
+    onSuccess: (result, variables, _ctx, client) => {
       if (result.success) {
         toast.success(`Table ${variables.schema}.${variables.table} created successfully`)
-        queryClient.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
+        client.client.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
       }
     },
     onError: (error) => {
@@ -224,7 +227,6 @@ export function useCreateTable(connectionId?: string) {
 }
 
 export function useAlterTable(connectionId?: string) {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (options: Omit<AlterTableOptions, 'connectionId'>): Promise<AlterTableResult> => {
       if (!connectionId) {
@@ -232,12 +234,12 @@ export function useAlterTable(connectionId?: string) {
       }
       return dbdeskClient.alterTable(connectionId, options)
     },
-    onSuccess: (result, variables) => {
+    onSuccess: (result, variables, _ctx, client) => {
       if (result.success) {
         const tableName = variables.newName || variables.table
         toast.success(`Table ${variables.schema}.${tableName} updated successfully`)
-        queryClient.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
-        queryClient.invalidateQueries({
+        client.client.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
+        client.client.invalidateQueries({
           queryKey: keys.tableInfo(connectionId!, variables.schema, variables.table)
         })
       }
@@ -248,7 +250,6 @@ export function useAlterTable(connectionId?: string) {
   })
 }
 export function useInsertTableRow(connectionId?: string, schema?: string, table?: string) {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (values: Record<string, unknown>): Promise<InsertTableRowResult> => {
       if (!connectionId || !schema || !table) {
@@ -256,10 +257,9 @@ export function useInsertTableRow(connectionId?: string, schema?: string, table?
       }
       return dbdeskClient.insertTableRow(connectionId, schema, table, values)
     },
-    onSuccess: () => {
+    onSuccess: (_result, _variables, _ctx, client) => {
       if (connectionId && schema && table) {
-        // Invalidate table data to refresh the view
-        queryClient.invalidateQueries({ queryKey: keys.tableData(connectionId, schema, table, {}) })
+        client.client.invalidateQueries({ queryKey: keys.tableData(connectionId, schema, table, {}) })
       }
       toast.success('Row inserted successfully')
     },
