@@ -532,10 +532,22 @@ export function useDataTable<TData, TValue = unknown>({
       onKeyDownRef.current?.(event)
     }
 
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      // Check if click is on a table cell
+      const cellElement = target.closest('[data-column-id]')
+      if (!cellElement) {
+        // Click is outside cells, clear focus
+        setFocusedCell(null)
+      }
+    }
+
     container.addEventListener('keydown', handleKeyDown)
+    container.addEventListener('click', handleClickOutside)
 
     return () => {
       container.removeEventListener('keydown', handleKeyDown)
+      container.removeEventListener('click', handleClickOutside)
     }
   }, [])
 

@@ -1,4 +1,5 @@
 import type { ColumnDefinition, TableInfo } from '@common/types'
+import { DATA_TYPES } from '@common/constants'
 import { PlusIcon, Trash2Icon, MoreVerticalIcon } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { Button } from '@renderer/components/ui/button'
@@ -34,18 +35,6 @@ interface TableDrawerProps {
   isPending?: boolean
 }
 
-const DATA_TYPES = [
-  'INT',
-  'BIGINT',
-  'VARCHAR(255)',
-  'TEXT',
-  'BOOLEAN',
-  'DECIMAL(10,2)',
-  'DATE',
-  'TIMESTAMP',
-  'JSON'
-]
-
 export const TableDrawer = ({
   open,
   onOpenChange,
@@ -79,11 +68,7 @@ export const TableDrawer = ({
       )
     } else if (mode === 'create') {
       setTableName('')
-      // Note: Always using INT for compatibility across databases
-      // For PostgreSQL, this will be translated to INTEGER at the database level
-      setColumns([
-        { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, autoIncrement: true }
-      ])
+      setColumns([])
     }
   }, [mode, existingTable, open])
 
@@ -115,7 +100,7 @@ export const TableDrawer = ({
       ...columns,
       {
         name: newColumnName,
-        type: 'VARCHAR(255)',
+        type: '',
         nullable: true,
         isPrimaryKey: false
       }
@@ -123,15 +108,10 @@ export const TableDrawer = ({
   }
 
   const removeColumn = (index: number) => {
-    // Prevent removing the id column (first column) and last remaining column
-    if (index === 0 || columns.length === 1) return
     setColumns(columns.filter((_, i) => i !== index))
   }
 
   const updateColumn = (index: number, field: keyof ColumnDefinition, value: unknown) => {
-    // Prevent modifying the id column (first column)
-    if (index === 0) return
-
     // Prevent duplicate column names (case-insensitive)
     if (field === 'name' && typeof value === 'string') {
       const lowerValue = value.toLowerCase()
@@ -181,7 +161,7 @@ export const TableDrawer = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto [&>button]:hidden">
+      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto [&>button]:hidden focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
         <SheetHeader className="pb-4">
           <SheetTitle>{mode === 'create' ? 'Create New Table' : 'Edit Table'}</SheetTitle>
           <SheetDescription className="text-xs text-muted-foreground opacity-50">
@@ -204,7 +184,7 @@ export const TableDrawer = ({
               onChange={(e) => setTableName(e.target.value)}
               placeholder="Enter table name"
               disabled={mode === 'edit' || isPending}
-              className="h-9 ring-0! outline-none!"
+              className="h-9 ring-0! outline-none! border-border focus:border-white! focus-visible:border-white! transition"
             />
           </div>
 
@@ -219,49 +199,15 @@ export const TableDrawer = ({
             </div>
 
             <div className="relative">
-              <div ref={scrollContainerRef} className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-2">
-                {/* ID Column - Always present and immutable */}
-                <div className="flex flex-col gap-3 rounded-md border border-border bg-primary/20 dark:bg-secondary/50 p-3 opacity-75">
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Input
-                        value="id"
-                        disabled
-                        className="h-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 focus:border-input bg-muted cursor-not-allowed"
-                      />
-                    </div>
-                    <div className="w-40">
-                      <Input
-                        value="integer IDENTITY PRIMARY KEY"
-                        disabled
-                        className="h-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 focus:border-input bg-muted cursor-not-allowed text-xs"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <Input
-                        value="Auto-generated"
-                        disabled
-                        className="h-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 focus:border-input bg-muted cursor-not-allowed text-xs"
-                      />
-                    </div>
-                    <div className="w-10">
-                      <div className="h-9 flex items-center justify-center text-xs text-muted-foreground font-medium bg-muted/50 rounded">
-                        Auto
-                      </div>
-                    </div>
-                    <Button disabled variant="ghost" size="icon" className="h-9 w-9 opacity-50">
-                      <Trash2Icon className="size-4" />
-                    </Button>
+              <div ref={scrollContainerRef} className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-2 pb-6">
+                {columns.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                    <p className="text-sm">{'No columns added yet'}</p>
+                    <p className="text-xs mt-1">{'Click "Add Column" to get started'}</p>
                   </div>
-                  <div className="text-xs text-muted-foreground px-2">
-                    The id column is auto-generated and immutable
-                  </div>
-                </div>
+                ) : (
+                  columns.map((column, index) => (
 
-                {/* Other columns */}
-                {columns.slice(1).map((column, mapIndex) => {
-                  const index = mapIndex + 1
-                  return (
                 <div
                   key={index}
                   className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 p-3"
@@ -273,22 +219,24 @@ export const TableDrawer = ({
                         onChange={(e) => updateColumn(index, 'name', e.target.value)}
                         placeholder="Column name"
                         disabled={isPending}
-                        className="h-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 focus:border-input"
+                        className="h-9 border-border focus:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                       />
                     </div>
                     <div className="w-40">
                       <Select
-                        value={column.type}
+                        value={
+                          DATA_TYPES.find((t) => t.value.toLowerCase() === column.type.toLowerCase())?.value || ''
+                        }
                         onValueChange={(value) => updateColumn(index, 'type', value)}
                         disabled={isPending}
                       >
                         <SelectTrigger className="h-9 w-full">
-                          <SelectValue placeholder="Type" />
+                          <SelectValue placeholder="Select data type" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-[400px]">
                           {DATA_TYPES.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -300,7 +248,7 @@ export const TableDrawer = ({
                         onChange={(e) => updateColumn(index, 'defaultValue', e.target.value)}
                         placeholder={(column.type.toUpperCase().includes('TIMESTAMP') || column.type.toUpperCase().includes('DATE')) ? "CURRENT_TIMESTAMP" : "Default value"}
                         disabled={isPending}
-                        className="h-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 focus:border-input"
+                        className="h-9 border-border focus:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                       />
                     </div>
                     <DropdownMenu>
@@ -310,7 +258,7 @@ export const TableDrawer = ({
                           {/* Column Options */}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuCheckboxItem
                           checked={column.nullable !== false}
                           onCheckedChange={(checked) =>
@@ -336,17 +284,21 @@ export const TableDrawer = ({
                         >
                           Unique
                         </DropdownMenuCheckboxItem>
-                        {column.type.toUpperCase().includes('INT') && (
-                          <DropdownMenuCheckboxItem
-                            checked={column.autoIncrement === true}
-                            onCheckedChange={(checked) =>
-                              updateColumn(index, 'autoIncrement', checked === true)
+                        <DropdownMenuCheckboxItem
+                          checked={column.autoIncrement === true}
+                          onCheckedChange={(checked) => {
+                            const newColumns = [...columns]
+                            newColumns[index] = { ...newColumns[index], autoIncrement: checked === true }
+                            // Suggest IDENTITY type if auto-increment is enabled
+                            if (checked && !column.type.toUpperCase().includes('IDENTITY')) {
+                              newColumns[index].type = 'INTEGER IDENTITY'
                             }
-                            disabled={isPending}
-                          >
-                            Auto Increment
-                          </DropdownMenuCheckboxItem>
-                        )}
+                            setColumns(newColumns)
+                          }}
+                          disabled={isPending}
+                        >
+                          Auto-Generate
+                        </DropdownMenuCheckboxItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => setEditingForeignKey(index)}
@@ -373,7 +325,7 @@ export const TableDrawer = ({
                       onClick={() => removeColumn(index)}
                       variant="ghost"
                       size="icon"
-                      disabled={index === 0 || columns.length === 1 || isPending}
+                      disabled={isPending}
                       className="h-9 w-9"
                     >
                       <Trash2Icon className="size-4" />
@@ -398,7 +350,7 @@ export const TableDrawer = ({
                           }}
                           placeholder="Referenced table"
                           disabled={isPending}
-                          className="h-8 text-xs"
+                          className="h-8 text-xs border-border focus:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                         />
                         <Input
                           value={column.foreignKey?.column || 'id'}
@@ -412,7 +364,7 @@ export const TableDrawer = ({
                           }}
                           placeholder="Referenced column"
                           disabled={isPending}
-                          className="h-8 text-xs"
+                          className="h-8 text-xs border-border focus:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                         />
                       </div>
                       <div className="flex gap-2">
@@ -483,8 +435,8 @@ export const TableDrawer = ({
                     </div>
                   ) : null}
                 </div>
-                  )
-                })}
+                  ))
+                )}
               </div>
               {/* Fade out overlay at the bottom - only shown when content is scrollable */}
               {isScrollable && (

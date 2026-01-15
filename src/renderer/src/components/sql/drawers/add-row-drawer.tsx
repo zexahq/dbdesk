@@ -111,10 +111,10 @@ export function AddRowDialog({
     }
 
     checkScrollable()
-    // Recheck when columns change
+    // Recheck when columns change or drawer opens
     const timer = setTimeout(checkScrollable, 100)
     return () => clearTimeout(timer)
-  }, [columns])
+  }, [columns, open])
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -132,7 +132,7 @@ export function AddRowDialog({
             <Label className="text-sm font-medium">Row Data</Label>
 
             <div className="relative">
-              <div ref={scrollContainerRef} className="flex flex-col gap-4 max-h-[calc(100vh-20rem)] overflow-y-auto pr-2">
+              <div ref={scrollContainerRef} className="flex flex-col gap-4 max-h-[calc(100vh-20rem)] overflow-y-auto pr-2 pb-6">
                 {columns
                   .filter((column) => column.name !== 'id')
                   .map((column) => {
@@ -155,7 +155,7 @@ export function AddRowDialog({
                         id={column.name}
                         value="Auto-generated"
                         disabled
-                        className="bg-muted h-9"
+                        className="bg-muted h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                       />
                     ) : isTimestamp ? (
                       <Popover>
@@ -180,7 +180,7 @@ export function AddRowDialog({
                             type="datetime-local"
                             value={values[column.name] || ''}
                             onChange={(e) => handleValueChange(column.name, e.target.value)}
-                            className="w-full"
+                            className="w-full transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                           />
                           <div className="flex gap-2 mt-2">
                             <Button
@@ -217,7 +217,7 @@ export function AddRowDialog({
                             : `${column.type} (required)`
                         }
                         required={!column.nullable}
-                        className="h-9"
+                        className="h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                       />
                     )}
                     <p className="text-xs text-muted-foreground mt-1">
@@ -229,8 +229,8 @@ export function AddRowDialog({
               })}
               </div>
               {/* Fade out overlay at the bottom - only shown when content is scrollable */}
-              {isScrollable || (
-                <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent pointer-events-none z-10" />
+              {isScrollable && (
+                <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent pointer-events-none" />
               )}
             </div>
           </div>

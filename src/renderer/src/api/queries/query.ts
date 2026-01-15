@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { dbdeskClient } from '../../api/client'
 
 // Helper to detect DDL statements
@@ -8,8 +8,6 @@ const isDDLQuery = (query: string): boolean => {
 }
 
 export function useRunQuery(connectionId: string) {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: ({
       query,
@@ -18,10 +16,10 @@ export function useRunQuery(connectionId: string) {
       query: string
       options?: { limit?: number; offset?: number }
     }) => dbdeskClient.runQuery(connectionId, query, options),
-    onSuccess: (_, variables) => {
+    onSuccess: (_, variables, _ctx,  client) => {
       // Invalidate schemas cache if DDL query (CREATE, DROP, ALTER, etc.)
       if (isDDLQuery(variables.query)) {
-        queryClient.invalidateQueries({
+        client.client.invalidateQueries({
           queryKey: ['schemasWithTables', connectionId]
         })
       }

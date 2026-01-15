@@ -91,7 +91,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
         'border-border border-x first:border-l last:border-r',
         'truncate bg-accent/50',
         !isSelectColumn && 'cursor-pointer',
-        isFocused && 'outline-2 outline-ring outline-offset-0'
+        isFocused && '[box-shadow:inset_0_0_0_2px_white]'
       ),
     [isSelectColumn, isFocused]
   )
