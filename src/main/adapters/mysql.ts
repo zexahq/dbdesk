@@ -358,7 +358,7 @@ export class MySQLAdapter implements SQLAdapter {
 
     // Filter out undefined values and prepare data
     const cleanedValues = Object.entries(values).filter(
-      ([_, value]) => value !== undefined
+      ([, value]) => value !== undefined
     ) as [string, unknown][]
 
     if (cleanedValues.length === 0) {
@@ -367,7 +367,7 @@ export class MySQLAdapter implements SQLAdapter {
 
     const columns = cleanedValues.map(([col]) => `\`${col}\``)
     const placeholders = cleanedValues.map(() => '?')
-    const params = cleanedValues.map(([_, value]) => value)
+    const params = cleanedValues.map(([, value]) => value)
 
     const query = `
       INSERT INTO \`${schema}\`.\`${table}\` (${columns.join(', ')})
@@ -654,6 +654,17 @@ export class MySQLAdapter implements SQLAdapter {
 
     if (col.isUnique) {
       def += ' UNIQUE'
+    }
+
+    // Foreign key constraint
+    if (col.foreignKey) {
+      def += ` REFERENCES ${quoteIdentifier(col.foreignKey.table)}(${quoteIdentifier(col.foreignKey.column)})`
+      if (col.foreignKey.onDelete) {
+        def += ` ON DELETE ${col.foreignKey.onDelete}`
+      }
+      if (col.foreignKey.onUpdate) {
+        def += ` ON UPDATE ${col.foreignKey.onUpdate}`
+      }
     }
 
     return def

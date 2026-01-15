@@ -79,6 +79,8 @@ export const TableDrawer = ({
       )
     } else if (mode === 'create') {
       setTableName('')
+      // Note: Always using INT for compatibility across databases
+      // For PostgreSQL, this will be translated to INTEGER at the database level
       setColumns([
         { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, autoIncrement: true }
       ])

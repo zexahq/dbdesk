@@ -56,17 +56,42 @@ export function AddRowDialog({
 
       // Type conversion based on column type
       const type = column.type.toLowerCase()
-      if (type.includes('int') || type.includes('serial')) {
-        processedValues[column.name] = parseInt(value, 10)
-      } else if (type.includes('float') || type.includes('double') || type.includes('numeric')) {
-        processedValues[column.name] = parseFloat(value)
-      } else if (type.includes('bool')) {
-        processedValues[column.name] = value.toLowerCase() === 'true' || value === '1'
-      } else if (type.includes('timestamp') || type.includes('datetime')) {
-        // For timestamp fields, convert to ISO string
-        processedValues[column.name] = value ? new Date(value).toISOString() : null
-      } else {
-        processedValues[column.name] = value
+      try {
+        if (type.includes('int') || type.includes('serial')) {
+          const num = parseInt(value, 10)
+          if (isNaN(num)) {
+            throw new Error(`Invalid integer value for ${column.name}`)
+          }
+          processedValues[column.name] = num
+        } else if (type.includes('float') || type.includes('double') || type.includes('numeric') || type.includes('decimal')) {
+          const num = parseFloat(value)
+          if (isNaN(num)) {
+            throw new Error(`Invalid numeric value for ${column.name}`)
+          }
+          processedValues[column.name] = num
+        } else if (type.includes('bool') || type.includes('boolean')) {
+          processedValues[column.name] = value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'yes'
+        } else if (type.includes('timestamp') || type.includes('datetime') || type.includes('date')) {
+          // For timestamp/date fields, convert to ISO string
+          const date = new Date(value)
+          if (isNaN(date.getTime())) {
+            throw new Error(`Invalid date value for ${column.name}`)
+          }
+          processedValues[column.name] = date.toISOString()
+        } else if (type.includes('json')) {
+          // For JSON fields, try to parse as JSON
+          try {
+            processedValues[column.name] = JSON.parse(value)
+          } catch {
+            // If not valid JSON, store as string
+            processedValues[column.name] = value
+          }
+        } else {
+          processedValues[column.name] = value
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+        throw new Error(`Error processing ${column.name}: ${errorMsg}`)
       }
     }
 

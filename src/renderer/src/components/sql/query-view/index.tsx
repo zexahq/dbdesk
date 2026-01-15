@@ -13,7 +13,6 @@ import { toast } from '@renderer/lib/toast'
 import { useCallback, useEffect, useState } from 'react'
 import { QueryBottombar } from './query-bottombar'
 import { QueryResults } from './query-results'
-import { useQueryClient } from '@tanstack/react-query'
 
 interface QueryViewProps {
   profile: SQLConnectionProfile
@@ -25,7 +24,6 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
   const saveQuery = useSavedQueriesStore((s) => s.saveQuery)
   const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
-  const queryClient = useQueryClient()
 
   const {
     mutateAsync: runQueryMutation,
@@ -35,12 +33,6 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
 
   const isQueryTabSaved = queries.some((q) => q.id === activeTab.id)
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
-
-  // Helper to detect DDL statements
-  const isDDLQuery = (query: string): boolean => {
-    const upperQuery = query.trim().toUpperCase()
-    return /^(CREATE|DROP|ALTER|TRUNCATE|RENAME)\s/.test(upperQuery)
-  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -79,18 +71,11 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
           offset: result.offset,
           totalRowCount: result.totalRowCount
         })
-
-        // Invalidate schemas cache if DDL query
-        if (isDDLQuery(rawQuery)) {
-          await queryClient.invalidateQueries({
-            queryKey: ['schemasWithTables', profile.id]
-          })
-        }
       } catch {
         updateQueryTab(activeTab.id, { queryResults: undefined })
       }
     },
-    [activeTab.editorContent, activeTab.id, runQueryMutation, updateQueryTab, profile.id, queryClient]
+    [activeTab.editorContent, activeTab.id, runQueryMutation, updateQueryTab]
   )
 
   const handleRunQuery = async () => {

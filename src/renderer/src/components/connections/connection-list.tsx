@@ -1,16 +1,17 @@
 import type { ConnectionProfile, DatabaseType } from '@common/types'
-import { useConnections, useDeleteConnection } from '@renderer/api/queries/connections'
+import { useConnections, useDeleteConnection, useCreateConnection, useConnect } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { error as showError, success as showSuccess } from '@renderer/lib/toast'
 import { ChevronDown, Database, Folder, Globe, Tag, X } from 'lucide-react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { dbdeskClient } from '@renderer/api/client'
 import { ConnectionDialog } from './connection-dialog'
 
 export function ConnectionList() {
   const { data: connections, isLoading, isError, error } = useConnections()
   const deleteConnection = useDeleteConnection()
+  const createConnection = useCreateConnection()
+  const connect = useConnect()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingConnection, setEditingConnection] = useState<ConnectionProfile | null>(null)
   const [selectedDatabaseType, setSelectedDatabaseType] = useState<DatabaseType>('postgres')
@@ -116,6 +117,7 @@ export function ConnectionList() {
       })
 
       let connectionToUse: ConnectionProfile
+      let isNewlyCreated = false
 
       if (existingConnection) {
         // Use the existing connection
@@ -123,11 +125,11 @@ export function ConnectionList() {
       } else {
         // Create a new connection with a meaningful name
         const connectionName = customName || database
-        const newConnection = await dbdeskClient.createConnection(
-          connectionName,
+        const newConnection = await createConnection.mutateAsync({
+          name: connectionName,
           type,
-          connectionOptions
-        )
+          options: connectionOptions
+        })
 
         if (!newConnection || !newConnection.id) {
           showError('Failed to save connection')
@@ -135,17 +137,37 @@ export function ConnectionList() {
           return
         }
         connectionToUse = newConnection
+        isNewlyCreated = true
       }
 
       // Now connect
-      const connectResult = await dbdeskClient.connect(connectionToUse.id)
+      try {
+        const connectResult = await connect.mutateAsync(connectionToUse.id)
 
-      if (!connectResult.success) {
-        // Only delete if we just created it
-        if (!existingConnection) {
-          await dbdeskClient.deleteConnection(connectionToUse.id)
+        if (!connectResult.success) {
+          // Only delete if we just created it
+          if (isNewlyCreated) {
+            try {
+              await deleteConnection.mutateAsync(connectionToUse.id)
+            } catch (deleteError) {
+              console.error('Failed to cleanup connection after failed connect:', deleteError)
+            }
+          }
+          showError('Failed to connect to database. Please check your connection details and ensure SSL is enabled.')
+          setIsConnecting(false)
+          return
         }
-        showError('Failed to connect to database. Please check your connection details and ensure SSL is enabled.')
+      } catch (connectError) {
+        // Only delete if we just created it
+        if (isNewlyCreated) {
+          try {
+            await deleteConnection.mutateAsync(connectionToUse.id)
+          } catch (deleteError) {
+            console.error('Failed to cleanup connection after failed connect:', deleteError)
+          }
+        }
+        const errorMsg = connectError instanceof Error ? connectError.message : 'Unknown connection error'
+        showError(`Connection failed: ${errorMsg}`)
         setIsConnecting(false)
         return
       }
@@ -195,10 +217,15 @@ export function ConnectionList() {
         muted
         playsInline
         className="fixed inset-0 w-full h-full object-cover grayscale brightness-60 pointer-events-none -z-2"
+        onError={(e) => {
+          // Fallback if video fails to load - just show solid background
+          console.warn('Failed to load background video')
+          e.currentTarget.style.display = 'none'
+        }}
       >
         <source src="/bg.mp4" type="video/mp4" />
       </video>
-      <div className="fixed inset-0 bg-black/60 -z-1" />
+      <div className="fixed inset-0 bg-black/40 -z-1" />
 
       <div className="w-full max-w-6xl text-center relative z-10">
         <div className="space-y-12">

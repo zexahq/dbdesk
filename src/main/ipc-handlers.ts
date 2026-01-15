@@ -435,7 +435,10 @@ export const registerIpcHandlers = () => {
     }
 
     // Filter out any user-provided id column and ensure id is always first with auto-increment
-    const filteredColumns = (columns as any[]).filter((col) => col.name !== 'id')
+    const filteredColumns = columns.filter((col: unknown) => {
+      const colObj = col as Record<string, unknown>
+      return colObj.name !== 'id'
+    })
     const idColumn = {
       name: 'id',
       type: 'INT',

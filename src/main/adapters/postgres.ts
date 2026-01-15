@@ -365,7 +365,7 @@ export class PostgresAdapter implements SQLAdapter {
 
     // Filter out undefined values and prepare data
     const cleanedValues = Object.entries(values).filter(
-      ([_, value]) => value !== undefined
+      ([, value]) => value !== undefined
     ) as [string, unknown][]
 
     if (cleanedValues.length === 0) {
@@ -374,7 +374,7 @@ export class PostgresAdapter implements SQLAdapter {
 
     const columns = cleanedValues.map(([col]) => `"${col}"`)
     const placeholders = cleanedValues.map((_, i) => `$${i + 1}`)
-    const params = cleanedValues.map(([_, value]) => value)
+    const params = cleanedValues.map(([, value]) => value)
 
     const query = `
       INSERT INTO "${schema}"."${table}" (${columns.join(', ')})
@@ -450,13 +450,9 @@ export class PostgresAdapter implements SQLAdapter {
     const pool = this.ensurePool()
     const { schema, table } = options
 
-    console.log('[exportTableAsSQL] Starting export for:', { schema, table })
-
     // Get full table information including constraints
     const tableInfo = await this.introspectTable(schema, table)
     const columnInfo = tableInfo.columns
-
-    console.log('[exportTableAsSQL] Column info:', columnInfo)
 
     // Build CREATE TABLE statement
     const createTableLines: string[] = []
@@ -531,13 +527,8 @@ export class PostgresAdapter implements SQLAdapter {
       ? [createTableStatement, '', ...statements].join('\n')
       : createTableStatement
 
-    console.log('[exportTableAsSQL] SQL length:', sql.length)
-    console.log('[exportTableAsSQL] SQL preview:', sql.substring(0, 200))
-
     const base64Content = Buffer.from(sql, 'utf-8').toString('base64')
     const filename = `${schema}.${table}.sql`
-
-    console.log('[exportTableAsSQL] Base64 length:', base64Content.length)
 
     return {
       base64Content,
@@ -671,6 +662,17 @@ export class PostgresAdapter implements SQLAdapter {
 
     if (col.isUnique) {
       def += ' UNIQUE'
+    }
+
+    // Foreign key constraint
+    if (col.foreignKey) {
+      def += ` REFERENCES ${quoteIdentifier(col.foreignKey.table)}(${quoteIdentifier(col.foreignKey.column)})`
+      if (col.foreignKey.onDelete) {
+        def += ` ON DELETE ${col.foreignKey.onDelete}`
+      }
+      if (col.foreignKey.onUpdate) {
+        def += ` ON UPDATE ${col.foreignKey.onUpdate}`
+      }
     }
 
     return def
