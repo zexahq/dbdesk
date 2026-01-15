@@ -108,12 +108,16 @@ function DataTableKeyboardShortcutsImpl() {
             description: 'Start editing cell'
           },
           {
+            keys: ['Backspace'],
+            description: 'Start editing cell'
+          },
+          {
             keys: ['Delete'],
             description: 'Clear focused cell'
           },
           {
-            keys: ['Backspace'],
-            description: 'Clear focused cell'
+            keys: [modKey, 'C'],
+            description: 'Copy cell content'
           },
           {
             keys: ['Esc'],
