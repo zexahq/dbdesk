@@ -603,16 +603,14 @@ export class MySQLAdapter implements SQLAdapter {
     }
 
     // Rename columns
-    if (columnsToRename && columnsToRename.length > 0) {
-      // Note: MySQL RENAME COLUMN requires knowing the full column definition
-      // For simplicity, we'll use CHANGE COLUMN which requires the definition
-      // In a production app, you might want to introspect the column first
+    if (columnsToRename?.length) {
       columnsToRename.forEach(({ oldName, newName }) => {
         alterStatements.push(
-          `CHANGE COLUMN ${quoteIdentifier(oldName)} ${quoteIdentifier(newName)} VARCHAR(255)`
+          `RENAME COLUMN ${quoteIdentifier(oldName)} TO ${quoteIdentifier(newName)}`
         )
       })
     }
+
 
     // Drop columns
     if (columnsToDrop && columnsToDrop.length > 0) {
