@@ -32,6 +32,7 @@ import { useEffect, useState } from 'react'
 interface TableDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  schema: string
   mode: 'create' | 'edit'
   existingTable?: TableInfo
   onSubmit: (tableName: string, columns: ColumnDefinition[]) => void
@@ -41,6 +42,7 @@ interface TableDrawerProps {
 export const TableDrawer = ({
   open,
   onOpenChange,
+  schema,
   mode,
   existingTable,
   onSubmit,
@@ -165,6 +167,9 @@ export const TableDrawer = ({
             <h2 className="text-lg font-semibold">
               {mode === 'create' ? 'Create New Table' : 'Edit Table'}
             </h2>
+            <span className="text-sm text-muted-foreground">
+              Schema: <span className="font-medium">{schema}</span>
+            </span>
           </div>
         </SheetTitle>
 
