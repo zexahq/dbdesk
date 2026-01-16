@@ -4,7 +4,7 @@ import type { TableCell } from '@renderer/components/ui/table'
 import { formatCellValue, getEditorLanguage } from '@renderer/lib/data-table'
 import { cn } from '@renderer/lib/utils'
 import { flexRender } from '@tanstack/react-table'
-import { useRef, useMemo, useCallback, type ComponentProps } from 'react'
+import { useCallback, useMemo, useRef, type ComponentProps } from 'react'
 
 import type { DataTableCellProps } from '../data-table-cell.types'
 
@@ -38,10 +38,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   const dataType = (cell.column.columnDef.meta as { dataType?: string } | undefined)?.dataType
 
   // Memoize expensive computations
-  const cellValueString = useMemo(
-    () => formatCellValue(cellValue, dataType),
-    [cellValue, dataType]
-  )
+  const cellValueString = useMemo(() => formatCellValue(cellValue, dataType), [cellValue, dataType])
 
   const editorLanguage = useMemo(() => getEditorLanguage(dataType), [dataType])
 
@@ -49,7 +46,6 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   // For other columns, memoize based on cell reference
   const renderedCell = useMemo(
     () => flexRender(cell.column.columnDef.cell, cell.getContext()),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     isSelectColumn ? [cell, cell.row.getIsSelected()] : [cell]
   )
 
@@ -91,7 +87,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
         'border-border border-x first:border-l last:border-r',
         'truncate bg-accent/50',
         !isSelectColumn && 'cursor-pointer',
-        isFocused && '[box-shadow:inset_0_0_0_2px_white]'
+        isFocused && 'outline-2 outline-ring outline-offset-0 bg-ring/5'
       ),
     [isSelectColumn, isFocused]
   )
@@ -108,7 +104,15 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
       onClick: allowCellInteraction ? handleClick : undefined,
       onDoubleClick: allowCellInteraction ? handleDoubleClick : undefined
     }),
-    [columnId, cellClassName, cellStyle, cellValueString, allowCellInteraction, handleClick, handleDoubleClick]
+    [
+      columnId,
+      cellClassName,
+      cellStyle,
+      cellValueString,
+      allowCellInteraction,
+      handleClick,
+      handleDoubleClick
+    ]
   )
 
   return {
