@@ -18,7 +18,6 @@ export async function saveCurrentWorkspace() {
     }
 
     await dbdeskClient.saveWorkspace(workspace)
-    console.debug('Workspace saved for connection:', currentConnectionId)
   } catch (error) {
     console.warn('Failed to save workspace:', error)
   }
