@@ -18,13 +18,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@renderer/components/ui/select'
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetFooter,
-  SheetTitle
-} from '@renderer/components/ui/sheet'
+import { Sheet, SheetClose, SheetContent, SheetFooter } from '@renderer/components/ui/sheet'
 import { showWarning } from '@renderer/lib/toast'
 import { MoreVerticalIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -162,8 +156,9 @@ export const TableDrawer = ({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl [&>button]:hidden gap-0">
-        <SheetTitle>
-          <div className="flex items-center justify-between border-b px-6 py-4">
+        {/* Section 1: Header + Table Name */}
+        <div className="flex flex-col border-b">
+          <div className="flex items-center justify-between px-6 py-4">
             <h2 className="text-lg font-semibold">
               {mode === 'create' ? 'Create New Table' : 'Edit Table'}
             </h2>
@@ -171,11 +166,7 @@ export const TableDrawer = ({
               Schema: <span className="font-medium">{schema}</span>
             </span>
           </div>
-        </SheetTitle>
-
-        <div className="flex flex-col gap-4 p-6 h-full overflow-y-auto">
-          {/* Table Name */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 px-6 pb-4">
             <Label htmlFor="table-name" className="text-sm font-medium">
               Table Name
             </Label>
@@ -188,9 +179,11 @@ export const TableDrawer = ({
               className="h-9 ring-0! outline-none! border-border focus:border-white! focus-visible:border-white! transition"
             />
           </div>
+        </div>
 
-          {/* Columns */}
-          <div className="flex flex-col gap-3">
+        {/* Section 2: Columns (scrollable) */}
+        <div className="relative flex-1 overflow-y-auto">
+          <div className="flex flex-col gap-4 px-6 pt-6">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Columns</Label>
               <Button onClick={addColumn} variant="outline" size="sm" disabled={isPending}>
@@ -460,8 +453,14 @@ export const TableDrawer = ({
               ))
             )}
           </div>
+          {/* Bottom fade anchored to footer's top border */}
+          <div
+            aria-hidden
+            className="pointer-events-none sticky bottom-0 z-10 h-14 w-full bg-linear-to-b from-background/0 via-background/70 to-background"
+          />
         </div>
 
+        {/* Section 3: Footer (Submit + Cancel) */}
         <SheetFooter className="flex flex-row items-center justify-end gap-2 border-t p-4">
           <SheetClose asChild>
             <Button variant="outline" disabled={isPending} className="h-9">

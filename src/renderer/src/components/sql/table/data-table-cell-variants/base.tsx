@@ -84,10 +84,10 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   const cellClassName = useMemo(
     () =>
       cn(
-        'border-border border-x first:border-l last:border-r',
-        'truncate bg-accent/50',
-        !isSelectColumn && 'cursor-pointer',
-        isFocused && 'outline-2 outline-ring outline-offset-0 bg-ring/5'
+      'border-border border-x first:border-l last:border-r',
+      'truncate bg-accent/50',
+      !isSelectColumn && 'cursor-pointer',
+      isFocused && 'shadow-[inset_0_0_0_2px_var(--color-ring)] bg-ring/10'
       ),
     [isSelectColumn, isFocused]
   )

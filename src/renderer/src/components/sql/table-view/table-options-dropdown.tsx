@@ -186,6 +186,7 @@ export function TableOptionsDropdown({
         open={addRowDialogOpen}
         onOpenChange={setAddRowDialogOpen}
         columns={tableInfo?.columns ?? []}
+        tableName={table}
         onSubmit={(values) => {
           insertRowMutation.mutate(values, {
             onSuccess: () => {
