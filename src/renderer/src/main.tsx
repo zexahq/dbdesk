@@ -131,6 +131,21 @@ loader.config({
 // Listen for main-process flush requests (app quit)
 registerWorkspaceFlushListener()
 
+// Setup Content Security Policy dynamically using environment variable
+function setupContentSecurityPolicy() {
+  const apiUrl = import.meta.env.VITE_AI_API_URL
+  const apiHost = apiUrl ? new URL(apiUrl).origin : 'http://localhost:9876'
+
+  const csp = `default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src 'self' ${apiHost}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:`
+
+  const meta = document.createElement('meta')
+  meta.httpEquiv = 'Content-Security-Policy'
+  meta.content = csp
+  document.head.appendChild(meta)
+}
+
+setupContentSecurityPolicy()
+
 // Create a new router instance
 const router = createRouter({
   routeTree,

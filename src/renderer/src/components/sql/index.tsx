@@ -1,5 +1,6 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { useSchemasWithTables } from '@renderer/api/queries/schema'
+import { Chat } from '@renderer/components/ai/chat'
 import { UnsavedChangesDialog } from '@renderer/components/sql/dialogs/unsaved-changes-dialog'
 import {
   ResizableHandle,
@@ -14,7 +15,6 @@ import { useTabStore } from '@renderer/store/tab-store'
 import { useEffect, useState } from 'react'
 import { QueryView } from './query-view'
 import { TableView } from './table-view'
-import { TabNavigation } from './table-view/tab-navigation'
 import { WorkspaceSidebar } from './workspace-sidebar'
 import { WorkspaceTopbar } from './workspace-topbar'
 
@@ -26,6 +26,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   })
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(true)
   const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
 
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
@@ -38,10 +39,28 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
     }
   }, [schemasWithTables, setSchemasWithTables])
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl+B to toggle sidebar
+      if (event.ctrlKey && event.key === 'b' && !event.altKey) {
+        event.preventDefault()
+        setIsSidebarOpen((prev) => !prev)
+      }
+
+      // Ctrl+Alt+B to toggle AI panel
+      if (event.ctrlKey && event.altKey && event.key === 'b') {
+        event.preventDefault()
+        setIsAiPanelOpen((prev) => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <>
       <SidebarProvider className="h-full">
-        <TabNavigation profile={profile} requestCloseTab={requestCloseTab} />
         <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
           <ResizablePanel
             defaultSize={16}
@@ -51,15 +70,15 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
           >
             <WorkspaceSidebar profile={profile} />
           </ResizablePanel>
-          <ResizableHandle withHandle className={cn(!isSidebarOpen && 'hidden')} />
+          <ResizableHandle className={cn(!isSidebarOpen && 'hidden')} />
           <ResizablePanel>
             <SidebarInset className="flex h-full flex-col overflow-hidden">
               <WorkspaceTopbar
-                 profile={profile}
-                 isSidebarOpen={isSidebarOpen}
-                 onSidebarOpenChange={setIsSidebarOpen}
-                 requestCloseTab={requestCloseTab}
-               />
+                profile={profile}
+                isSidebarOpen={isSidebarOpen}
+                onSidebarOpenChange={setIsSidebarOpen}
+                requestCloseTab={requestCloseTab}
+              />
 
               {/* No tab open - empty state */}
               {!activeTab ? (
@@ -75,6 +94,15 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
                 <QueryView profile={profile} activeTab={activeTab} />
               ) : null}
             </SidebarInset>
+          </ResizablePanel>
+          <ResizableHandle className={cn(!isAiPanelOpen && 'hidden')} />
+          <ResizablePanel
+            defaultSize={20}
+            minSize={15}
+            maxSize={40}
+            className={cn(!isAiPanelOpen && 'hidden', 'p-4')}
+          >
+            <Chat />
           </ResizablePanel>
         </ResizablePanelGroup>
       </SidebarProvider>
