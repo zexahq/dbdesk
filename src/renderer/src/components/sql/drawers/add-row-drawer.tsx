@@ -2,12 +2,9 @@ import type { ColumnInfo } from '@common/types'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
 import { Label } from '@renderer/components/ui/label'
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { Sheet, SheetContent, SheetFooter, SheetTitle } from '@renderer/components/ui/sheet'
-import { cn } from '@renderer/lib/utils'
-import { format } from 'date-fns'
-import { CalendarIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { DateTimePickerField } from '@renderer/components/ui/date-time-picker'
 
 interface AddRowDialogProps {
   open: boolean
@@ -27,6 +24,12 @@ export function AddRowDialog({
   tableName
 }: AddRowDialogProps) {
   const [values, setValues] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!open) {
+      setValues({})
+    }
+  }, [open])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,7 +113,7 @@ export function AddRowDialog({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl [&>button]:hidden gap-0">
+      <SheetContent side="right" className="w-full sm:max-w-lg [&>button]:hidden gap-0">
         <SheetTitle>
           <div className="flex items-center justify-between border-b px-6 py-4">
             <h2 className="text-lg font-semibold">
@@ -134,7 +137,7 @@ export function AddRowDialog({
               return (
                 <div
                   key={column.name}
-                  className="flex flex-col gap-1.5 rounded-md border border-border bg-muted/30 p-2.5"
+                  className="flex flex-col gap-1.5 rounded-mdp-2"
                 >
                   <Label
                     htmlFor={column.name}
@@ -167,54 +170,15 @@ export function AddRowDialog({
                         className="bg-muted h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                       />
                     ) : isTimestamp ? (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              'w-full justify-start text-left font-normal h-9',
-                              !values[column.name] && 'text-muted-foreground'
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {values[column.name] ? (
-                              format(new Date(values[column.name]), 'PPP HH:mm')
-                            ) : (
-                              <span>Pick a date and time</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-4" align="start">
-                          <Input
-                            type="datetime-local"
-                            value={values[column.name] || ''}
-                            onChange={(e) => handleValueChange(column.name, e.target.value)}
-                            className="w-full transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
-                          />
-                          <div className="flex gap-2 mt-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const now = new Date()
-                                const localDateTime = format(now, "yyyy-MM-dd'T'HH:mm")
-                                handleValueChange(column.name, localDateTime)
-                              }}
-                              className="flex-1"
-                            >
-                              Now
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleValueChange(column.name, '')}
-                              className="flex-1"
-                            >
-                              Clear
-                            </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                      <DateTimePickerField
+                        value={values[column.name] ? new Date(values[column.name]) : undefined}
+                        onChange={(date) => {
+                          handleValueChange(
+                            column.name,
+                            date ? date.toISOString().slice(0, 16) : ''
+                          )
+                        }}
+                      />
                     ) : (
                       <Input
                         id={column.name}
