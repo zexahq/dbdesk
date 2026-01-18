@@ -109,11 +109,11 @@ export function DateTimePicker() {
             selected={selectedDate}
             onSelect={handleDateSelect}
             initialFocus
-            className="h-auto flex-shrink-0"
+            className="h-auto shrink-0"
           />
           <div className="flex flex-col sm:flex-row sm:h-[280px] divide-y sm:divide-y-0 sm:divide-x overflow-hidden flex-1 min-w-0">
             <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-              <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Hour</div>
+              <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Hour</div>
               <ScrollArea className="flex-1 w-full h-full">
                 <div className="flex sm:flex-col p-2 pb-0">
                   {hours.map((hour) => (
@@ -134,10 +134,10 @@ export function DateTimePicker() {
                 </div>
                 <ScrollBar orientation="horizontal" className="sm:hidden" />
               </ScrollArea>
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
             </div>
             <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-              <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Minute</div>
+              <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Minute</div>
               <ScrollArea className="flex-1 w-full h-full">
                 <div className="flex sm:flex-col p-2 pb-0">
                   {minutes.map((minute) => (
@@ -158,10 +158,10 @@ export function DateTimePicker() {
                 </div>
                 <ScrollBar orientation="horizontal" className="sm:hidden" />
               </ScrollArea>
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
             </div>
             <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-              <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Second</div>
+              <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Second</div>
               <ScrollArea className="flex-1 w-full h-full">
                 <div className="flex sm:flex-col p-2 pb-0">
                   {seconds.map((second) => (
@@ -182,7 +182,7 @@ export function DateTimePicker() {
                 </div>
                 <ScrollBar orientation="horizontal" className="sm:hidden" />
               </ScrollArea>
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
             </div>
           </div>
         </div>
@@ -318,11 +318,11 @@ export function DateTimePickerField({
               selected={selectedDate}
               onSelect={handleDateSelect}
               initialFocus
-              className="h-auto flex-shrink-0"
+              className="h-auto shrink-0"
             />
             <div className="flex flex-col sm:flex-row sm:h-[280px] divide-y sm:divide-y-0 sm:divide-x overflow-hidden flex-1 min-w-0">
               <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-                <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Hour</div>
+                <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Hour</div>
                 <ScrollArea className="flex-1 w-full h-full">
                   <div className="flex sm:flex-col p-2 pb-12">
                     {hours.map((hour) => (
@@ -343,10 +343,10 @@ export function DateTimePickerField({
                   </div>
                   <ScrollBar orientation="horizontal" className="sm:hidden" />
                 </ScrollArea>
-                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
               </div>
               <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-                <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Minute</div>
+                <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Minute</div>
                 <ScrollArea className="flex-1 w-full h-full">
                   <div className="flex sm:flex-col p-2 pb-12">
                     {minutes.map((minute) => (
@@ -367,10 +367,10 @@ export function DateTimePickerField({
                   </div>
                   <ScrollBar orientation="horizontal" className="sm:hidden" />
                 </ScrollArea>
-                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
               </div>
               <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-                <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Second</div>
+                <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Second</div>
                 <ScrollArea className="flex-1 w-full h-full">
                   <div className="flex sm:flex-col p-2 pb-12">
                     {seconds.map((second) => (
@@ -391,7 +391,7 @@ export function DateTimePickerField({
                   </div>
                   <ScrollBar orientation="horizontal" className="sm:hidden" />
                 </ScrollArea>
-                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
               </div>
             </div>
           </div>
