@@ -1,52 +1,10 @@
 import { windowClient } from '@renderer/api/window'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { Minus, Square, X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
 import { Title } from './title'
 
 export function Titlebar() {
-  const titlebarRef = useRef<HTMLDivElement>(null)
   const connectionId = useSqlWorkspaceStore((state) => state.currentConnectionId)
-
-  useEffect(() => {
-    const titlebar = titlebarRef.current
-    if (!titlebar) return
-
-    let isDragging = false
-    let startX = 0
-    let startY = 0
-
-    const handleMouseDown = (e: MouseEvent) => {
-      // Don't drag if clicking buttons
-      if ((e.target as HTMLElement).closest('button')) return
-
-      isDragging = true
-      startX = e.clientX
-      startY = e.clientY
-
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    }
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return
-      const deltaX = e.clientX - startX
-      const deltaY = e.clientY - startY
-      windowClient.moveWindow(deltaX, deltaY)
-    }
-
-    const handleMouseUp = () => {
-      isDragging = false
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-
-    titlebar.addEventListener('mousedown', handleMouseDown)
-
-    return () => {
-      titlebar.removeEventListener('mousedown', handleMouseDown)
-    }
-  }, [])
 
   const handleMinimize = () => windowClient.minimizeWindow()
   const handleMaximize = () => windowClient.maximizeWindow()
@@ -54,9 +12,8 @@ export function Titlebar() {
 
   return (
     <div
-      ref={titlebarRef}
-      className="h-9 bg-main-sidebar backdrop-blur flex items-center justify-between select-none cursor-default"
-      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      className="h-9 shrink-0 bg-main-sidebar backdrop-blur flex items-center justify-between select-none"
+      style={{ appRegion: 'drag' } as React.CSSProperties}
     >
       <div className="pl-4 text-sm font-medium text-zinc-800 dark:text-zinc-400 w-24">DBDesk</div>
 
@@ -66,7 +23,7 @@ export function Titlebar() {
 
       <div
         className="flex h-full w-24"
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        style={{ appRegion: 'no-drag' } as React.CSSProperties}
       >
         <button
           onClick={handleMinimize}

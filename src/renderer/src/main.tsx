@@ -3,7 +3,7 @@ import './styles/main.css'
 import loader from '@monaco-editor/loader'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Titlebar } from './components/titlebar'
+
 
 import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
@@ -152,7 +152,6 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <Titlebar />
         <RouterProvider router={router} />
       </QueryClientProvider>
     </StrictMode>

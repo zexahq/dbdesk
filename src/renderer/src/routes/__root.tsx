@@ -1,16 +1,19 @@
 import { createRootRoute, Navigate, Outlet } from '@tanstack/react-router'
 // import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { MainSidebar } from '@renderer/components/main-sidebar'
+import { Titlebar } from '@renderer/components/titlebar'
 import { Toaster } from '@renderer/components/ui/sonner'
 
 const RootLayout = () => (
-  <div className="flex h-[calc(100vh-36px)] overflow-hidden select-none">
-    <MainSidebar />
-    <div className="flex-1 h-full overflow-y-auto">
-      <Outlet />
+  <div className="h-full flex flex-col overflow-hidden">
+    <Titlebar />
+    <div className="flex flex-1 min-h-0 overflow-hidden select-none">
+      <MainSidebar />
+      <main className="flex-1 min-h-0 overflow-y-auto">
+        <Outlet />
+      </main>
+      <Toaster position="top-right" />
     </div>
-    <Toaster position="top-right" />
-    {/* <TanStackRouterDevtools position="bottom-right" /> */}
   </div>
 )
 
