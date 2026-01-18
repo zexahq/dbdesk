@@ -151,14 +151,6 @@ export function AddRowDialog({
                     </span>
                     <span className="text-muted-foreground text-xs">
                       {column.type}
-                      {column.defaultValue ? (
-                        <span className="ml-1">
-                          |{' Default: '}
-                          {typeof column.defaultValue === 'string'
-                            ? column.defaultValue
-                            : JSON.stringify(column.defaultValue)}
-                        </span>
-                      ) : null}
                     </span>
                   </Label>
                   <div className="flex flex-col gap-1.5">
@@ -180,14 +172,20 @@ export function AddRowDialog({
                         }}
                       />
                     ) : (
-                      <Input
-                        id={column.name}
-                        value={values[column.name] || ''}
-                        onChange={(e) => handleValueChange(column.name, e.target.value)}
-                        placeholder={column.nullable ? 'Optional' : 'Required'}
-                        required={!column.nullable}
-                        className="h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
-                      />
+                       <Input
+                         id={column.name}
+                         value={values[column.name] || ''}
+                         onChange={(e) => handleValueChange(column.name, e.target.value)}
+                         placeholder={
+                           column.defaultValue
+                             ? typeof column.defaultValue === 'string'
+                               ? column.defaultValue
+                               : JSON.stringify(column.defaultValue)
+                             : 'NULL'
+                         }
+                         required={!column.nullable}
+                         className="h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
+                       />
                     )}
                   </div>
                 </div>
