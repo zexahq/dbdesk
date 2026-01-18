@@ -330,7 +330,7 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
                 <div className="flex flex-col sm:flex-row sm:divide-y-0 sm:divide-x">
                   <div className="relative">
                     <div className="text-xs text-center text-muted-foreground px-2 py-1 font-medium shrink-0">Hr</div>
-                    <ScrollArea className="w-64 sm:w-auto sm:h-52">
+                    <ScrollArea className={`w-64 sm:w-auto ${isTimezoneAware ? "sm:h-52" : "sm:h-64"}`}>
                       <div className="flex sm:flex-col p-2">
                         {hours.map((hour) => (
                           <Button
@@ -350,7 +350,7 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
                   </div>
                   <div className="relative">
                     <div className="text-xs text-center text-muted-foreground px-2 py-1 font-medium shrink-0">Min</div>
-                    <ScrollArea className="w-64 sm:w-auto sm:h-52">
+                    <ScrollArea className={`w-64 sm:w-auto ${isTimezoneAware ? "sm:h-52" : "sm:h-64"}`}>
                       <div className="flex sm:flex-col p-2">
                         {minutes.map((minute) => (
                           <Button
@@ -370,7 +370,7 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
                   </div>
                   <div className="relative">
                     <div className="text-xs text-center text-muted-foreground px-2 py-1 font-medium shrink-0">Sec</div>
-                    <ScrollArea className="w-64 sm:w-auto sm:h-52">
+                    <ScrollArea className={`w-64 sm:w-auto ${isTimezoneAware ? "sm:h-52" : "sm:h-64"}`}>
                       <div className="flex sm:flex-col p-2">
                         {seconds.map((second) => (
                           <Button

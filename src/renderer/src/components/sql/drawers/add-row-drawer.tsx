@@ -24,10 +24,12 @@ export function AddRowDialog({
   tableName
 }: AddRowDialogProps) {
   const [values, setValues] = useState<Record<string, string>>({})
+  const [timezones, setTimezones] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!open) {
       setValues({})
+      setTimezones({})
     }
   }, [open])
 
@@ -111,6 +113,10 @@ export function AddRowDialog({
     setValues((prev) => ({ ...prev, [columnName]: value }))
   }
 
+  const handleTimezoneChange = (columnName: string, timezone: string) => {
+    setTimezones((prev) => ({ ...prev, [columnName]: timezone }))
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg [&>button]:hidden gap-0">
@@ -133,6 +139,11 @@ export function AddRowDialog({
               const isTimestamp =
                 column.type.toLowerCase().includes('timestamp') ||
                 column.type.toLowerCase().includes('datetime')
+              const isTimezoneAware =
+                column.type.toLowerCase().includes('with time zone') ||
+                column.type.toLowerCase().includes('tz') ||
+                column.type === 'timestamptz' ||
+                column.type === 'timetz'
 
               return (
                 <div
@@ -168,22 +179,13 @@ export function AddRowDialog({
                           onChange={(date) => {
                             handleValueChange(
                               column.name,
-                              date ? date.toISOString().slice(0, 16) : ''
+                              date ? date.toISOString() : ''
                             )
                           }}
+                          showTimezone={isTimezoneAware}
+                          timezone={timezones[column.name] || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                          onTimezoneChange={(tz) => handleTimezoneChange(column.name, tz)}
                         />
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs rounded"
-                          onClick={() => {
-                            const now = new Date()
-                            handleValueChange(column.name, now.toISOString().slice(0, 16))
-                          }}
-                        >
-                          Now
-                        </Button>
                       </div>
                     ) : (
                        <Input
