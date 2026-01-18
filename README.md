@@ -1,21 +1,23 @@
-# dbdesk
+# DBDesk
 
 **The cleanest database management tool you've been waiting for.**
 
-A fast, intuitive, and privacy-focused desktop application for managing your databases. Built for developers who want a simple yet powerful interface without the bloat.
+A fast, intuitive, and UI/UX-focused desktop application for managing your databases. Built for developers who want a simple yet powerful interface without the bloat.
 
 Currently supports **PostgreSQL** and **MySQL**, with more SQL databases coming soon—and NoSQL support on the roadmap.
 
-## ✨ Features
+<img width="3840" height="2090" alt="dbdesk" src="https://github.com/user-attachments/assets/73edba41-7fe7-499f-8327-5a22b36fbfe0" />
 
-- **🔒 Local-First Security** — Your data never leaves your machine. Connect to databases securely with connection info stored locally.
-- **⌨️ Keyboard-First** — Designed for power users who prefer staying on the keyboard.
-- **📑 Multi-Tab Interface** — Open dozens of tables and queries simultaneously.
-- **📝 SQL Editor** — Write and execute queries with Monaco Editor (autocompletion coming soon).
-- **🌗 Dark & Light Mode** — Switch themes to match your preference.
-- **✏️ Inline Editing** — Edit data directly like a spreadsheet.
-- **🚀 Quick Panel** — Fast navigation with `Ctrl+K`.
-- **⚡ Blazing Fast** — Opens instantly, tables load in milliseconds.
+## ✨ What we got already
+
+- **Local-First Security** — Your data never leaves your machine. Connect to databases securely with connection info stored locally.
+- **Keyboard-First** — Designed for power users who prefer staying on the keyboard.
+- **Multi-Tab Interface** — Open dozens of tables and queries simultaneously.
+- **SQL Editor** — Write and execute queries with Monaco Editor.
+- **Dark & Light Mode** — Switch themes to match your preference.
+- **Inline Editing** — Edit data directly like a spreadsheet.
+- **Quick Panel** — Fast navigation with `Ctrl+P`.
+- **Blazing Fast** — Opens instantly, tables load in milliseconds.
 
 ## 📥 Installation
 
@@ -92,7 +94,3 @@ pnpm build:linux
 ## 🔗 Connect
 
 Follow us on X: [@dbdesk](https://x.com/dbdesk)
-
-## 📄 License
-
-MIT

@@ -14,6 +14,7 @@ import {
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { QueryResultRow } from '@renderer/api/client'
+import { toast } from '@renderer/lib/toast'
 
 interface UseDataTableProps<TData, TValue = unknown>
   extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
@@ -429,15 +430,46 @@ export function useDataTable<TData, TValue = unknown>({
 
     let direction: NavigationDirection | null = null
 
-    // Delete/Backspace to clear focused cell
-    if (key === 'Delete' || key === 'Backspace') {
+    // Ctrl+C to copy focused cell content
+    if (key === 'c' && isCtrlPressed) {
+      if (focusedCell) {
+        event.preventDefault()
+        const rows = tableRef2.current.getRowModel().rows
+        const row = rows[focusedCell.rowIndex]
+        if (row) {
+          const cellValue = row.getValue(focusedCell.columnId)
+          const textValue = cellValue === null || cellValue === undefined ? '' : String(cellValue)
+          navigator.clipboard
+            .writeText(textValue)
+            .then(() => {
+              toast.success('Cell content copied to clipboard')
+            })
+            .catch((err) => {
+              console.error('Failed to copy to clipboard:', err)
+            })
+        }
+      }
+      return
+    }
+
+    // Delete to clear focused cell value
+    if (key === 'Delete') {
       if (focusedCell) {
         event.preventDefault()
         onDataUpdate({
           rowIndex: focusedCell.rowIndex,
           columnId: focusedCell.columnId,
-          value: ''
+          value: null
         })
+      }
+      return
+    }
+
+    // Backspace to enter editing mode
+    if (key === 'Backspace') {
+      if (focusedCell) {
+        event.preventDefault()
+        onCellEditingStart(focusedCell.rowIndex, focusedCell.columnId)
       }
       return
     }
