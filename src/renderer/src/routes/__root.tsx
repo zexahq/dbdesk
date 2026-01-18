@@ -4,9 +4,7 @@ import { MainSidebar } from '@renderer/components/main-sidebar'
 import { Toaster } from '@renderer/components/ui/sonner'
 
 const RootLayout = () => (
-  <div className="flex h-screen overflow-hidden select-none">
-    {/* <Titlebar /> */}
-
+  <div className="flex h-[calc(100vh-36px)] overflow-hidden select-none">
     <MainSidebar />
     <div className="flex-1 h-full overflow-y-auto">
       <Outlet />

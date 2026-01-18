@@ -58,7 +58,7 @@ export function Titlebar() {
       className="h-9 bg-main-sidebar backdrop-blur flex items-center justify-between select-none cursor-default"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
-      <div className="pl-4 text-sm font-medium text-zinc-400 w-24">DBDesk</div>
+      <div className="pl-4 text-sm font-medium text-zinc-800 dark:text-zinc-400 w-24">DBDesk</div>
 
       <div className="flex-1 flex justify-center">
         {connectionId && <Title connectionId={connectionId} />}

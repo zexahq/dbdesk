@@ -41,7 +41,7 @@ import {
   Table2Icon,
   Trash2
 } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
+import { queryClient } from '@renderer/lib/query-client'
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
 
@@ -71,7 +71,6 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const deleteQuery = useSavedQueriesStore((s) => s.deleteQuery)
   const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
 
-  const queryClient = useQueryClient()
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleRefreshSchemas = async () => {
