@@ -11,13 +11,17 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from '@renderer/components/ui/select'
 import { cn } from '@renderer/lib/utils'
-import { format } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 import * as React from 'react'
 import { COMMON_TIMEZONES } from '@common/constants'
+import {
+  getTimezoneLabel,
+  parseAndValidateInput,
+  extractComponentsFromUtc
+} from '@renderer/lib/datetime-utils'
 
 import type { DataTableCellProps } from '../data-table-cell.types'
 import { areCellPropsEqual, useDataTableCellContext } from './base'
@@ -38,36 +42,9 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
   // Get current timezone
   const currentTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
-  // Parse timezone from cellValueString
-  const getTimezoneFromValue = React.useCallback((valueString: string): string => {
-    if (!valueString) return 'UTC'
-
-    // Match timezone offset pattern like +05:30, -05:00, or Z
-    const offsetMatch = valueString.match(/([+-]\d{2}:\d{2}|Z)$/)
-    if (!offsetMatch) return 'UTC'
-
-    const offset = offsetMatch[1]
-    if (offset === 'Z' || offset === '+00:00') return 'UTC'
-
-    // Try to find a matching timezone from our list
-    const testDate = new Date()
-
-    // Check current timezone first
-    const currentOffset = formatInTimeZone(testDate, currentTimezone, 'XXX')
-    if (currentOffset === offset) return currentTimezone
-
-    // Check common timezones
-    for (const tz of COMMON_TIMEZONES) {
-      const tzOffset = formatInTimeZone(testDate, tz.value, 'XXX')
-      if (tzOffset === offset) return tz.value
-    }
-
-    return 'UTC'
-  }, [currentTimezone])
-
   const [isOpen, setIsOpen] = React.useState(false)
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(
-    cellValue instanceof Date ? cellValue : (cellValue ? new Date(String(cellValue)) : undefined)
+    cellValue instanceof Date ? cellValue : cellValue ? new Date(String(cellValue)) : undefined
   )
   const [selectedHour, setSelectedHour] = React.useState<number | undefined>(
     selectedDate?.getHours()
@@ -78,7 +55,7 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
   const [selectedSecond, setSelectedSecond] = React.useState<number | undefined>(
     selectedDate?.getSeconds()
   )
-  const [selectedTimezone, setSelectedTimezone] = React.useState(() => getTimezoneFromValue(cellValueString || ''))
+  const [selectedTimezone, setSelectedTimezone] = React.useState(currentTimezone)
 
   const hours = Array.from({ length: 24 }, (_, i) => i)
   const minutes = Array.from({ length: 60 }, (_, i) => i)
@@ -88,7 +65,7 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
   const [inputValue, setInputValue] = React.useState('')
   const [inputError, setInputError] = React.useState<string | null>(null)
 
-  // Determine if timezone-aware - move before functions that use it
+  // Determine if timezone-aware
   const isTimezoneAware = React.useMemo(() => {
     return (
       dataType?.includes('with time zone') ||
@@ -97,103 +74,6 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
       dataType === 'timetz'
     )
   }, [dataType])
-
-  // Get timezone offset in format like +05:30 or -08:00
-  const getTimezoneOffset = React.useCallback((date: Date, timezone: string): string => {
-    try {
-      const formatted = formatInTimeZone(date, timezone, 'XXX')
-      return formatted
-    } catch {
-      return '+00:00'
-    }
-  }, [])
-
-  // Get timezone label from value
-  const getTimezoneLabel = React.useCallback((tzValue: string): string => {
-    if (tzValue === currentTimezone) return 'Current Timezone'
-    const tz = COMMON_TIMEZONES.find(t => t.value === tzValue)
-    return tz?.label || tzValue
-  }, [currentTimezone])
-
-  // Format the display datetime
-  const formatDisplayDateTime = React.useCallback((date?: Date, timezone?: string): string => {
-    if (!date) return ''
-    const dateTimeStr = format(date, 'MM/dd/yyyy HH:mm:ss')
-    if (isTimezoneAware && timezone) {
-      const offset = getTimezoneOffset(date, timezone)
-      return `${dateTimeStr}${offset}`
-    }
-    return dateTimeStr
-  }, [isTimezoneAware, getTimezoneOffset])
-
-  // Parse and validate datetime input with stricter validation
-  const parseAndValidateInput = React.useCallback((input: string): { valid: boolean; date?: Date; error?: string } => {
-    if (!input.trim()) {
-      return { valid: false, error: 'Date/time is required' }
-    }
-
-    // Remove timezone offset if present (e.g., "+05:30" or "-08:00")
-    const cleanedInput = input.replace(/[+-]\d{2}:\d{2}\s*$/, '').trim()
-
-    const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2}):(\d{2})$/
-    const match = cleanedInput.match(dateRegex)
-
-    if (!match) {
-      return { valid: false, error: 'Format: MM/DD/YYYY HH:mm:ss' }
-    }
-
-    const [, month, day, year, hour, minute, second] = match
-    const m = parseInt(month, 10)
-    const d = parseInt(day, 10)
-    const y = parseInt(year, 10)
-    const h = parseInt(hour, 10)
-    const min = parseInt(minute, 10)
-    const sec = parseInt(second, 10)
-
-    // Strict validation - no values outside valid ranges
-    if (isNaN(m) || m < 1 || m > 12) {
-      return { valid: false, error: 'Month must be 01-12' }
-    }
-    if (isNaN(d) || d < 1 || d > 31) {
-      return { valid: false, error: 'Day must be 01-31' }
-    }
-    if (isNaN(h) || h < 0 || h > 23) {
-      return { valid: false, error: 'Hour must be 00-23' }
-    }
-    if (isNaN(min) || min < 0 || min > 59) {
-      return { valid: false, error: 'Minute must be 00-59' }
-    }
-    if (isNaN(sec) || sec < 0 || sec > 59) {
-      return { valid: false, error: 'Second must be 00-59' }
-    }
-
-    // Validate year is reasonable (1900-2100)
-    if (y < 1900 || y > 2100) {
-      return { valid: false, error: 'Year must be between 1900 and 2100' }
-    }
-
-    try {
-      const date = new Date(y, m - 1, d, h, min, sec)
-      // Validate the date was created correctly (catch invalid dates like Feb 30)
-      if (date.getMonth() !== m - 1 || date.getDate() !== d) {
-        return { valid: false, error: 'Invalid date' }
-      }
-      return { valid: true, date }
-    } catch {
-      return { valid: false, error: 'Invalid date/time' }
-    }
-  }, [])
-
-  const buildDateTime = (date?: Date, hour?: number, minute?: number, second?: number): Date | undefined => {
-    if (date === undefined && hour === undefined && minute === undefined && second === undefined) {
-      return undefined
-    }
-    const baseDate = date ? new Date(date) : new Date()
-    baseDate.setHours(hour ?? 0)
-    baseDate.setMinutes(minute ?? 0)
-    baseDate.setSeconds(second ?? 0)
-    return baseDate
-  }
 
   const restoreFocus = React.useCallback(() => {
     setTimeout(() => {
@@ -207,7 +87,7 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
 
       if (nextValue && selectedDate) {
         if (isTimezoneAware) {
-          // For timezone-aware: construct timestamp string directly with selected timezone offset
+          // For timezone-aware: convert wall-clock time in selected timezone to UTC instant
           const year = selectedDate.getFullYear()
           const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
           const day = String(selectedDate.getDate()).padStart(2, '0')
@@ -215,13 +95,14 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
           const minutes = String(selectedMinute ?? 0).padStart(2, '0')
           const seconds = String(selectedSecond ?? 0).padStart(2, '0')
 
-          // Create a date string and use it to get the offset for the selected timezone
-          const dateStr = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
-          // Create a Date object from the components (in local time) just for getting offset
-          const referenceDate = new Date(year, parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds))
-          const offset = getTimezoneOffset(referenceDate, selectedTimezone)
+          // Build wall-clock time string in the selected timezone
+          const wallClockTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
 
-          valueString = `${dateStr}.000${offset}`
+          // Convert this wall-clock time in selectedTimezone to a proper UTC instant
+          const utcInstant = fromZonedTime(wallClockTime, selectedTimezone)
+
+          // Store as ISO string (UTC)
+          valueString = utcInstant.toISOString()
         } else {
           // For non-timezone-aware: store as local time without timezone
           const year = nextValue.getFullYear()
@@ -248,11 +129,19 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
       setIsOpen(false)
       restoreFocus()
     },
-    [cellValueString, props, rowIndex, columnId, restoreFocus, isTimezoneAware, selectedTimezone, selectedDate, selectedHour, selectedMinute, selectedSecond, getTimezoneOffset]
+    [cellValueString, props, rowIndex, columnId, restoreFocus, isTimezoneAware, selectedTimezone, selectedDate, selectedHour, selectedMinute, selectedSecond]
   )
 
   const handleSave = React.useCallback(() => {
-    const dateTime = buildDateTime(selectedDate, selectedHour, selectedMinute, selectedSecond)
+    // Build a local Date from selected components for non-timezone-aware branch
+    let dateTime: Date | undefined
+    if (selectedDate) {
+      const d = new Date(selectedDate)
+      d.setHours(selectedHour ?? 0)
+      d.setMinutes(selectedMinute ?? 0)
+      d.setSeconds(selectedSecond ?? 0)
+      dateTime = d
+    }
     commitValue(dateTime)
   }, [selectedDate, selectedHour, selectedMinute, selectedSecond, commitValue])
 
@@ -277,28 +166,67 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
     const wasEditing = prevIsEditingRef.current
     prevIsEditingRef.current = isEditing
 
-    // Only run when transitioning from not-editing to editing
     if (isEditing && !wasEditing) {
-      const parsedDate = cellValue instanceof Date ? cellValue : (cellValue ? new Date(String(cellValue)) : undefined)
-      const detectedTimezone = getTimezoneFromValue(cellValueString || '')
+      // Treat the stored value as a UTC instant if present
+      const utcDate: Date | undefined = cellValueString
+        ? new Date(String(cellValueString))
+        : cellValue instanceof Date
+          ? cellValue
+          : undefined
 
-      setSelectedDate(parsedDate)
-      setSelectedHour(parsedDate?.getHours())
-      setSelectedMinute(parsedDate?.getMinutes())
-      setSelectedSecond(parsedDate?.getSeconds())
-      setSelectedTimezone(detectedTimezone)
-      setInputValue(formatDisplayDateTime(parsedDate, isTimezoneAware ? detectedTimezone : undefined))
+      if (utcDate && isTimezoneAware) {
+        const components = extractComponentsFromUtc(utcDate, selectedTimezone)
+        setSelectedDate(components.date)
+        setSelectedHour(components.hour)
+        setSelectedMinute(components.minute)
+        setSelectedSecond(components.second)
+        setInputValue(formatInTimeZone(utcDate, selectedTimezone, 'MM/dd/yyyy HH:mm:ssXXX'))
+      } else if (utcDate) {
+        // Non-timezone-aware: initialize from date directly
+        setSelectedDate(utcDate)
+        setSelectedHour(utcDate.getHours())
+        setSelectedMinute(utcDate.getMinutes())
+        setSelectedSecond(utcDate.getSeconds())
+        setInputValue(formatInTimeZone(utcDate, selectedTimezone, 'MM/dd/yyyy HH:mm:ss'))
+      } else {
+        // No value: default today + 00:00:00
+        const today = new Date()
+        setSelectedDate(today)
+        setSelectedHour(0)
+        setSelectedMinute(0)
+        setSelectedSecond(0)
+        const wall = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+          today.getDate()
+        ).padStart(2, '0')}T00:00:00`
+        const utcInstant = fromZonedTime(wall, selectedTimezone)
+        setInputValue(formatInTimeZone(utcInstant, selectedTimezone, 'MM/dd/yyyy HH:mm:ssXXX'))
+      }
+
       setInputError(null)
       setIsOpen(true)
     }
-  }, [isEditing, cellValue, cellValueString, isTimezoneAware, formatDisplayDateTime, getTimezoneFromValue])
+  }, [isEditing, cellValue, cellValueString, isTimezoneAware, selectedTimezone])
 
   // Update input when date or time selectors change
   React.useEffect(() => {
-    const dateTime = buildDateTime(selectedDate, selectedHour, selectedMinute, selectedSecond)
-    setInputValue(formatDisplayDateTime(dateTime, isTimezoneAware ? selectedTimezone : undefined))
+    // Build wall-clock components and render input in selected timezone
+    if (!selectedDate) return
+    const y = selectedDate.getFullYear()
+    const m = String(selectedDate.getMonth() + 1).padStart(2, '0')
+    const d = String(selectedDate.getDate()).padStart(2, '0')
+    const hh = String((selectedHour ?? 0)).padStart(2, '0')
+    const mm = String((selectedMinute ?? 0)).padStart(2, '0')
+    const ss = String((selectedSecond ?? 0)).padStart(2, '0')
+
+    const wall = `${y}-${m}-${d}T${hh}:${mm}:${ss}`
+    const utcInstant = fromZonedTime(wall, selectedTimezone)
+    setInputValue(
+      isTimezoneAware
+        ? formatInTimeZone(utcInstant, selectedTimezone, 'MM/dd/yyyy HH:mm:ssXXX')
+        : formatInTimeZone(utcInstant, selectedTimezone, 'MM/dd/yyyy HH:mm:ss')
+    )
     setInputError(null)
-  }, [selectedDate, selectedHour, selectedMinute, selectedSecond, selectedTimezone, formatDisplayDateTime, isTimezoneAware])
+  }, [selectedDate, selectedHour, selectedMinute, selectedSecond, selectedTimezone, isTimezoneAware])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -372,7 +300,7 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
                     <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
                       <SelectTrigger className="h-fit text-xs w-[150px] ring-0 border border-muted p-2.5! focus:border-muted! focus:ring-0 focus-visible:ring-0">
                         <SelectValue placeholder="Select timezone">
-                          {getTimezoneLabel(selectedTimezone)}
+                          {getTimezoneLabel(selectedTimezone, currentTimezone)}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className='max-h-[300px] pt-0'>
