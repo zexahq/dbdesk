@@ -329,7 +329,8 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
                 {/* Time Pickers */}
                 <div className="flex flex-col sm:flex-row sm:divide-y-0 sm:divide-x">
                   <div className="relative">
-                    <ScrollArea className="w-64 sm:w-auto sm:h-60">
+                    <div className="text-xs text-center text-muted-foreground px-2 py-1 font-medium shrink-0">Hr</div>
+                    <ScrollArea className="w-64 sm:w-auto sm:h-52">
                       <div className="flex sm:flex-col p-2">
                         {hours.map((hour) => (
                           <Button
@@ -348,7 +349,8 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
                     <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
                   </div>
                   <div className="relative">
-                    <ScrollArea className="w-64 sm:w-auto sm:h-60">
+                    <div className="text-xs text-center text-muted-foreground px-2 py-1 font-medium shrink-0">Min</div>
+                    <ScrollArea className="w-64 sm:w-auto sm:h-52">
                       <div className="flex sm:flex-col p-2">
                         {minutes.map((minute) => (
                           <Button
@@ -367,7 +369,8 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
                     <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
                   </div>
                   <div className="relative">
-                    <ScrollArea className="w-64 sm:w-auto sm:h-60">
+                    <div className="text-xs text-center text-muted-foreground px-2 py-1 font-medium shrink-0">Sec</div>
+                    <ScrollArea className="w-64 sm:w-auto sm:h-52">
                       <div className="flex sm:flex-col p-2">
                         {seconds.map((second) => (
                           <Button

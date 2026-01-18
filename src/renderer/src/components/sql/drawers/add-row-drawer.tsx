@@ -162,15 +162,29 @@ export function AddRowDialog({
                         className="bg-muted h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                       />
                     ) : isTimestamp ? (
-                      <DateTimePickerField
-                        value={values[column.name] ? new Date(values[column.name]) : undefined}
-                        onChange={(date) => {
-                          handleValueChange(
-                            column.name,
-                            date ? date.toISOString().slice(0, 16) : ''
-                          )
-                        }}
-                      />
+                      <div className="relative">
+                        <DateTimePickerField
+                          value={values[column.name] ? new Date(values[column.name]) : undefined}
+                          onChange={(date) => {
+                            handleValueChange(
+                              column.name,
+                              date ? date.toISOString().slice(0, 16) : ''
+                            )
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs rounded"
+                          onClick={() => {
+                            const now = new Date()
+                            handleValueChange(column.name, now.toISOString().slice(0, 16))
+                          }}
+                        >
+                          Now
+                        </Button>
+                      </div>
                     ) : (
                        <Input
                          id={column.name}

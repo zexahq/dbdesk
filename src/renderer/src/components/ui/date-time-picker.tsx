@@ -161,7 +161,7 @@ export function DateTimePicker() {
               <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
             </div>
             <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-              <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Second</div>
+              <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Sec</div>
               <ScrollArea className="flex-1 w-full h-full">
                 <div className="flex sm:flex-col p-2 pb-0">
                   {seconds.map((second) => (
@@ -322,9 +322,9 @@ export function DateTimePickerField({
             />
             <div className="flex flex-col sm:flex-row sm:h-[280px] divide-y sm:divide-y-0 sm:divide-x overflow-hidden flex-1 min-w-0">
               <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-                <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Hour</div>
+                <div className="text-xs text-center text-muted-foreground px-2 py-1 font-medium shrink-0">Hr</div>
                 <ScrollArea className="flex-1 w-full h-full">
-                  <div className="flex sm:flex-col p-2 pb-12">
+                  <div className="flex sm:flex-col p-2">
                     {hours.map((hour) => (
                       <Button
                         key={hour}
@@ -346,9 +346,9 @@ export function DateTimePickerField({
                 <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
               </div>
               <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-                <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Minute</div>
+                <div className="text-xs text-center text-muted-foreground px-2 py-1 font-medium shrink-0">Min</div>
                 <ScrollArea className="flex-1 w-full h-full">
-                  <div className="flex sm:flex-col p-2 pb-12">
+                  <div className="flex sm:flex-col p-2">
                     {minutes.map((minute) => (
                       <Button
                         key={minute}
@@ -370,9 +370,9 @@ export function DateTimePickerField({
                 <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
               </div>
               <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
-                <div className="text-xs text-muted-foreground px-2 py-1 font-medium shrink-0">Second</div>
+                <div className="text-xs text-center text-muted-foreground px-2 py-1 font-medium shrink-0">Sec</div>
                 <ScrollArea className="flex-1 w-full h-full">
-                  <div className="flex sm:flex-col p-2 pb-12">
+                  <div className="flex sm:flex-col p-2">
                     {seconds.map((second) => (
                       <Button
                         key={second}
