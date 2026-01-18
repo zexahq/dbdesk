@@ -242,6 +242,10 @@ export function useAlterTable(connectionId?: string) {
         client.client.invalidateQueries({
           queryKey: keys.tableInfo(connectionId!, variables.schema, variables.table)
         })
+        // Refresh table data to reflect structure changes
+        client.client.invalidateQueries({
+          queryKey: keys.tableData(connectionId!, variables.schema, variables.table, {})
+        })
       }
     },
     onError: (error) => {

@@ -584,6 +584,19 @@ export class PostgresAdapter implements SQLAdapter {
 
     const alterStatements: string[] = []
 
+    // Fetch existing column types to generate proper USING clauses for timestamp conversions
+    let existingColumns: Array<{ name: string; data_type: string }> = []
+    try {
+      const result = await pool.query<{ column_name: string; data_type: string }>(
+        `select column_name, data_type from information_schema.columns where table_schema = $1 and table_name = $2`,
+        [schema, table]
+      )
+      existingColumns = result.rows.map((r) => ({ name: r.column_name, data_type: r.data_type }))
+    } catch (e) {
+      // If we fail to fetch, proceed without USING clauses; PostgreSQL will error if needed
+      existingColumns = []
+    }
+
     // Rename table
     if (newName) {
       const renameQuery = `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} RENAME TO ${quoteIdentifier(newName)}`
@@ -605,7 +618,24 @@ export class PostgresAdapter implements SQLAdapter {
     if (columnsToModify && columnsToModify.length > 0) {
       columnsToModify.forEach((col) => {
         const colName = quoteIdentifier(col.name)
-        alterStatements.push(`ALTER COLUMN ${colName} TYPE ${col.type.toUpperCase()}`)
+        const targetType = col.type.toUpperCase()
+        const existing = existingColumns.find((c) => c.name === col.name)
+        const existingType = existing?.data_type?.toUpperCase() ?? ''
+
+        // Build TYPE change with USING for timestamp conversions
+        if (
+          (existingType === 'TIMESTAMP WITHOUT TIME ZONE' && targetType === 'TIMESTAMP WITH TIME ZONE') ||
+          (existingType === 'TIMESTAMP WITH TIME ZONE' && targetType === 'TIMESTAMP WITHOUT TIME ZONE')
+        ) {
+          const usingClause =
+            targetType === 'TIMESTAMP WITH TIME ZONE'
+              ? `USING ${colName} AT TIME ZONE 'UTC'`
+              : `USING ${colName} AT TIME ZONE 'UTC'`
+          alterStatements.push(`ALTER COLUMN ${colName} TYPE ${targetType} ${usingClause}`)
+        } else {
+          alterStatements.push(`ALTER COLUMN ${colName} TYPE ${targetType}`)
+        }
+
         if (col.nullable === false) {
           alterStatements.push(`ALTER COLUMN ${colName} SET NOT NULL`)
         } else if (col.nullable === true) {
