@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 import { cn } from '@renderer/lib/utils'
 import { COMMON_TIMEZONES } from '@common/constants'
@@ -22,46 +21,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./select";
+import { getTimezoneLabel, extractComponentsFromUtc } from '@renderer/lib/datetime-utils'
 
 export function DateTimePicker() {
-  const [selectedDate, setSelectedDate] = React.useState<Date>();
-  const [selectedHour, setSelectedHour] = React.useState<number>();
-  const [selectedMinute, setSelectedMinute] = React.useState<number>();
-  const [selectedSecond, setSelectedSecond] = React.useState<number>();
+  const currentTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(undefined);
+  const [selectedHour, setSelectedHour] = React.useState<number | undefined>(undefined);
+  const [selectedMinute, setSelectedMinute] = React.useState<number | undefined>(undefined);
+  const [selectedSecond, setSelectedSecond] = React.useState<number | undefined>(undefined);
+  const [selectedTimezone, setSelectedTimezone] = React.useState<string>(currentTimezone);
   const [isOpen, setIsOpen] = React.useState(false);
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const minutes = Array.from({ length: 60 }, (_, i) => i);
   const seconds = Array.from({ length: 60 }, (_, i) => i);
 
-  const buildDateTime = (date?: Date, hour?: number, minute?: number, second?: number): Date | undefined => {
-    if (date === undefined && hour === undefined && minute === undefined && second === undefined) {
-      return undefined;
-    }
-    const baseDate = date ? new Date(date) : new Date();
-    baseDate.setHours(hour ?? 0);
-    baseDate.setMinutes(minute ?? 0);
-    baseDate.setSeconds(second ?? 0);
-    return baseDate;
-  };
+  const getDisplayString = (): string | null => {
+    if (!selectedDate) return null
+    const y = selectedDate.getFullYear()
+    const m = String(selectedDate.getMonth() + 1).padStart(2, '0')
+    const d = String(selectedDate.getDate()).padStart(2, '0')
+    const hh = String((selectedHour ?? 0)).padStart(2, '0')
+    const mm = String((selectedMinute ?? 0)).padStart(2, '0')
+    const ss = String((selectedSecond ?? 0)).padStart(2, '0')
+    const wall = `${y}-${m}-${d}T${hh}:${mm}:${ss}`
+    const utc = fromZonedTime(wall, selectedTimezone)
+    return formatInTimeZone(utc, selectedTimezone, 'MM/dd/yyyy HH:mm:ssXXX')
+  }
+
+  const displayString = getDisplayString();
 
   const handleDateSelect = (newDate: Date | undefined) => {
     setSelectedDate(newDate);
   };
-
-  const handleHourSelect = (hour: number) => {
-    setSelectedHour(hour);
-  };
-
-  const handleMinuteSelect = (minute: number) => {
-    setSelectedMinute(minute);
-  };
-
-  const handleSecondSelect = (second: number) => {
-    setSelectedSecond(second);
-  };
-
-  const displayDate = buildDateTime(selectedDate, selectedHour, selectedMinute, selectedSecond);
+  const handleHourSelect = (hour: number) => setSelectedHour(hour);
+  const handleMinuteSelect = (minute: number) => setSelectedMinute(minute);
+  const handleSecondSelect = (second: number) => setSelectedSecond(second);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -70,86 +65,125 @@ export function DateTimePicker() {
           variant="outline"
           className={cn(
             "w-full justify-start text-left font-normal",
-            !displayDate && "text-muted-foreground"
+            !displayString && "text-muted-foreground"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {displayDate ? (
-            format(displayDate, "MM/dd/yyyy HH:mm:ss")
+          {displayString ? (
+            displayString
           ) : (
             <span>MM/DD/YYYY HH:mm:ss</span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <div className="sm:flex">
+      <PopoverContent className="w-auto p-0 max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-2 border-b">
+          <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
+            <SelectTrigger className="h-fit text-xs w-[150px]">
+              <SelectValue placeholder="Select timezone">
+                {getTimezoneLabel(selectedTimezone, currentTimezone)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className='max-h-[300px] pt-0'>
+              <SelectItem value={currentTimezone} className="sticky -top-1 bg-background z-10 pt-2 rounded-none">
+                <div>
+                  <div>Current Timezone</div>
+                  <div className="text-[10px] text-left text-muted-foreground">{currentTimezone}</div>
+                </div>
+              </SelectItem>
+              <div className="h-px bg-border my-1" />
+              {COMMON_TIMEZONES.map((tz) => (
+                <SelectItem key={tz.value} value={tz.value}>
+                  <div>
+                    <div>{tz.label}</div>
+                    <div className="text-[10px] text-left text-muted-foreground">{tz.value}</div>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="sm:flex overflow-hidden flex-1">
           <Calendar
             mode="single"
             selected={selectedDate}
             onSelect={handleDateSelect}
             initialFocus
+            className="h-auto flex-shrink-0"
           />
-          <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex sm:flex-col p-2">
-                {hours.map((hour) => (
-                  <Button
-                    key={hour}
-                    size="icon"
-                    variant={
-                      selectedHour === hour
-                        ? "default"
-                        : "ghost"
-                    }
-                    className="sm:w-full shrink-0 aspect-square"
-                    onClick={() => handleHourSelect(hour)}
-                  >
-                    {String(hour).padStart(2, '0')}
-                  </Button>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex sm:flex-col p-2">
-                {minutes.map((minute) => (
-                  <Button
-                    key={minute}
-                    size="icon"
-                    variant={
-                      selectedMinute === minute
-                        ? "default"
-                        : "ghost"
-                    }
-                    className="sm:w-full shrink-0 aspect-square"
-                    onClick={() => handleMinuteSelect(minute)}
-                  >
-                    {String(minute).padStart(2, '0')}
-                  </Button>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex sm:flex-col p-2">
-                {seconds.map((second) => (
-                  <Button
-                    key={second}
-                    size="icon"
-                    variant={
-                      selectedSecond === second
-                        ? "default"
-                        : "ghost"
-                    }
-                    className="sm:w-full shrink-0 aspect-square"
-                    onClick={() => handleSecondSelect(second)}
-                  >
-                    {String(second).padStart(2, '0')}
-                  </Button>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
+          <div className="flex flex-col sm:flex-row sm:h-[280px] divide-y sm:divide-y-0 sm:divide-x overflow-hidden flex-1 min-w-0">
+            <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
+              <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Hour</div>
+              <ScrollArea className="flex-1 w-full h-full">
+                <div className="flex sm:flex-col p-2 pb-0">
+                  {hours.map((hour) => (
+                    <Button
+                      key={hour}
+                      size="icon"
+                      variant={
+                        selectedHour === hour
+                          ? "default"
+                          : "ghost"
+                      }
+                      className="sm:w-full shrink-0 aspect-square"
+                      onClick={() => handleHourSelect(hour)}
+                    >
+                      {String(hour).padStart(2, '0')}
+                    </Button>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="sm:hidden" />
+              </ScrollArea>
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+            </div>
+            <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
+              <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Minute</div>
+              <ScrollArea className="flex-1 w-full h-full">
+                <div className="flex sm:flex-col p-2 pb-0">
+                  {minutes.map((minute) => (
+                    <Button
+                      key={minute}
+                      size="icon"
+                      variant={
+                        selectedMinute === minute
+                          ? "default"
+                          : "ghost"
+                      }
+                      className="sm:w-full shrink-0 aspect-square"
+                      onClick={() => handleMinuteSelect(minute)}
+                    >
+                      {String(minute).padStart(2, '0')}
+                    </Button>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="sm:hidden" />
+              </ScrollArea>
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+            </div>
+            <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
+              <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Second</div>
+              <ScrollArea className="flex-1 w-full h-full">
+                <div className="flex sm:flex-col p-2 pb-0">
+                  {seconds.map((second) => (
+                    <Button
+                      key={second}
+                      size="icon"
+                      variant={
+                        selectedSecond === second
+                          ? "default"
+                          : "ghost"
+                      }
+                      className="sm:w-full shrink-0 aspect-square"
+                      onClick={() => handleSecondSelect(second)}
+                    >
+                      {String(second).padStart(2, '0')}
+                    </Button>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="sm:hidden" />
+              </ScrollArea>
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+            </div>
           </div>
         </div>
       </PopoverContent>
@@ -172,71 +206,91 @@ export function DateTimePickerField({
   timezone = 'UTC',
   onTimezoneChange
 }: DateTimePickerFieldProps) {
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(value);
-  const [selectedHour, setSelectedHour] = React.useState<number | undefined>(value?.getHours());
-  const [selectedMinute, setSelectedMinute] = React.useState<number | undefined>(value?.getMinutes());
-  const [selectedSecond, setSelectedSecond] = React.useState<number | undefined>(value?.getSeconds());
-  const [selectedTimezone, setSelectedTimezone] = React.useState<string>(timezone);
+  const currentTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const [selectedTimezone, setSelectedTimezone] = React.useState<string>(timezone || currentTimezone);
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(undefined);
+  const [selectedHour, setSelectedHour] = React.useState<number | undefined>(undefined);
+  const [selectedMinute, setSelectedMinute] = React.useState<number | undefined>(undefined);
+  const [selectedSecond, setSelectedSecond] = React.useState<number | undefined>(undefined);
   const [isOpen, setIsOpen] = React.useState(false);
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const minutes = Array.from({ length: 60 }, (_, i) => i);
   const seconds = Array.from({ length: 60 }, (_, i) => i);
 
-  const buildDateTime = (date?: Date, hour?: number, minute?: number, second?: number): Date | undefined => {
-    if (date === undefined && hour === undefined && minute === undefined && second === undefined) {
-      return undefined;
+  React.useEffect(() => {
+    if (value) {
+      const components = extractComponentsFromUtc(value, selectedTimezone)
+      setSelectedDate(components.date)
+      setSelectedHour(components.hour)
+      setSelectedMinute(components.minute)
+      setSelectedSecond(components.second)
+    } else {
+      const today = new Date()
+      setSelectedDate(today)
+      setSelectedHour(0)
+      setSelectedMinute(0)
+      setSelectedSecond(0)
     }
-    const baseDate = date ? new Date(date) : new Date();
-    baseDate.setHours(hour ?? 0);
-    baseDate.setMinutes(minute ?? 0);
-    baseDate.setSeconds(second ?? 0);
-    return baseDate;
+  }, [value, selectedTimezone]);
+
+  const toUtcInstant = (date?: Date, hour?: number, minute?: number, second?: number): Date | undefined => {
+    if (!date) return undefined
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    const hh = String((hour ?? 0)).padStart(2, '0')
+    const mm = String((minute ?? 0)).padStart(2, '0')
+    const ss = String((second ?? 0)).padStart(2, '0')
+    const wall = `${y}-${m}-${d}T${hh}:${mm}:${ss}`
+    return fromZonedTime(wall, selectedTimezone)
   };
 
   const handleDateSelect = (newDate: Date | undefined) => {
     setSelectedDate(newDate);
-    const result = buildDateTime(newDate, selectedHour, selectedMinute, selectedSecond);
-    onChange?.(result);
+    const utc = toUtcInstant(newDate, selectedHour, selectedMinute, selectedSecond)
+    onChange?.(utc);
   };
 
   const handleHourSelect = (hour: number) => {
     setSelectedHour(hour);
-    const result = buildDateTime(selectedDate, hour, selectedMinute, selectedSecond);
-    onChange?.(result);
+    const utc = toUtcInstant(selectedDate, hour, selectedMinute, selectedSecond)
+    onChange?.(utc);
   };
 
   const handleMinuteSelect = (minute: number) => {
     setSelectedMinute(minute);
-    const result = buildDateTime(selectedDate, selectedHour, minute, selectedSecond);
-    onChange?.(result);
+    const utc = toUtcInstant(selectedDate, selectedHour, minute, selectedSecond)
+    onChange?.(utc);
   };
 
   const handleSecondSelect = (second: number) => {
     setSelectedSecond(second);
-    const result = buildDateTime(selectedDate, selectedHour, selectedMinute, second);
-    onChange?.(result);
+    const utc = toUtcInstant(selectedDate, selectedHour, selectedMinute, second)
+    onChange?.(utc);
   };
 
   const handleTimezoneChange = (tz: string) => {
     setSelectedTimezone(tz);
     onTimezoneChange?.(tz);
+    const utc = toUtcInstant(selectedDate, selectedHour, selectedMinute, selectedSecond)
+    onChange?.(utc)
   };
-
-  const displayDate = buildDateTime(selectedDate, selectedHour, selectedMinute, selectedSecond);
 
   const formatDisplayDate = () => {
-    if (!displayDate) return null;
-
-    if (showTimezone) {
-      try {
-        return formatInTimeZone(displayDate, selectedTimezone, "MM/dd/yyyy HH:mm:ss zzz");
-      } catch {
-        return format(displayDate, "MM/dd/yyyy HH:mm:ss");
-      }
-    }
-    return format(displayDate, "MM/dd/yyyy HH:mm:ss");
-  };
+    if (!selectedDate) return null
+    const y = selectedDate.getFullYear()
+    const m = String(selectedDate.getMonth() + 1).padStart(2, '0')
+    const d = String(selectedDate.getDate()).padStart(2, '0')
+    const hh = String((selectedHour ?? 0)).padStart(2, '0')
+    const mm = String((selectedMinute ?? 0)).padStart(2, '0')
+    const ss = String((selectedSecond ?? 0)).padStart(2, '0')
+    const wall = `${y}-${m}-${d}T${hh}:${mm}:${ss}`
+    const utc = fromZonedTime(wall, selectedTimezone)
+    return showTimezone
+      ? formatInTimeZone(utc, selectedTimezone, "MM/dd/yyyy HH:mm:ssXXX")
+      : formatInTimeZone(utc, selectedTimezone, "MM/dd/yyyy HH:mm:ss")
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -246,86 +300,99 @@ export function DateTimePickerField({
             variant="outline"
             className={cn(
               "w-full justify-start text-left font-normal h-9",
-              !displayDate && "text-muted-foreground"
+              !selectedDate && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {displayDate ? (
+            {selectedDate ? (
               formatDisplayDate()
             ) : (
               <span>{showTimezone ? "MM/DD/YYYY HH:mm:ss" : "MM/DD/YYYY HH:mm:ss"}</span>
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
-          <div className="sm:flex">
+        <PopoverContent className="w-auto p-0 max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="sm:flex overflow-hidden flex-1">
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={handleDateSelect}
               initialFocus
+              className="h-auto flex-shrink-0"
             />
-            <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
-              <ScrollArea className="w-64 sm:w-auto">
-                <div className="flex sm:flex-col p-2">
-                  {hours.map((hour) => (
-                    <Button
-                      key={hour}
-                      size="icon"
-                      variant={
-                        selectedHour === hour
-                          ? "default"
-                          : "ghost"
-                      }
-                      className="sm:w-full shrink-0 aspect-square"
-                      onClick={() => handleHourSelect(hour)}
-                    >
-                      {String(hour).padStart(2, '0')}
-                    </Button>
-                  ))}
-                </div>
-                <ScrollBar orientation="horizontal" className="sm:hidden" />
-              </ScrollArea>
-              <ScrollArea className="w-64 sm:w-auto">
-                <div className="flex sm:flex-col p-2">
-                  {minutes.map((minute) => (
-                    <Button
-                      key={minute}
-                      size="icon"
-                      variant={
-                        selectedMinute === minute
-                          ? "default"
-                          : "ghost"
-                      }
-                      className="sm:w-full shrink-0 aspect-square"
-                      onClick={() => handleMinuteSelect(minute)}
-                    >
-                      {String(minute).padStart(2, '0')}
-                    </Button>
-                  ))}
-                </div>
-                <ScrollBar orientation="horizontal" className="sm:hidden" />
-              </ScrollArea>
-              <ScrollArea className="w-64 sm:w-auto">
-                <div className="flex sm:flex-col p-2">
-                  {seconds.map((second) => (
-                    <Button
-                      key={second}
-                      size="icon"
-                      variant={
-                        selectedSecond === second
-                          ? "default"
-                          : "ghost"
-                      }
-                      className="sm:w-full shrink-0 aspect-square"
-                      onClick={() => handleSecondSelect(second)}
-                    >
-                      {String(second).padStart(2, '0')}
-                    </Button>
-                  ))}
-                </div>
-                <ScrollBar orientation="horizontal" className="sm:hidden" />
-              </ScrollArea>
+            <div className="flex flex-col sm:flex-row sm:h-[280px] divide-y sm:divide-y-0 sm:divide-x overflow-hidden flex-1 min-w-0">
+              <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
+                <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Hour</div>
+                <ScrollArea className="flex-1 w-full h-full">
+                  <div className="flex sm:flex-col p-2 pb-12">
+                    {hours.map((hour) => (
+                      <Button
+                        key={hour}
+                        size="icon"
+                        variant={
+                          selectedHour === hour
+                            ? "default"
+                            : "ghost"
+                        }
+                        className="sm:w-full shrink-0 aspect-square"
+                        onClick={() => handleHourSelect(hour)}
+                      >
+                        {String(hour).padStart(2, '0')}
+                      </Button>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" className="sm:hidden" />
+                </ScrollArea>
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+              </div>
+              <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
+                <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Minute</div>
+                <ScrollArea className="flex-1 w-full h-full">
+                  <div className="flex sm:flex-col p-2 pb-12">
+                    {minutes.map((minute) => (
+                      <Button
+                        key={minute}
+                        size="icon"
+                        variant={
+                          selectedMinute === minute
+                            ? "default"
+                            : "ghost"
+                        }
+                        className="sm:w-full shrink-0 aspect-square"
+                        onClick={() => handleMinuteSelect(minute)}
+                      >
+                        {String(minute).padStart(2, '0')}
+                      </Button>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" className="sm:hidden" />
+                </ScrollArea>
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+              </div>
+              <div className="flex flex-col flex-1 min-w-0 basis-1/3 relative">
+                <div className="text-xs text-muted-foreground px-2 py-1 font-medium flex-shrink-0">Second</div>
+                <ScrollArea className="flex-1 w-full h-full">
+                  <div className="flex sm:flex-col p-2 pb-12">
+                    {seconds.map((second) => (
+                      <Button
+                        key={second}
+                        size="icon"
+                        variant={
+                          selectedSecond === second
+                            ? "default"
+                            : "ghost"
+                        }
+                        className="sm:w-full shrink-0 aspect-square"
+                        onClick={() => handleSecondSelect(second)}
+                      >
+                        {String(second).padStart(2, '0')}
+                      </Button>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" className="sm:hidden" />
+                </ScrollArea>
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+              </div>
             </div>
           </div>
         </PopoverContent>
