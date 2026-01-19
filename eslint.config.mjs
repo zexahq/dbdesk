@@ -24,8 +24,8 @@ export default defineConfig(
       'react-hooks': eslintPluginReactHooks
     },
     rules: {
-      ...eslintPluginReactHooks.configs.recommended.rules,
-      'react-hooks/exhaustive-deps': 'off'
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'off',
     }
   },
   {
