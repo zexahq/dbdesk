@@ -30,10 +30,6 @@ interface SimpleTableProps {
 const DEFAULT_COLUMN_WIDTH = 200
 
 function getSimpleColumns(columnNames: string[]): ColumnDef<QueryResultRow>[] {
-  if (!columnNames || columnNames.length === 0) {
-    return []
-  }
-
   return columnNames.map((columnName) => ({
     id: columnName,
     accessorKey: columnName,
@@ -61,7 +57,7 @@ export function SimpleTable({ columns, data }: SimpleTableProps) {
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
 
   const table = useReactTable({
-    data: data ?? [],
+    data: data,
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
@@ -74,7 +70,7 @@ export function SimpleTable({ columns, data }: SimpleTableProps) {
 
   const rowModel = table.getRowModel()
   const rows = rowModel.rows
-  const hasRows = rows?.length > 0
+  const hasRows = rows.length > 0
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
