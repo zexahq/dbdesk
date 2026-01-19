@@ -1,5 +1,5 @@
 import { DATA_TYPES } from '@common/constants'
-import type { ColumnDefinition, TableInfo } from '@common/types'
+import type { ColumnDefinition } from '@common/types'
 import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu,
@@ -27,8 +27,6 @@ interface TableDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   schema: string
-  mode: 'create' | 'edit'
-  existingTable?: TableInfo
   onSubmit: (tableName: string, columns: ColumnDefinition[]) => void
   isPending?: boolean
 }
@@ -37,8 +35,6 @@ export const TableDrawer = ({
   open,
   onOpenChange,
   schema,
-  mode,
-  existingTable,
   onSubmit,
   isPending = false
 }: TableDrawerProps) => {
@@ -49,24 +45,13 @@ export const TableDrawer = ({
   const [editingForeignKey, setEditingForeignKey] = useState<number | null>(null)
 
   useEffect(() => {
-    if (mode === 'edit' && existingTable) {
-      setTableName(existingTable.name)
-      setColumns(
-        existingTable.columns.map((col) => ({
-          name: col.name,
-          type: col.type,
-          nullable: col.nullable,
-          defaultValue: col.defaultValue?.toString(),
-          isPrimaryKey: col.isPrimaryKey,
-          isUnique: false,
-          autoIncrement: false
-        }))
-      )
-    } else if (mode === 'create') {
+    if (open) {
       setTableName('')
-      setColumns([])
+      setColumns([
+        { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, autoIncrement: true }
+      ])
     }
-  }, [mode, existingTable, open])
+  }, [open])
 
   const addColumn = () => {
     // Find a unique column name that doesn't conflict with existing ones (case-insensitive)
@@ -160,7 +145,7 @@ export const TableDrawer = ({
         <div className="flex flex-col border-b">
           <div className="flex items-center justify-between px-6 py-4">
             <h2 className="text-lg font-semibold">
-              {mode === 'create' ? 'Create New Table' : 'Edit Table'}
+              Create New Table
             </h2>
             <span className="text-sm text-muted-foreground">
               Schema: <span className="font-medium">{schema}</span>
@@ -175,7 +160,7 @@ export const TableDrawer = ({
               value={tableName}
               onChange={(e) => setTableName(e.target.value)}
               placeholder="Enter table name"
-              disabled={mode === 'edit' || isPending}
+              disabled={isPending}
               className="h-9 ring-0! outline-none! border-border focus:border-white! focus-visible:border-white! transition"
             />
           </div>
@@ -468,7 +453,7 @@ export const TableDrawer = ({
             </Button>
           </SheetClose>
           <Button onClick={handleSubmit} disabled={!isValid || isPending} className="h-9">
-            {isPending ? 'Saving...' : mode === 'create' ? 'Create Table' : 'Update Table'}
+            {isPending ? 'Saving...' : 'Create Table'}
           </Button>
         </SheetFooter>
       </SheetContent>

@@ -1,6 +1,4 @@
 import type {
-  AlterTableOptions,
-  AlterTableResult,
   ColumnDefinition,
   CreateTableOptions,
   CreateTableResult,
@@ -569,68 +567,6 @@ export class MySQLAdapter implements SQLAdapter {
     } catch (error) {
       throw new Error(`Failed to create table: ${error}`)
     }
-  }
-
-  public async alterTable(options: AlterTableOptions): Promise<AlterTableResult> {
-    const pool = this.ensurePool()
-    const { schema, table, newName, columnsToAdd, columnsToModify, columnsToRename, columnsToDrop } =
-      options
-
-    const alterStatements: string[] = []
-
-    // Rename table
-    if (newName) {
-      const renameQuery = `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} RENAME TO ${quoteIdentifier(newName)}`
-      try {
-        await pool.query(renameQuery)
-      } catch (error) {
-        throw new Error(`Failed to rename table: ${error}`)
-      }
-    }
-
-    // Add columns
-    if (columnsToAdd && columnsToAdd.length > 0) {
-      columnsToAdd.forEach((col) => {
-        alterStatements.push(`ADD COLUMN ${this.buildColumnDefinition(col)}`)
-      })
-    }
-
-    // Modify columns
-    if (columnsToModify && columnsToModify.length > 0) {
-      columnsToModify.forEach((col) => {
-        alterStatements.push(`MODIFY COLUMN ${this.buildColumnDefinition(col)}`)
-      })
-    }
-
-    // Rename columns
-    if (columnsToRename?.length) {
-      columnsToRename.forEach(({ oldName, newName }) => {
-        alterStatements.push(
-          `RENAME COLUMN ${quoteIdentifier(oldName)} TO ${quoteIdentifier(newName)}`
-        )
-      })
-    }
-
-
-    // Drop columns
-    if (columnsToDrop && columnsToDrop.length > 0) {
-      columnsToDrop.forEach((colName) => {
-        alterStatements.push(`DROP COLUMN ${quoteIdentifier(colName)}`)
-      })
-    }
-
-    if (alterStatements.length > 0) {
-      const actualTableName = newName || table
-      const query = `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(actualTableName)} ${alterStatements.join(', ')}`
-
-      try {
-        await pool.query(query)
-      } catch (error) {
-        throw new Error(`Failed to alter table: ${error}`)
-      }
-    }
-
-    return { success: true }
   }
 
   private buildColumnDefinition(col: ColumnDefinition): string {

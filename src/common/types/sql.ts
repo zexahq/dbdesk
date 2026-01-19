@@ -265,25 +265,7 @@ export interface CreateTableResult {
   success: boolean
 }
 
-/**
- * Options for altering an existing table
- */
-export interface AlterTableOptions {
-  schema: string
-  table: string
-  newName?: string
-  columnsToAdd?: ColumnDefinition[]
-  columnsToModify?: ColumnDefinition[]
-  columnsToRename?: Array<{ oldName: string; newName: string }>
-  columnsToDrop?: string[]
-}
 
-/**
- * Result of altering a table
- */
-export interface AlterTableResult {
-  success: boolean
-}
 
 /**
  * Schema with its tables
@@ -357,8 +339,5 @@ export interface SQLAdapter extends BaseAdapter {
    */
   createTable(options: CreateTableOptions): Promise<CreateTableResult>
 
-  /**
-   * Alter an existing table in the database
-   */
-  alterTable(options: AlterTableOptions): Promise<AlterTableResult>
+
 }

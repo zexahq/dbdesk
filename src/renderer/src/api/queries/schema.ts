@@ -1,6 +1,4 @@
 import type {
-  AlterTableOptions,
-  AlterTableResult,
   ColumnDefinition,
   CreateTableResult,
   DeleteTableResult,
@@ -226,33 +224,6 @@ export function useCreateTable(connectionId?: string) {
   })
 }
 
-export function useAlterTable(connectionId?: string) {
-  return useMutation({
-    mutationFn: (options: Omit<AlterTableOptions, 'connectionId'>): Promise<AlterTableResult> => {
-      if (!connectionId) {
-        throw new Error('Connection ID is required to alter table')
-      }
-      return dbdeskClient.alterTable(connectionId, options)
-    },
-    onSuccess: (result, variables, _ctx, client) => {
-      if (result.success) {
-        const tableName = variables.newName || variables.table
-        toast.success(`Table ${variables.schema}.${tableName} updated successfully`)
-        client.client.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
-        client.client.invalidateQueries({
-          queryKey: keys.tableInfo(connectionId!, variables.schema, variables.table)
-        })
-        // Refresh table data to reflect structure changes
-        client.client.invalidateQueries({
-          queryKey: keys.tableData(connectionId!, variables.schema, variables.table, {})
-        })
-      }
-    },
-    onError: (error) => {
-      toast.error('Failed to alter table', { description: cleanErrorMessage(error.message) })
-    }
-  })
-}
 export function useInsertTableRow(connectionId?: string, schema?: string, table?: string) {
   return useMutation({
     mutationFn: (values: Record<string, unknown>): Promise<InsertTableRowResult> => {

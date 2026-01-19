@@ -1,5 +1,4 @@
 import type {
-  AlterTableResult,
   ConnectionProfile,
   ConnectionWorkspace,
   CreateTableResult,
@@ -451,42 +450,6 @@ export const registerIpcHandlers = () => {
     const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
 
     return adapter.createTable({ schema, table, columns: finalColumns as never[] })
-  })
-
-  safeHandle('table:alter', async (payload): Promise<AlterTableResult> => {
-    const { connectionId, schema, table, newName, columnsToAdd, columnsToModify, columnsToRename, columnsToDrop } =
-      payload as {
-        connectionId: string
-        schema: string
-        table: string
-        newName?: string
-        columnsToAdd?: unknown[]
-        columnsToModify?: unknown[]
-        columnsToRename?: Array<{ oldName: string; newName: string }>
-        columnsToDrop?: string[]
-      }
-
-    if (!connectionId || typeof connectionId !== 'string') {
-      throw new ValidationError('connectionId is required')
-    }
-    if (!schema || typeof schema !== 'string') {
-      throw new ValidationError('schema is required')
-    }
-    if (!table || typeof table !== 'string') {
-      throw new ValidationError('table is required')
-    }
-
-    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
-
-    return adapter.alterTable({
-      schema,
-      table,
-      newName,
-      columnsToAdd: columnsToAdd as never[],
-      columnsToModify: columnsToModify as never[],
-      columnsToRename,
-      columnsToDrop
-    })
   })
 
   // Workspace handlers

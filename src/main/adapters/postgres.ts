@@ -1,6 +1,4 @@
 import type {
-  AlterTableOptions,
-  AlterTableResult,
   ColumnDefinition,
   CreateTableOptions,
   CreateTableResult,
@@ -575,106 +573,6 @@ export class PostgresAdapter implements SQLAdapter {
     } catch (error) {
       throw new Error(`Failed to create table: ${error}`)
     }
-  }
-
-  public async alterTable(options: AlterTableOptions): Promise<AlterTableResult> {
-    const pool = this.ensurePool()
-    const { schema, table, newName, columnsToAdd, columnsToModify, columnsToRename, columnsToDrop } =
-      options
-
-    const alterStatements: string[] = []
-
-    // Fetch existing column types to generate proper USING clauses for timestamp conversions
-    let existingColumns: Array<{ name: string; data_type: string }> = []
-    try {
-      const result = await pool.query<{ column_name: string; data_type: string }>(
-        `select column_name, data_type from information_schema.columns where table_schema = $1 and table_name = $2`,
-        [schema, table]
-      )
-      existingColumns = result.rows.map((r) => ({ name: r.column_name, data_type: r.data_type }))
-    } catch {
-      // If we fail to fetch, proceed without USING clauses; PostgreSQL will error if needed
-      existingColumns = []
-    }
-
-    // Rename table
-    if (newName) {
-      const renameQuery = `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} RENAME TO ${quoteIdentifier(newName)}`
-      try {
-        await pool.query(renameQuery)
-      } catch (error) {
-        throw new Error(`Failed to rename table: ${error}`)
-      }
-    }
-
-    // Add columns
-    if (columnsToAdd && columnsToAdd.length > 0) {
-      columnsToAdd.forEach((col) => {
-        alterStatements.push(`ADD COLUMN ${this.buildColumnDefinition(col)}`)
-      })
-    }
-
-    // Modify columns (PostgreSQL uses ALTER COLUMN)
-    if (columnsToModify && columnsToModify.length > 0) {
-      columnsToModify.forEach((col) => {
-        const colName = quoteIdentifier(col.name)
-        const targetType = col.type.toUpperCase()
-        const existing = existingColumns.find((c) => c.name === col.name)
-        const existingType = existing?.data_type?.toUpperCase() ?? ''
-
-        // Build TYPE change with USING for timestamp conversions
-        if (
-          (existingType === 'TIMESTAMP WITHOUT TIME ZONE' && targetType === 'TIMESTAMP WITH TIME ZONE') ||
-          (existingType === 'TIMESTAMP WITH TIME ZONE' && targetType === 'TIMESTAMP WITHOUT TIME ZONE')
-        ) {
-          const usingClause =
-            targetType === 'TIMESTAMP WITH TIME ZONE'
-              ? `USING ${colName} AT TIME ZONE 'UTC'`
-              : `USING ${colName} AT TIME ZONE 'UTC'`
-          alterStatements.push(`ALTER COLUMN ${colName} TYPE ${targetType} ${usingClause}`)
-        } else {
-          alterStatements.push(`ALTER COLUMN ${colName} TYPE ${targetType}`)
-        }
-
-        if (col.nullable === false) {
-          alterStatements.push(`ALTER COLUMN ${colName} SET NOT NULL`)
-        } else if (col.nullable === true) {
-          alterStatements.push(`ALTER COLUMN ${colName} DROP NOT NULL`)
-        }
-        if (col.defaultValue !== undefined) {
-          alterStatements.push(`ALTER COLUMN ${colName} SET DEFAULT ${col.defaultValue}`)
-        }
-      })
-    }
-
-    // Rename columns
-    if (columnsToRename && columnsToRename.length > 0) {
-      columnsToRename.forEach(({ oldName, newName }) => {
-        alterStatements.push(
-          `RENAME COLUMN ${quoteIdentifier(oldName)} TO ${quoteIdentifier(newName)}`
-        )
-      })
-    }
-
-    // Drop columns
-    if (columnsToDrop && columnsToDrop.length > 0) {
-      columnsToDrop.forEach((colName) => {
-        alterStatements.push(`DROP COLUMN ${quoteIdentifier(colName)}`)
-      })
-    }
-
-    if (alterStatements.length > 0) {
-      const actualTableName = newName || table
-      const query = `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(actualTableName)} ${alterStatements.join(', ')}`
-
-      try {
-        await pool.query(query)
-      } catch (error) {
-        throw new Error(`Failed to alter table: ${error}`)
-      }
-    }
-
-    return { success: true }
   }
 
   private buildColumnDefinition(col: ColumnDefinition): string {

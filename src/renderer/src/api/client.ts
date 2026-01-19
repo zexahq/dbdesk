@@ -1,6 +1,4 @@
 import type {
-  AlterTableOptions,
-  AlterTableResult,
   ColumnDefinition,
   ConnectionProfile,
   ConnectionWorkspace,
@@ -208,17 +206,9 @@ export const dbdeskClient = {
     return getDbdesk().createTable(connectionId, schema, table, columns)
   },
 
-  async alterTable(
-    connectionId: string,
-    options: Omit<AlterTableOptions, 'connectionId'>
-  ): Promise<AlterTableResult> {
-    return getDbdesk().alterTable(connectionId, options)
-  }
 }
 
 export type {
-  AlterTableOptions,
-  AlterTableResult,
   ColumnDefinition,
   ConnectionProfile,
   CreateTableResult,

@@ -416,7 +416,6 @@ function SchemaTree({ connectionId, schema, tables, activeTab, onTableClick }: S
       <TableDrawer
         open={createTableDrawerOpen}
         onOpenChange={setCreateTableDrawerOpen}
-        mode="create"
         schema={schema}
         onSubmit={handleCreateTable}
         isPending={createTableMutation.isPending}
