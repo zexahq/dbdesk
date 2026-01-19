@@ -49,7 +49,6 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   // For other columns, memoize based on cell reference
   const renderedCell = useMemo(
     () => flexRender(cell.column.columnDef.cell, cell.getContext()),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     isSelectColumn ? [cell, cell.row.getIsSelected()] : [cell]
   )
 
