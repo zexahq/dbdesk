@@ -592,7 +592,7 @@ export class PostgresAdapter implements SQLAdapter {
         [schema, table]
       )
       existingColumns = result.rows.map((r) => ({ name: r.column_name, data_type: r.data_type }))
-    } catch (e) {
+    } catch {
       // If we fail to fetch, proceed without USING clauses; PostgreSQL will error if needed
       existingColumns = []
     }
