@@ -4,6 +4,7 @@ import loader from '@monaco-editor/loader'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 
+
 import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 
