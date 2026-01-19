@@ -3,7 +3,7 @@ import { useDeleteTableRows, useTableData, useUpdateTableCell } from '@renderer/
 import { toast } from '@renderer/lib/toast'
 import type { TableTab } from '@renderer/store/tab-store'
 import { useTabStore } from '@renderer/store/tab-store'
-import { useQueryClient } from '@tanstack/react-query'
+import { queryClient } from '@renderer/lib/query-client'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { useCallback, useEffect, useState } from 'react'
 import { SqlTable } from '../table'
@@ -17,7 +17,6 @@ interface TableViewProps {
 }
 
 export function TableView({ profile, activeTab }: TableViewProps) {
-  const queryClient = useQueryClient()
   const updateTableTab = useTabStore((s) => s.updateTableTab)
   const makeTabPermanent = useTabStore((s) => s.makeTabPermanent)
 

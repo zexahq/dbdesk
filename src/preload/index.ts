@@ -1,6 +1,7 @@
-import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { contextBridge } from 'electron'
 import { dbdeskAPI } from './dbdesk-api'
+import { windowAPI } from './window-api'
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
@@ -9,6 +10,7 @@ if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('dbdesk', dbdeskAPI)
+    contextBridge.exposeInMainWorld('windowApi', windowAPI)
   } catch (error) {
     console.error(error)
   }
@@ -17,4 +19,6 @@ if (process.contextIsolated) {
   window.electron = electronAPI
   // @ts-ignore (define in dts)
   window.dbdesk = dbdeskAPI
+  // @ts-ignore (define in dts)
+  window.windowApi = windowAPI
 }
