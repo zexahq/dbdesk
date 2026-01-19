@@ -29,33 +29,6 @@ function createWindow() {
      mainWindow.show()
    })
 
-   // Window control handlers
-   ipcMain.handle('window:minimize', () => {
-     mainWindow.minimize()
-   })
-
-   ipcMain.handle('window:maximize', () => {
-     if (mainWindow.isMaximized()) {
-       mainWindow.unmaximize()
-     } else {
-       mainWindow.maximize()
-     }
-   })
-
-   ipcMain.handle('window:close', () => {
-     mainWindow.close()
-   })
-
-   ipcMain.handle('window:move', (_, { deltaX, deltaY }) => {
-     const bounds = mainWindow.getBounds()
-     mainWindow.setBounds({
-       x: bounds.x + deltaX,
-       y: bounds.y + deltaY,
-       width: bounds.width,
-       height: bounds.height
-     })
-   })
-
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -197,6 +170,41 @@ app.whenReady().then(() => {
     })
 
     optimizer.watchWindowShortcuts(window)
+  })
+
+  // Register window control handlers
+  ipcMain.handle('window:minimize', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    window?.minimize()
+  })
+
+  ipcMain.handle('window:maximize', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return
+
+    if (window.isMaximized()) {
+      window.unmaximize()
+    } else {
+      window.maximize()
+    }
+  })
+
+  ipcMain.handle('window:close', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    window?.close()
+  })
+
+  ipcMain.handle('window:move', (event, { deltaX, deltaY }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return
+
+    const bounds = window.getBounds()
+    window.setBounds({
+      x: bounds.x + deltaX,
+      y: bounds.y + deltaY,
+      width: bounds.width,
+      height: bounds.height
+    })
   })
 
   registerIpcHandlers()
