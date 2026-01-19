@@ -135,7 +135,11 @@ export const dbdeskAPI = {
   /**
    * Execute a SQL query on a connected database
    */
-  async runQuery(connectionId: string, query: string, options?: { limit?: number; offset?: number }): Promise<QueryResult> {
+  async runQuery(
+    connectionId: string,
+    query: string,
+    options?: { limit?: number; offset?: number }
+  ): Promise<QueryResult> {
     if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
       throw new Error('Connection ID is required')
     }
@@ -402,7 +406,12 @@ export const dbdeskAPI = {
   /**
    * Save a new query for a connection
    */
-  async saveQuery(connectionId: string, id: string, name: string, content: string): Promise<SavedQuery> {
+  async saveQuery(
+    connectionId: string,
+    id: string,
+    name: string,
+    content: string
+  ): Promise<SavedQuery> {
     if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
       throw new Error('Connection ID is required')
     }
@@ -552,7 +561,11 @@ export const dbdeskAPI = {
   /**
    * Delete a table from the database
    */
-  async deleteTable(connectionId: string, schema: string, table: string): Promise<DeleteTableResult> {
+  async deleteTable(
+    connectionId: string,
+    schema: string,
+    table: string
+  ): Promise<DeleteTableResult> {
     if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
       throw new Error('Connection ID is required')
     }
@@ -621,6 +634,25 @@ export const dbdeskAPI = {
       connectionId: connectionId.trim(),
       ...options
     })
+  },
+
+  /**
+   * Window control methods
+   */
+  async minimizeWindow(): Promise<void> {
+    return ipcRenderer.invoke('window:minimize')
+  },
+
+  async maximizeWindow(): Promise<void> {
+    return ipcRenderer.invoke('window:maximize')
+  },
+
+  async closeWindow(): Promise<void> {
+    return ipcRenderer.invoke('window:close')
+  },
+
+  async moveWindow(deltaX: number, deltaY: number): Promise<void> {
+    return ipcRenderer.invoke('window:move', { deltaX, deltaY })
   }
 }
 
