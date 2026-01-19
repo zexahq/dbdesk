@@ -15,7 +15,7 @@ interface AddRowDialogProps {
   tableName?: string
 }
 
-export function AddRowDialog({
+export function AddRowDrawer({
   open,
   onOpenChange,
   columns,
