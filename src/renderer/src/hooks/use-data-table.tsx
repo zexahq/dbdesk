@@ -39,6 +39,7 @@ interface UseDataTableProps<TData, TValue = unknown>
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
+const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
 
 export function useDataTable<TData, TValue = unknown>({
   columns,
@@ -627,6 +628,72 @@ export function useDataTable<TData, TValue = unknown>({
       container.removeEventListener('keydown', handleKeyDown)
     }
   }, [])
+
+  // Auto-focus table container on arrow key press (global listener)
+  // Use refs to access latest state without recreating the effect
+  const focusedCellRef = useRef(focusedCell)
+  const originRef = useRef(origin)
+  const navigableColumnIdsRef = useRef(navigableColumnIds)
+  const dataLengthRef = useRef(data.length)
+
+  focusedCellRef.current = focusedCell
+  originRef.current = origin
+  navigableColumnIdsRef.current = navigableColumnIds
+  dataLengthRef.current = data.length
+
+  useEffect(() => {
+    const container = tableContainerRef.current
+    if (!container) return
+
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      // Only handle arrow keys
+      if (!ARROW_KEYS.has(event.key)) return
+
+      // Skip if already focused on the table container
+      if (document.activeElement === container) return
+
+      // Skip if focus is on an input, textarea, or other editable element
+      const activeElement = document.activeElement as HTMLElement | null
+      if (
+        activeElement?.tagName === 'INPUT' ||
+        activeElement?.tagName === 'TEXTAREA' ||
+        activeElement?.isContentEditable ||
+        activeElement?.closest('[role="dialog"]') ||
+        activeElement?.closest('[role="menu"]') ||
+        activeElement?.closest('[role="listbox"]') ||
+        activeElement?.closest('[data-radix-popper-content-wrapper]')
+      ) {
+        return
+      }
+
+      // Prevent default scroll behavior and handle the event ourselves
+      event.preventDefault()
+
+      // Focus the table container
+      container.focus()
+
+      // If there's no current position, initialize focus to the first cell
+      const currentPosition = focusedCellRef.current || originRef.current
+      const hasData = dataLengthRef.current > 0
+      const hasColumns = navigableColumnIdsRef.current.length > 0
+      if (!currentPosition && hasData && hasColumns) {
+        const firstColumnId = navigableColumnIdsRef.current[0]
+        if (firstColumnId) {
+          focusCell(0, firstColumnId)
+          return
+        }
+      }
+
+      // Manually trigger the keyboard handler since the event won't re-dispatch
+      onKeyDownRef.current?.(event)
+    }
+
+    window.addEventListener('keydown', handleGlobalKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown)
+    }
+  }, [focusCell])
 
   return {
     table,
