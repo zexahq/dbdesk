@@ -11,10 +11,18 @@ import {
   type Updater,
   useReactTable
 } from '@tanstack/react-table'
-import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 
 import type { QueryResultRow } from '@renderer/api/client'
 import { toast } from '@renderer/lib/toast'
+import { useTabStore } from '@renderer/store/tab-store'
 
 interface UseDataTableProps<TData, TValue = unknown>
   extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
@@ -26,6 +34,8 @@ interface UseDataTableProps<TData, TValue = unknown>
   onRowSelectionChange: OnChangeFn<RowSelectionState>
   // Optional sorting support
   sortRules?: TableSortRule[]
+  // Tab ID for origin tracking (optional - only for table tabs)
+  tabId?: string
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
@@ -38,11 +48,25 @@ export function useDataTable<TData, TValue = unknown>({
   rowSelection,
   onRowSelectionChange,
   sortRules,
+  tabId,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const tableRef = useRef<ReturnType<typeof useReactTable<TData>>>(null)
   const rowMapRef = useRef<Map<number, HTMLTableRowElement>>(new Map())
+
+  // Access origin from tab store directly (avoids prop drilling)
+  // Memoize selector to prevent unnecessary re-renders from object reference changes
+  const originSelector = useCallback(
+    (s: ReturnType<typeof useTabStore.getState>) => {
+      if (!tabId) return undefined
+      const tab = s.tabs.find((t) => t.id === tabId)
+      return tab?.kind === 'table' ? tab.origin : undefined
+    },
+    [tabId]
+  )
+  const origin = useTabStore(originSelector)
+  const updateTableOrigin = useTabStore((s) => s.updateTableOrigin)
 
   // All state is local - no Zustand syncing for ephemeral UI state
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
@@ -64,6 +88,62 @@ export function useDataTable<TData, TValue = unknown>({
   const navigableColumnIds = useMemo(() => {
     return columnIds.filter((c) => !NON_NAVIGABLE_COLUMN_IDS.includes(c))
   }, [columnIds])
+
+  // Track if we've initialized the origin for this tab
+  const hasInitializedOrigin = useRef(false)
+
+  // Initialize origin on first render or when data changes
+  useEffect(() => {
+    if (data.length > 0 && navigableColumnIds.length > 0 && tabId) {
+      if (!origin && !hasInitializedOrigin.current) {
+        // Initialize origin to first navigable cell
+        const firstColumnId = navigableColumnIds[0]
+        if (firstColumnId) {
+          hasInitializedOrigin.current = true
+          const newOrigin = { rowIndex: 0, columnId: firstColumnId }
+          updateTableOrigin(tabId, newOrigin)
+          setFocusedCell(newOrigin)
+        }
+      } else if (origin) {
+        // Validate origin is within bounds before restoring
+        const isValidRow = origin.rowIndex < data.length
+        const isValidColumn = navigableColumnIds.includes(origin.columnId)
+
+        if (isValidRow && isValidColumn) {
+          // Only update focusedCell if it differs from origin (avoid unnecessary re-renders)
+          setFocusedCell((prev) => {
+            if (prev?.rowIndex === origin.rowIndex && prev?.columnId === origin.columnId) {
+              return prev
+            }
+            return origin
+          })
+        } else {
+          // Reset to first valid cell if origin is out of bounds
+          const firstColumnId = navigableColumnIds[0]
+          if (firstColumnId) {
+            const validOrigin = {
+              rowIndex: Math.min(origin.rowIndex, data.length - 1),
+              columnId: isValidColumn ? origin.columnId : firstColumnId
+            }
+            updateTableOrigin(tabId, validOrigin)
+            setFocusedCell(validOrigin)
+          }
+        }
+      }
+    }
+  }, [data.length, navigableColumnIds, origin, tabId, updateTableOrigin])
+
+  // Reset initialization flag when tabId changes
+  useEffect(() => {
+    hasInitializedOrigin.current = false
+  }, [tabId])
+
+  // Clear origin when data becomes empty
+  useEffect(() => {
+    if (data.length === 0 && tabId && origin) {
+      setFocusedCell(null)
+    }
+  }, [data.length, tabId, origin])
 
   // Handle row selection change (keep separate from cell selection)
   const handleRowSelectionChange = useCallback(
@@ -210,6 +290,11 @@ export function useDataTable<TData, TValue = unknown>({
       setFocusedCell({ rowIndex, columnId })
       setEditingCell(null)
 
+      // Update origin to current focused cell
+      if (tabId) {
+        updateTableOrigin(tabId, { rowIndex, columnId })
+      }
+
       // Focus the container if needed
       if (tableContainerRef.current && document.activeElement !== tableContainerRef.current) {
         tableContainerRef.current.focus()
@@ -223,16 +308,18 @@ export function useDataTable<TData, TValue = unknown>({
         scrollCellIntoView(rowIndex, columnId, scrollDirection)
       })
     },
-    [onTableInteract, scrollCellIntoView]
+    [onTableInteract, scrollCellIntoView, tabId, updateTableOrigin]
   )
 
   // Navigate cell - use refs for state to avoid recreating callback
   const navigateCellRef = useRef<(direction: NavigationDirection) => void>(null)
 
   navigateCellRef.current = (direction: NavigationDirection) => {
-    if (!focusedCell) return
+    // Use origin as the starting point, or focusedCell as fallback
+    const startPosition = origin || focusedCell
+    if (!startPosition) return
 
-    const { rowIndex, columnId } = focusedCell
+    const { rowIndex, columnId } = startPosition
     const currentColIndex = navigableColumnIds.indexOf(columnId)
     const rows = table.getRowModel().rows
     const rowCount = rows.length
@@ -426,18 +513,20 @@ export function useDataTable<TData, TValue = unknown>({
 
     if (editingCell) return
 
-    if (!focusedCell) return
+    // Check if we have a position to navigate from (either focusedCell or origin)
+    const currentPosition = focusedCell || origin
+    if (!currentPosition) return
 
     let direction: NavigationDirection | null = null
 
     // Ctrl+C to copy focused cell content
     if (key === 'c' && isCtrlPressed) {
-      if (focusedCell) {
+      if (currentPosition) {
         event.preventDefault()
         const rows = tableRef2.current.getRowModel().rows
-        const row = rows[focusedCell.rowIndex]
+        const row = rows[currentPosition.rowIndex]
         if (row) {
-          const cellValue = row.getValue(focusedCell.columnId)
+          const cellValue = row.getValue(currentPosition.columnId)
           const textValue = cellValue === null || cellValue === undefined ? '' : String(cellValue)
           navigator.clipboard
             .writeText(textValue)
@@ -454,11 +543,11 @@ export function useDataTable<TData, TValue = unknown>({
 
     // Delete to clear focused cell value
     if (key === 'Delete') {
-      if (focusedCell) {
+      if (currentPosition) {
         event.preventDefault()
         onDataUpdate({
-          rowIndex: focusedCell.rowIndex,
-          columnId: focusedCell.columnId,
+          rowIndex: currentPosition.rowIndex,
+          columnId: currentPosition.columnId,
           value: null
         })
       }
@@ -467,9 +556,9 @@ export function useDataTable<TData, TValue = unknown>({
 
     // Backspace to enter editing mode
     if (key === 'Backspace') {
-      if (focusedCell) {
+      if (currentPosition) {
         event.preventDefault()
-        onCellEditingStart(focusedCell.rowIndex, focusedCell.columnId)
+        onCellEditingStart(currentPosition.rowIndex, currentPosition.columnId)
       }
       return
     }
@@ -510,9 +599,9 @@ export function useDataTable<TData, TValue = unknown>({
         direction = shiftKey ? 'left' : 'right'
         break
       case 'Enter':
-        if (!editingCell) {
+        if (!editingCell && currentPosition) {
           event.preventDefault()
-          onCellEditingStart(focusedCell.rowIndex, focusedCell.columnId)
+          onCellEditingStart(currentPosition.rowIndex, currentPosition.columnId)
         }
         return
     }
