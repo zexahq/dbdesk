@@ -629,6 +629,26 @@ export function useDataTable<TData, TValue = unknown>({
     }
   }, [])
 
+  // Clear focus when clicking outside the table
+  useEffect(() => {
+    const container = tableContainerRef.current
+    if (!container) return
+
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
+      const target = event.target as Node
+      if (!container.contains(target)) {
+        setFocusedCell(null)
+        setEditingCell(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
   // Auto-focus table container on arrow key press (global listener)
   // Use refs to access latest state without recreating the effect
   const focusedCellRef = useRef(focusedCell)
