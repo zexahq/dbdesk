@@ -69,12 +69,10 @@ export function useDataTable<TData, TValue = unknown>({
   const origin = useTabStore(originSelector)
   const updateTableOrigin = useTabStore((s) => s.updateTableOrigin)
 
-  // All state is local - no Zustand syncing for ephemeral UI state
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({})
 
-  // Get column IDs
   const columnIds = useMemo(() => {
     return columns
       .map((c) => {
@@ -85,68 +83,98 @@ export function useDataTable<TData, TValue = unknown>({
       .filter((id): id is string => Boolean(id))
   }, [columns])
 
-  // Get navigable column IDs (exclude select and actions columns)
   const navigableColumnIds = useMemo(() => {
     return columnIds.filter((c) => !NON_NAVIGABLE_COLUMN_IDS.includes(c))
   }, [columnIds])
 
-  // Track if we've initialized the origin for this tab
   const hasInitializedOrigin = useRef(false)
+  const lastValidatedOriginRef = useRef<{ rowIndex: number; columnId: string } | null>(null)
 
-  // Initialize origin on first render or when data changes
+  // Initialize or validate the origin (persisted cell position) when data/columns change.
+  // This ensures the focused cell stays within bounds after data updates, and initializes
+  // to the first cell on first render. Origin is NOT in deps to avoid infinite loops
+  // when we update it inside this effect.
   useEffect(() => {
-    if (data.length > 0 && navigableColumnIds.length > 0 && tabId) {
-      if (!origin && !hasInitializedOrigin.current) {
-        // Initialize origin to first navigable cell
+    const currentOrigin = origin
+
+    if (data.length === 0) {
+      setFocusedCell(null)
+      if (tabId && currentOrigin) {
+        updateTableOrigin(tabId, undefined)
+      }
+      lastValidatedOriginRef.current = null
+      return
+    }
+
+    if (navigableColumnIds.length === 0 || !tabId) return
+
+    if (!currentOrigin && !hasInitializedOrigin.current) {
+      const firstColumnId = navigableColumnIds[0]
+      if (firstColumnId) {
+        hasInitializedOrigin.current = true
+        const newOrigin = { rowIndex: 0, columnId: firstColumnId }
+        lastValidatedOriginRef.current = newOrigin
+        updateTableOrigin(tabId, newOrigin)
+        setFocusedCell(newOrigin)
+      }
+    } else if (currentOrigin) {
+      if (
+        lastValidatedOriginRef.current?.rowIndex === currentOrigin.rowIndex &&
+        lastValidatedOriginRef.current?.columnId === currentOrigin.columnId
+      ) {
+        return
+      }
+
+      const isValidRow = currentOrigin.rowIndex < data.length
+      const isValidColumn = navigableColumnIds.includes(currentOrigin.columnId)
+
+      if (isValidRow && isValidColumn) {
+        lastValidatedOriginRef.current = currentOrigin
+        setFocusedCell((prev) => {
+          if (prev?.rowIndex === currentOrigin.rowIndex && prev?.columnId === currentOrigin.columnId) {
+            return prev
+          }
+          return currentOrigin
+        })
+      } else {
         const firstColumnId = navigableColumnIds[0]
         if (firstColumnId) {
-          hasInitializedOrigin.current = true
-          const newOrigin = { rowIndex: 0, columnId: firstColumnId }
-          updateTableOrigin(tabId, newOrigin)
-          setFocusedCell(newOrigin)
-        }
-      } else if (origin) {
-        // Validate origin is within bounds before restoring
-        const isValidRow = origin.rowIndex < data.length
-        const isValidColumn = navigableColumnIds.includes(origin.columnId)
-
-        if (isValidRow && isValidColumn) {
-          // Only update focusedCell if it differs from origin (avoid unnecessary re-renders)
-          setFocusedCell((prev) => {
-            if (prev?.rowIndex === origin.rowIndex && prev?.columnId === origin.columnId) {
-              return prev
-            }
-            return origin
-          })
-        } else {
-          // Reset to first valid cell if origin is out of bounds
-          const firstColumnId = navigableColumnIds[0]
-          if (firstColumnId) {
-            const validOrigin = {
-              rowIndex: Math.min(origin.rowIndex, data.length - 1),
-              columnId: isValidColumn ? origin.columnId : firstColumnId
-            }
-            updateTableOrigin(tabId, validOrigin)
-            setFocusedCell(validOrigin)
+          const validOrigin = {
+            rowIndex: Math.min(currentOrigin.rowIndex, data.length - 1),
+            columnId: isValidColumn ? currentOrigin.columnId : firstColumnId
           }
+          lastValidatedOriginRef.current = validOrigin
+          updateTableOrigin(tabId, validOrigin)
+          setFocusedCell(validOrigin)
         }
       }
     }
-  }, [data.length, navigableColumnIds, origin, tabId, updateTableOrigin])
+  }, [data.length, navigableColumnIds, tabId, updateTableOrigin])
 
-  // Reset initialization flag when tabId changes
+  // Sync focusedCell when origin changes externally (e.g., switching tabs restores
+  // the persisted position). Only updates if origin differs from what we last validated.
+  useEffect(() => {
+    if (!origin || !tabId) return
+
+    if (
+      lastValidatedOriginRef.current?.rowIndex !== origin.rowIndex ||
+      lastValidatedOriginRef.current?.columnId !== origin.columnId
+    ) {
+      const isValidRow = origin.rowIndex < data.length
+      const isValidColumn = navigableColumnIds.includes(origin.columnId)
+      if (isValidRow && isValidColumn) {
+        lastValidatedOriginRef.current = origin
+        setFocusedCell(origin)
+      }
+    }
+  }, [origin, tabId, data.length, navigableColumnIds])
+
+  // Reset initialization tracking when tabId changes so a new tab can initialize its origin.
   useEffect(() => {
     hasInitializedOrigin.current = false
+    lastValidatedOriginRef.current = null
   }, [tabId])
 
-  // Clear origin when data becomes empty
-  useEffect(() => {
-    if (data.length === 0 && tabId && origin) {
-      setFocusedCell(null)
-    }
-  }, [data.length, tabId, origin])
-
-  // Handle row selection change (keep separate from cell selection)
   const handleRowSelectionChange = useCallback(
     (updater: Updater<RowSelectionState>) => {
       const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater
@@ -155,7 +183,6 @@ export function useDataTable<TData, TValue = unknown>({
     [rowSelection, onRowSelectionChange]
   )
 
-  // Table instance
   const table = useReactTable({
     ...tableOptions,
     data,
@@ -180,7 +207,6 @@ export function useDataTable<TData, TValue = unknown>({
     tableRef.current = table
   }
 
-  // Scroll cell into view
   const scrollCellIntoView = useCallback(
     (rowIndex: number, columnId: string, direction?: NavigationDirection) => {
       const container = tableContainerRef.current
@@ -188,46 +214,35 @@ export function useDataTable<TData, TValue = unknown>({
 
       const rowElement = rowMapRef.current.get(rowIndex)
       if (!rowElement) {
-        // If row is not rendered yet, try to scroll to approximate position
-        // This is a fallback for when rows are not in the DOM
         const headerElement = container.querySelector('thead')
         const headerHeight = headerElement?.getBoundingClientRect().height ?? 0
-        const approximateRowHeight = 40 // Approximate row height
+        const approximateRowHeight = 40
         const targetScrollTop = rowIndex * approximateRowHeight
 
-        // Only scroll if the target is outside the viewport
         const viewportTop = container.scrollTop + headerHeight
         const viewportBottom = container.scrollTop + container.clientHeight
 
         if (targetScrollTop < viewportTop) {
-          // Scroll to show row at top
           container.scrollTop = Math.max(0, targetScrollTop - headerHeight)
         } else if (targetScrollTop + approximateRowHeight > viewportBottom) {
-          // Scroll to show row at bottom
           container.scrollTop = targetScrollTop + approximateRowHeight - container.clientHeight
         }
         return
       }
 
-      // Row is rendered, use scrollIntoView or manual calculation
       const headerElement = container.querySelector('thead')
       const headerHeight = headerElement?.getBoundingClientRect().height ?? 0
       const containerRect = container.getBoundingClientRect()
 
-      // Calculate viewport boundaries relative to the container's scroll position
       const viewportTop = container.scrollTop + headerHeight
       const viewportBottom = container.scrollTop + container.clientHeight
 
-      // Calculate row position relative to container's scroll position
       const rowTop = rowElement.offsetTop
       const rowBottom = rowTop + rowElement.offsetHeight
 
-      // Check if row is fully visible
       const isFullyVisible = rowTop >= viewportTop && rowBottom <= viewportBottom
 
       if (isFullyVisible) {
-        // Row is already visible, but we might need to scroll horizontally for the column
-        // Find the cell element and scroll it horizontally if needed
         const cellElement = rowElement.querySelector(
           `[data-column-id="${columnId}"]`
         ) as HTMLElement
@@ -237,38 +252,31 @@ export function useDataTable<TData, TValue = unknown>({
           const containerRight = containerRect.right
 
           if (cellRect.left < containerLeft) {
-            // Cell is to the left of viewport, scroll left
             container.scrollLeft = container.scrollLeft + (cellRect.left - containerLeft)
           } else if (cellRect.right > containerRight) {
-            // Cell is to the right of viewport, scroll right
             container.scrollLeft = container.scrollLeft + (cellRect.right - containerRight)
           }
         }
         return
       }
 
-      // Row is not fully visible, scroll it into view
       if (direction === 'down' || direction === 'pagedown' || direction === 'ctrl+end') {
-        // For downward navigation, align to bottom
         const scrollNeeded = rowBottom - viewportBottom
         if (scrollNeeded > 0) {
           container.scrollTop += scrollNeeded
         }
       } else if (direction === 'up' || direction === 'pageup' || direction === 'ctrl+home') {
-        // For upward navigation, align to top
         const scrollNeeded = viewportTop - rowTop
         if (scrollNeeded > 0) {
           container.scrollTop -= scrollNeeded
         }
       } else {
-        // For other directions (left, right, home, end), center the row
         const rowCenter = rowTop + rowElement.offsetHeight / 2
         const viewportCenter = viewportTop + (viewportBottom - viewportTop) / 2
         const scrollNeeded = rowCenter - viewportCenter
         container.scrollTop += scrollNeeded
       }
 
-      // Also handle horizontal scrolling for the column
       const cellElement = rowElement.querySelector(`[data-column-id="${columnId}"]`) as HTMLElement
       if (cellElement) {
         const cellRect = cellElement.getBoundingClientRect()
@@ -285,26 +293,21 @@ export function useDataTable<TData, TValue = unknown>({
     []
   )
 
-  // Focus cell
   const focusCell = useCallback(
     (rowIndex: number, columnId: string, scrollDirection?: NavigationDirection) => {
       setFocusedCell({ rowIndex, columnId })
       setEditingCell(null)
 
-      // Update origin to current focused cell
       if (tabId) {
         updateTableOrigin(tabId, { rowIndex, columnId })
       }
 
-      // Focus the container if needed
       if (tableContainerRef.current && document.activeElement !== tableContainerRef.current) {
         tableContainerRef.current.focus()
       }
 
-      // Notify parent about table interaction
       onTableInteract?.()
 
-      // Scroll cell into view after a brief delay to ensure DOM is updated
       requestAnimationFrame(() => {
         scrollCellIntoView(rowIndex, columnId, scrollDirection)
       })
@@ -312,11 +315,11 @@ export function useDataTable<TData, TValue = unknown>({
     [onTableInteract, scrollCellIntoView, tabId, updateTableOrigin]
   )
 
-  // Navigate cell - use refs for state to avoid recreating callback
+  // Cell navigation handler - calculates new position based on direction and moves focus.
+  // Handles all navigation directions: arrows, home/end, page up/down, ctrl+home/end.
   const navigateCellRef = useRef<(direction: NavigationDirection) => void>(null)
 
   navigateCellRef.current = (direction: NavigationDirection) => {
-    // Use origin as the starting point, or focusedCell as fallback
     const startPosition = origin || focusedCell
     if (!startPosition) return
 
@@ -373,7 +376,7 @@ export function useDataTable<TData, TValue = unknown>({
         const container = tableContainerRef.current
         if (container) {
           const containerHeight = container.clientHeight
-          const rowHeight = 40 // Approximate row height, can be made dynamic
+          const rowHeight = 40
           const pageSize = Math.floor(containerHeight / rowHeight) || 10
           newRowIndex = Math.max(0, rowIndex - pageSize)
         } else {
@@ -385,7 +388,7 @@ export function useDataTable<TData, TValue = unknown>({
         const container = tableContainerRef.current
         if (container) {
           const containerHeight = container.clientHeight
-          const rowHeight = 40 // Approximate row height, can be made dynamic
+          const rowHeight = 40
           const pageSize = Math.floor(containerHeight / rowHeight) || 10
           newRowIndex = Math.min(rowCount - 1, rowIndex + pageSize)
         } else {
@@ -400,11 +403,12 @@ export function useDataTable<TData, TValue = unknown>({
     }
   }
 
+  // Stable callback wrapper for cell navigation
   const navigateCell = useCallback((direction: NavigationDirection) => {
     navigateCellRef.current?.(direction)
   }, [])
 
-  // Start editing cell
+  // Start editing a cell - sets both focused and editing state
   const onCellEditingStart = useCallback(
     (rowIndex: number, columnId: string) => {
       setFocusedCell({ rowIndex, columnId })
@@ -414,10 +418,12 @@ export function useDataTable<TData, TValue = unknown>({
     [onTableInteract]
   )
 
-  // Stop editing cell - use ref to avoid stale closure
   const onCellEditingStopRef =
     useRef<(opts?: { moveToNextRow?: boolean; direction?: NavigationDirection }) => void>(null)
 
+  // Stop editing and optionally navigate:
+  // - moveToNextRow: moves focus to the next row in the same column
+  // - direction: navigates in the specified direction after stopping
   onCellEditingStopRef.current = (opts?: {
     moveToNextRow?: boolean
     direction?: NavigationDirection
@@ -451,17 +457,17 @@ export function useDataTable<TData, TValue = unknown>({
     []
   )
 
-  // Handle data updates - use ref to avoid table dependency
+  // Stable table reference for use in callbacks to avoid stale closures
   const tableRef2 = useRef(table)
   tableRef2.current = table
 
+  // Handle cell data updates - calls the provided onCellUpdate callback for single-cell changes
   const onDataUpdate = useCallback(
     (updates: UpdateCell | Array<UpdateCell>) => {
       const updateArray = Array.isArray(updates) ? updates : [updates]
 
       if (updateArray.length === 0) return
 
-      // If onCellUpdate is provided and this is a single cell update, call it
       if (onCellUpdate && updateArray.length === 1) {
         const update = updateArray[0]
         const rows = tableRef2.current.getRowModel().rows
@@ -477,26 +483,17 @@ export function useDataTable<TData, TValue = unknown>({
     [onCellUpdate, tableRef2]
   )
 
-  // Handle cell click - only focuses, never starts editing
+  // Single click focuses the cell (ignores right-click and select column)
   const onCellClick = useCallback(
     (rowIndex: number, columnId: string, event?: MouseEvent) => {
-      // Ignore right-click
-      if (event?.button === 2) {
-        return
-      }
-
-      // Ignore clicks on select column (let checkbox handle it)
-      if (columnId === 'select') {
-        return
-      }
-
-      // Always just focus on single click, never start editing
+      if (event?.button === 2) return
+      if (columnId === 'select') return
       focusCell(rowIndex, columnId)
     },
     [focusCell]
   )
 
-  // Handle cell double click - starts editing
+  // Double click starts editing mode for the cell
   const onCellDoubleClick = useCallback(
     (rowIndex: number, columnId: string, event?: MouseEvent) => {
       if (event?.defaultPrevented) return
@@ -505,22 +502,29 @@ export function useDataTable<TData, TValue = unknown>({
     [onCellEditingStart]
   )
 
-  // Handle keyboard events - use refs to get latest state
   const onKeyDownRef = useRef<(event: KeyboardEvent) => void>(null)
 
+  // Keyboard event handler for table navigation and cell actions:
+  // - Ctrl+C: copy cell content
+  // - Delete: clear cell value
+  // - Backspace: enter edit mode
+  // - Arrow keys: navigate cells
+  // - Home/End: navigate to row start/end (Ctrl+ for table start/end)
+  // - PageUp/PageDown: jump by visible page height
+  // - Tab/Shift+Tab: move left/right
+  // - Enter: start editing
+  // - Escape: clear focus
   onKeyDownRef.current = (event: KeyboardEvent) => {
     const { key, ctrlKey, metaKey, shiftKey } = event
     const isCtrlPressed = ctrlKey || metaKey
 
     if (editingCell) return
 
-    // Check if we have a position to navigate from (either focusedCell or origin)
     const currentPosition = focusedCell || origin
     if (!currentPosition) return
 
     let direction: NavigationDirection | null = null
 
-    // Ctrl+C to copy focused cell content
     if (key === 'c' && isCtrlPressed) {
       if (currentPosition) {
         event.preventDefault()
@@ -542,7 +546,6 @@ export function useDataTable<TData, TValue = unknown>({
       return
     }
 
-    // Delete to clear focused cell value
     if (key === 'Delete') {
       if (currentPosition) {
         event.preventDefault()
@@ -555,7 +558,6 @@ export function useDataTable<TData, TValue = unknown>({
       return
     }
 
-    // Backspace to enter editing mode
     if (key === 'Backspace') {
       if (currentPosition) {
         event.preventDefault()
@@ -564,7 +566,6 @@ export function useDataTable<TData, TValue = unknown>({
       return
     }
 
-    // Navigation keys
     switch (key) {
       case 'ArrowUp':
         direction = 'up'
@@ -600,7 +601,7 @@ export function useDataTable<TData, TValue = unknown>({
         direction = shiftKey ? 'left' : 'right'
         break
       case 'Enter':
-        if (!editingCell && currentPosition) {
+        if (currentPosition) {
           event.preventDefault()
           onCellEditingStart(currentPosition.rowIndex, currentPosition.columnId)
         }
@@ -613,7 +614,7 @@ export function useDataTable<TData, TValue = unknown>({
     }
   }
 
-  // Set up keyboard event listeners
+  // Attach keydown listener to the table container for navigation and cell actions.
   useEffect(() => {
     const container = tableContainerRef.current
     if (!container) return
@@ -629,7 +630,7 @@ export function useDataTable<TData, TValue = unknown>({
     }
   }, [])
 
-  // Clear focus when clicking outside the table
+  // Clear focus and editing state when clicking outside the table container.
   useEffect(() => {
     const container = tableContainerRef.current
     if (!container) return
@@ -649,8 +650,6 @@ export function useDataTable<TData, TValue = unknown>({
     }
   }, [])
 
-  // Auto-focus table container on arrow key press (global listener)
-  // Use refs to access latest state without recreating the effect
   const focusedCellRef = useRef(focusedCell)
   const originRef = useRef(origin)
   const navigableColumnIdsRef = useRef(navigableColumnIds)
@@ -661,18 +660,16 @@ export function useDataTable<TData, TValue = unknown>({
   navigableColumnIdsRef.current = navigableColumnIds
   dataLengthRef.current = data.length
 
+  // Global arrow key listener: auto-focuses the table when arrow keys are pressed
+  // (unless focus is on an input, dialog, menu, etc.) and triggers navigation.
   useEffect(() => {
     const container = tableContainerRef.current
     if (!container) return
 
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
-      // Only handle arrow keys
       if (!ARROW_KEYS.has(event.key)) return
-
-      // Skip if already focused on the table container
       if (document.activeElement === container) return
 
-      // Skip if focus is on an input, textarea, or other editable element
       const activeElement = document.activeElement as HTMLElement | null
       if (
         activeElement?.tagName === 'INPUT' ||
@@ -686,13 +683,9 @@ export function useDataTable<TData, TValue = unknown>({
         return
       }
 
-      // Prevent default scroll behavior and handle the event ourselves
       event.preventDefault()
-
-      // Focus the table container
       container.focus()
 
-      // If there's no current position, initialize focus to the first cell
       const currentPosition = focusedCellRef.current || originRef.current
       const hasData = dataLengthRef.current > 0
       const hasColumns = navigableColumnIdsRef.current.length > 0
@@ -704,7 +697,6 @@ export function useDataTable<TData, TValue = unknown>({
         }
       }
 
-      // Manually trigger the keyboard handler since the event won't re-dispatch
       onKeyDownRef.current?.(event)
     }
 

@@ -54,7 +54,7 @@ interface TabStore {
   addTableTab: (schema: string, table: string) => string
   updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => void
   makeTabPermanent: (tabId: string) => void
-  updateTableOrigin: (tabId: string, origin: { rowIndex: number; columnId: string }) => void
+  updateTableOrigin: (tabId: string, origin: { rowIndex: number; columnId: string } | undefined) => void
   getTableTabBySchemaTable: (schema: string, table: string) => TableTab | undefined
   findTableTabById: (tabId: string) => TableTab | undefined
 
@@ -182,7 +182,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     }))
   },
 
-  updateTableOrigin: (tabId: string, origin: { rowIndex: number; columnId: string }) => {
+  updateTableOrigin: (tabId: string, origin: { rowIndex: number; columnId: string } | undefined) => {
     set((state) => ({
       tabs: state.tabs.map((tab) =>
         tab.id === tabId && tab.kind === 'table' ? { ...tab, origin } : tab
