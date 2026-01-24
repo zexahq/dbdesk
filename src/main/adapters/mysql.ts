@@ -442,41 +442,8 @@ export class MySQLAdapter implements SQLAdapter {
     const pool = this.ensurePool()
     const { schema, table } = options
 
-    // Get full table information including constraints
-    const tableInfo = await this.introspectTable(schema, table)
-    const columnInfo = tableInfo.columns
-
-    // Build CREATE TABLE statement
-    const createTableLines: string[] = []
-    const quotedTableName = `${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
-
-    createTableLines.push(`CREATE TABLE ${quotedTableName} (`)
-
-    // Add column definitions
-    const columnDefs = columnInfo.map((col) => {
-      const parts = [`  ${quoteIdentifier(col.name)} ${col.type}`]
-
-      if (!col.nullable) parts.push('NOT NULL')
-      if (col.defaultValue !== null && col.defaultValue !== undefined) {
-        parts.push(`DEFAULT ${col.defaultValue}`)
-      }
-
-      return parts.join(' ')
-    })
-
-    createTableLines.push(columnDefs.join(',\n'))
-
-    // Add primary key constraint
-    const primaryKeys = columnInfo
-      .filter((col) => col.isPrimaryKey)
-      .map((col) => quoteIdentifier(col.name))
-    if (primaryKeys.length > 0) {
-      createTableLines.push(`,\n  PRIMARY KEY (${primaryKeys.join(', ')})`)
-    }
-
-    createTableLines.push(');')
-
-    const createTableStatement = createTableLines.join('\n')
+    // Get column information first
+    const columnInfo = await this.queryColumns(pool, schema, table)
 
     // Build the data query with all rows (no limit for export)
     const dataOptions: TableDataOptions = {
@@ -497,21 +464,15 @@ export class MySQLAdapter implements SQLAdapter {
       return `'${str}'`
     }
 
-    let statements: string[] = []
-    if (rows.length > 0 && columnInfo.length > 0) {
-      const columnList = columnInfo.map((col) => quoteIdentifier(col.name)).join(', ')
+    const columnList = columnInfo.map((col) => quoteIdentifier(col.name)).join(', ')
 
-      statements = rows.map((row) => {
-        const record = row as Record<string, unknown>
-        const values = columnInfo.map((col) => serializeSqlValue(record[col.name])).join(', ')
-        return `INSERT INTO ${quotedTableName} (${columnList}) VALUES (${values});`
-      })
-    }
+    const statements = rows.map((row) => {
+      const record = row as Record<string, unknown>
+      const values = columnInfo.map((col) => serializeSqlValue(record[col.name])).join(', ')
+      return `INSERT INTO ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnList}) VALUES (${values});`
+    })
 
-    const sql =
-      statements.length > 0
-        ? [createTableStatement, '', ...statements].join('\n')
-        : createTableStatement
+    const sql = statements.join('\n')
     const base64Content = Buffer.from(sql, 'utf-8').toString('base64')
     const filename = `${schema}.${table}.sql`
 
