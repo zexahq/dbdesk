@@ -12,7 +12,6 @@ import {
   SelectValue
 } from '@renderer/components/ui/select'
 import { useState } from 'react'
-import { DateTimePickerField } from '@renderer/components/ui/date-time-picker'
 
 interface AddRowDialogProps {
   open: boolean
@@ -90,25 +89,6 @@ function BooleanInputField({
   )
 }
 
-function DateInputField({
-  value,
-  onChange,
-  showTimezone = false
-}: {
-  column: ColumnInfo
-  value: string | null
-  onChange: (value: string | null) => void
-  showTimezone?: boolean
-}) {
-  return (
-    <DateTimePickerField
-      value={value ? new Date(value) : undefined}
-      onChange={(date) => onChange(date ? date.toISOString() : null)}
-      showTimezone={showTimezone}
-    />
-  )
-}
-
 function EnumInputField({
   column,
   value,
@@ -154,12 +134,6 @@ function RowInputField({
       return <NumericInputField column={column} value={value} onChange={onChange} />
     case 'boolean':
       return <BooleanInputField column={column} value={value} onChange={onChange} />
-    case 'date_with_timezone':
-      return (
-        <DateInputField column={column} value={value} onChange={onChange} showTimezone={true} />
-      )
-    case 'date_without_timezone':
-      return <DateInputField column={column} value={value} onChange={onChange} />
     case 'enum':
       return <EnumInputField column={column} value={value} onChange={onChange} />
     default:
