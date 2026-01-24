@@ -362,9 +362,10 @@ export class PostgresAdapter implements SQLAdapter {
     const { schema, table, values } = options
 
     // Filter out undefined values and prepare data
-    const cleanedValues = Object.entries(values).filter(
-      ([, value]) => value !== undefined
-    ) as [string, unknown][]
+    const cleanedValues = Object.entries(values).filter(([, value]) => value !== undefined) as [
+      string,
+      unknown
+    ][]
 
     if (cleanedValues.length === 0) {
       throw new Error('No values provided for insert')
@@ -448,39 +449,8 @@ export class PostgresAdapter implements SQLAdapter {
     const pool = this.ensurePool()
     const { schema, table } = options
 
-    // Get full table information including constraints
-    const tableInfo = await this.introspectTable(schema, table)
-    const columnInfo = tableInfo.columns
-
-    // Build CREATE TABLE statement
-    const createTableLines: string[] = []
-    const quotedTableName = `${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
-
-    createTableLines.push(`CREATE TABLE ${quotedTableName} (`)
-
-    // Add column definitions
-    const columnDefs = columnInfo.map((col) => {
-      const parts = [`  ${quoteIdentifier(col.name)} ${col.type}`]
-
-      if (!col.nullable) parts.push('NOT NULL')
-      if (col.defaultValue !== null && col.defaultValue !== undefined) {
-        parts.push(`DEFAULT ${col.defaultValue}`)
-      }
-
-      return parts.join(' ')
-    })
-
-    createTableLines.push(columnDefs.join(',\n'))
-
-    // Add primary key constraint
-    const primaryKeys = columnInfo.filter(col => col.isPrimaryKey).map(col => quoteIdentifier(col.name))
-    if (primaryKeys.length > 0) {
-      createTableLines.push(`,\n  PRIMARY KEY (${primaryKeys.join(', ')})`)
-    }
-
-    createTableLines.push(');')
-
-    const createTableStatement = createTableLines.join('\n')
+    // Get column information first
+    const columnInfo = await this.queryColumns(pool, schema, table)
 
     // Build the data query with all rows (no limit for export)
     const dataOptions: TableDataOptions = {
@@ -492,15 +462,6 @@ export class PostgresAdapter implements SQLAdapter {
     const { query, params } = buildTableDataQuery(dataOptions)
     const result = await pool.query(query, params)
 
-    // Filter out auto-increment/serial columns for INSERT statements
-    const autoIncrementCols = columnInfo.filter(col => {
-      const typeLower = col.type.toLowerCase()
-      return typeLower.includes('serial') || typeLower.includes('identity') ||
-             (col.defaultValue && String(col.defaultValue).includes('nextval'))
-    }).map(col => col.name)
-
-    const insertColumns = columnInfo.filter(col => !autoIncrementCols.includes(col.name))
-
     // Serialize SQL
     const serializeSqlValue = (value: unknown): string => {
       if (value === null || value === undefined) return 'NULL'
@@ -510,21 +471,15 @@ export class PostgresAdapter implements SQLAdapter {
       return `'${str}'`
     }
 
-    let statements: string[] = []
-    if (result.rows.length > 0 && insertColumns.length > 0) {
-      const columnList = insertColumns.map((col) => quoteIdentifier(col.name)).join(', ')
+    const columnList = columnInfo.map((col) => quoteIdentifier(col.name)).join(', ')
 
-      statements = result.rows.map((row) => {
-        const record = row as Record<string, unknown>
-        const values = insertColumns.map((col) => serializeSqlValue(record[col.name])).join(', ')
-        return `INSERT INTO ${quotedTableName} (${columnList}) VALUES (${values});`
-      })
-    }
+    const statements = result.rows.map((row) => {
+      const record = row as Record<string, unknown>
+      const values = columnInfo.map((col) => serializeSqlValue(record[col.name])).join(', ')
+      return `INSERT INTO ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnList}) VALUES (${values});`
+    })
 
-    const sql = statements.length > 0
-      ? [createTableStatement, '', ...statements].join('\n')
-      : createTableStatement
-
+    const sql = statements.join('\n')
     const base64Content = Buffer.from(sql, 'utf-8').toString('base64')
     const filename = `${schema}.${table}.sql`
 
@@ -618,13 +573,12 @@ export class PostgresAdapter implements SQLAdapter {
     result: PgQueryResult<QueryResultRow>,
     executionTime: number
   ): QueryResult {
-    const columns = result.fields?.map((field) => field.name) ?? []
-    const rows = result.rows ?? []
+    const columns = result.fields.map((field) => field.name)
 
     return {
-      rows,
+      rows: result.rows,
       columns,
-      rowCount: typeof result.rowCount === 'number' ? result.rowCount : rows.length,
+      rowCount: typeof result.rowCount === 'number' ? result.rowCount : result.rows.length,
       executionTime
     }
   }
