@@ -13,7 +13,8 @@ import type {
   TableDataOptions,
   TableDataResult,
   TableInfo,
-  UpdateTableCellResult
+  UpdateTableCellResult,
+  ColumnDefinition
 } from '@common/types'
 import type { ExportTableOptions, ExportTableResult } from '@common/types/sql'
 import { ipcMain } from 'electron'
@@ -433,23 +434,28 @@ export const registerIpcHandlers = () => {
       throw new ValidationError('At least one column is required')
     }
 
-    // Filter out any user-provided id column and ensure id is always first with auto-increment
-    const filteredColumns = columns.filter((col: unknown) => {
-      const colObj = col as Record<string, unknown>
-      return colObj.name !== 'id'
+    // Validate every column is a valid ColumnDefinition
+    const validatedColumns: ColumnDefinition[] = columns.map((col, idx) => {
+      if (typeof col !== 'object' || col === null) {
+        throw new ValidationError(`Column at index ${idx} must be an object`)
+      }
+
+      const { name, type } = col as Partial<ColumnDefinition>
+
+      if (typeof name !== 'string' || !name.trim()) {
+        throw new ValidationError(`Column at index ${idx} is missing a valid 'name'`)
+      }
+
+      if (typeof type !== 'string' || !type.trim()) {
+        throw new ValidationError(`Column at index ${idx} is missing a valid 'type'`)
+      }
+
+      return col as ColumnDefinition
     })
-    const idColumn = {
-      name: 'id',
-      type: 'INT',
-      nullable: false,
-      isPrimaryKey: true,
-      autoIncrement: true
-    }
-    const finalColumns = [idColumn, ...filteredColumns]
 
     const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
 
-    return adapter.createTable({ schema, table, columns: finalColumns as never[] })
+    return adapter.createTable({ schema, table, columns: validatedColumns })
   })
 
   // Workspace handlers

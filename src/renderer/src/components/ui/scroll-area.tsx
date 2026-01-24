@@ -5,11 +5,16 @@ import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 
 import { cn } from "@renderer/lib/utils"
 
+interface ScrollAreaProps extends React.ComponentProps<typeof ScrollAreaPrimitive.Root> {
+  hideScrollBar?: boolean
+}
+
 function ScrollArea({
   className,
   children,
+  hideScrollBar = false,
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
+}: ScrollAreaProps) {
   const viewportRef = React.useRef<HTMLDivElement>(null)
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -33,7 +38,7 @@ function ScrollArea({
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
-      <ScrollBar />
+      {!hideScrollBar && <ScrollBar />}
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   )

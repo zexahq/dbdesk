@@ -1,18 +1,170 @@
 import type { ColumnInfo } from '@common/types'
+import { getCellVariant } from '@renderer/lib/data-table'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
 import { Label } from '@renderer/components/ui/label'
 import { Sheet, SheetContent, SheetFooter, SheetTitle } from '@renderer/components/ui/sheet'
-import { useEffect, useState } from 'react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@renderer/components/ui/select'
+import { useState } from 'react'
 import { DateTimePickerField } from '@renderer/components/ui/date-time-picker'
 
 interface AddRowDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   columns: ColumnInfo[]
-  onSubmit: (values: Record<string, unknown>) => void
+  onSubmit: (values: Record<string, string | null>) => void
   isPending?: boolean
   tableName?: string
+}
+
+function TextInputField({
+  column,
+  value,
+  onChange
+}: {
+  column: ColumnInfo
+  value: string | null
+  onChange: (value: string | null) => void
+}) {
+  return (
+    <Input
+      id={column.name}
+      value={value || ''}
+      onChange={(e) => onChange(e.target.value || null)}
+      placeholder={
+        column.defaultValue ? String(column.defaultValue) : column.nullable ? 'NULL' : ''
+      }
+      className="h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
+    />
+  )
+}
+
+function NumericInputField({
+  column,
+  value,
+  onChange
+}: {
+  column: ColumnInfo
+  value: string | null
+  onChange: (value: string | null) => void
+}) {
+  return (
+    <Input
+      id={column.name}
+      type="number"
+      value={value || ''}
+      onChange={(e) => onChange(e.target.value || null)}
+      placeholder={column.defaultValue ? String(column.defaultValue) : column.nullable ? '' : '0'}
+      className="h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
+    />
+  )
+}
+
+function BooleanInputField({
+  column,
+  value,
+  onChange
+}: {
+  column: ColumnInfo
+  value: string | null
+  onChange: (value: string | null) => void
+}) {
+  const displayValue = value === null ? 'null' : value || (column.nullable ? 'null' : 'true')
+  return (
+    <Select value={displayValue} onValueChange={(val) => onChange(val === 'null' ? null : val)}>
+      <SelectTrigger id={column.name} className="h-9 w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {column.nullable && <SelectItem value="null">NULL</SelectItem>}
+        <SelectItem value="true">true</SelectItem>
+        <SelectItem value="false">false</SelectItem>
+      </SelectContent>
+    </Select>
+  )
+}
+
+function DateInputField({
+  value,
+  onChange,
+  showTimezone = false
+}: {
+  column: ColumnInfo
+  value: string | null
+  onChange: (value: string | null) => void
+  showTimezone?: boolean
+}) {
+  return (
+    <DateTimePickerField
+      value={value ? new Date(value) : undefined}
+      onChange={(date) => onChange(date ? date.toISOString() : null)}
+      showTimezone={showTimezone}
+    />
+  )
+}
+
+function EnumInputField({
+  column,
+  value,
+  onChange
+}: {
+  column: ColumnInfo
+  value: string | null
+  onChange: (value: string | null) => void
+}) {
+  const enumValues = column.enumValues || []
+  const displayValue =
+    value === null ? 'null' : value || (column.nullable ? 'null' : enumValues[0] || 'null')
+  return (
+    <Select value={displayValue} onValueChange={(val) => onChange(val === 'null' ? null : val)}>
+      <SelectTrigger id={column.name} className="h-9 w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {column.nullable && <SelectItem value="null">NULL</SelectItem>}
+        {enumValues.map((val) => (
+          <SelectItem key={val} value={val}>
+            {val}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+function RowInputField({
+  column,
+  value,
+  onChange
+}: {
+  column: ColumnInfo
+  value: string | null
+  onChange: (value: string | null) => void
+}) {
+  const variant = getCellVariant(column.type, column.enumValues)
+
+  switch (variant) {
+    case 'numeric':
+      return <NumericInputField column={column} value={value} onChange={onChange} />
+    case 'boolean':
+      return <BooleanInputField column={column} value={value} onChange={onChange} />
+    case 'date_with_timezone':
+      return (
+        <DateInputField column={column} value={value} onChange={onChange} showTimezone={true} />
+      )
+    case 'date_without_timezone':
+      return <DateInputField column={column} value={value} onChange={onChange} />
+    case 'enum':
+      return <EnumInputField column={column} value={value} onChange={onChange} />
+    default:
+      return <TextInputField column={column} value={value} onChange={onChange} />
+  }
 }
 
 export function AddRowDrawer({
@@ -23,102 +175,25 @@ export function AddRowDrawer({
   isPending,
   tableName
 }: AddRowDialogProps) {
-  const [values, setValues] = useState<Record<string, string>>({})
-  const [timezones, setTimezones] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    if (!open) {
-      setValues({})
-      setTimezones({})
-    }
-  }, [open])
+  const [values, setValues] = useState<Record<string, string | null>>({})
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Convert values to appropriate types
-    const processedValues: Record<string, unknown> = {}
-    for (const column of columns) {
-      const value = values[column.name]
-
-      // Skip auto-generated columns
-      if (
-        column.defaultValue?.toString().includes('IDENTITY') ||
-        column.defaultValue?.toString().includes('SERIAL')
-      ) {
-        continue
-      }
-
-      // Handle empty values
-      if (value === '' || value === undefined) {
-        processedValues[column.name] = column.nullable ? null : ''
-        continue
-      }
-
-      // Type conversion based on column type
-      const type = column.type.toLowerCase()
-      try {
-        if (type.includes('int') || type.includes('serial')) {
-          const num = parseInt(value, 10)
-          if (isNaN(num)) {
-            throw new Error(`Invalid integer value for ${column.name}`)
-          }
-          processedValues[column.name] = num
-        } else if (
-          type.includes('float') ||
-          type.includes('double') ||
-          type.includes('numeric') ||
-          type.includes('decimal')
-        ) {
-          const num = parseFloat(value)
-          if (isNaN(num)) {
-            throw new Error(`Invalid numeric value for ${column.name}`)
-          }
-          processedValues[column.name] = num
-        } else if (type.includes('bool') || type.includes('boolean')) {
-          processedValues[column.name] =
-            value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'yes'
-        } else if (
-          type.includes('timestamp') ||
-          type.includes('datetime') ||
-          type.includes('date')
-        ) {
-          // For timestamp/date fields, convert to ISO string
-          const date = new Date(value)
-          if (isNaN(date.getTime())) {
-            throw new Error(`Invalid date value for ${column.name}`)
-          }
-          processedValues[column.name] = date.toISOString()
-        } else if (type.includes('json')) {
-          // For JSON fields, try to parse as JSON
-          try {
-            processedValues[column.name] = JSON.parse(value)
-          } catch {
-            // If not valid JSON, store as string
-            processedValues[column.name] = value
-          }
-        } else {
-          processedValues[column.name] = value
-        }
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-        throw new Error(`Error processing ${column.name}: ${errorMsg}`)
-      }
-    }
-
-    onSubmit(processedValues)
+    onSubmit(values)
   }
 
-  const handleValueChange = (columnName: string, value: string) => {
+  const handleValueChange = (columnName: string, value: string | null) => {
     setValues((prev) => ({ ...prev, [columnName]: value }))
   }
 
-  const handleTimezoneChange = (columnName: string, timezone: string) => {
-    setTimezones((prev) => ({ ...prev, [columnName]: timezone }))
-  }
-
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open}
+      onOpenChange={() => {
+        onOpenChange(false)
+        setValues({})
+      }}
+    >
       <SheetContent side="right" className="w-full sm:max-w-lg [&>button]:hidden gap-0">
         <SheetTitle>
           <div className="flex items-center justify-between border-b px-6 py-4">
@@ -127,88 +202,28 @@ export function AddRowDrawer({
             </h2>
           </div>
         </SheetTitle>
-        {/* Scrollable section like table-drawer */}
         <div className="relative flex-1 overflow-y-auto">
           <div className="flex flex-col gap-3 px-6 pt-6">
-            {columns
-            .filter((column) => column.name !== 'id')
-            .map((column) => {
-              const isAutoGenerated =
-                column.defaultValue?.toString().includes('IDENTITY') ||
-                column.defaultValue?.toString().includes('SERIAL')
-              const isTimestamp =
-                column.type.toLowerCase().includes('timestamp') ||
-                column.type.toLowerCase().includes('datetime')
-              const isTimezoneAware =
-                column.type.toLowerCase().includes('with time zone') ||
-                column.type.toLowerCase().includes('tz') ||
-                column.type === 'timestamptz' ||
-                column.type === 'timetz'
-
-              return (
-                <div
-                  key={column.name}
-                  className="flex flex-col gap-1.5 rounded-mdp-2"
+            {columns.map((column) => (
+              <div key={column.name} className="flex flex-col gap-1.5">
+                <Label
+                  htmlFor={column.name}
+                  className="text-sm font-medium flex justify-between items-center"
                 >
-                  <Label
-                    htmlFor={column.name}
-                    className="text-sm font-medium flex justify-between items-center"
-                  >
-                    <span>
-                      {column.name}
-                      {!column.nullable && !isAutoGenerated && (
-                        <span className="text-destructive ml-1">*</span>
-                      )}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {column.type}
-                    </span>
-                  </Label>
-                  <div className="flex flex-col gap-1.5">
-                    {isAutoGenerated ? (
-                      <Input
-                        id={column.name}
-                        value="Auto-generated"
-                        disabled
-                        className="bg-muted h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
-                      />
-                    ) : isTimestamp ? (
-                      <div className="relative">
-                        <DateTimePickerField
-                          value={values[column.name] ? new Date(values[column.name]) : undefined}
-                          onChange={(date) => {
-                            handleValueChange(
-                              column.name,
-                              date ? date.toISOString() : ''
-                            )
-                          }}
-                          showTimezone={isTimezoneAware}
-                          timezone={timezones[column.name] || Intl.DateTimeFormat().resolvedOptions().timeZone}
-                          onTimezoneChange={(tz) => handleTimezoneChange(column.name, tz)}
-                        />
-                      </div>
-                    ) : (
-                       <Input
-                         id={column.name}
-                         value={values[column.name] || ''}
-                         onChange={(e) => handleValueChange(column.name, e.target.value)}
-                         placeholder={
-                           column.defaultValue
-                             ? typeof column.defaultValue === 'string'
-                               ? column.defaultValue
-                               : JSON.stringify(column.defaultValue)
-                             : 'NULL'
-                         }
-                         required={!column.nullable}
-                         className="h-9 transition-all border-border focus:border-white! focus-visible:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
-                       />
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+                  <span>
+                    {column.name}
+                    {!column.nullable && <span className="text-destructive/70 ml-1">*</span>}
+                  </span>
+                  <span className="text-muted-foreground text-xs">{column.type}</span>
+                </Label>
+                <RowInputField
+                  column={column}
+                  value={values[column.name] || ''}
+                  onChange={(value) => handleValueChange(column.name, value)}
+                />
+              </div>
+            ))}
           </div>
-          {/* Bottom fade anchored to footer's top border */}
           <div
             aria-hidden
             className="pointer-events-none sticky bottom-0 z-10 h-14 w-full bg-linear-to-b from-background/0 via-background/70 to-background"

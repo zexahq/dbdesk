@@ -35,7 +35,11 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   )
 
   const cellValue = cell.getValue()
-  const dataType = (cell.column.columnDef.meta as { dataType?: string } | undefined)?.dataType
+  const columnMeta = cell.column.columnDef.meta as
+    | { dataType?: string; variant?: string }
+    | undefined
+  const dataType = columnMeta?.dataType
+  const variant = columnMeta?.variant
 
   // Memoize expensive computations
   const cellValueString = useMemo(() => formatCellValue(cellValue, dataType), [cellValue, dataType])
@@ -120,6 +124,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
     cellValue,
     cellValueString,
     dataType,
+    variant,
     editorLanguage,
     renderedCell,
     isSelectColumn,
