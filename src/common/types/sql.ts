@@ -4,7 +4,13 @@ import type { BaseAdapter } from './adapter'
 /**
  * PostgreSQL SSL mode
  */
-export type PostgreSQLSslMode = 'disable' | 'allow' | 'prefer' | 'require' | 'verify-ca' | 'verify-full'
+export type PostgreSQLSslMode =
+  | 'disable'
+  | 'allow'
+  | 'prefer'
+  | 'require'
+  | 'verify-ca'
+  | 'verify-full'
 
 /**
  * SQL database connection options (PostgreSQL, MySQL)
@@ -240,7 +246,6 @@ export interface ColumnDefinition {
   defaultValue?: string
   isPrimaryKey?: boolean
   isUnique?: boolean
-  autoIncrement?: boolean
   foreignKey?: {
     table: string
     column: string
@@ -264,8 +269,6 @@ export interface CreateTableOptions {
 export interface CreateTableResult {
   success: boolean
 }
-
-
 
 /**
  * Schema with its tables
@@ -338,6 +341,4 @@ export interface SQLAdapter extends BaseAdapter {
    * Create a new table in the database
    */
   createTable(options: CreateTableOptions): Promise<CreateTableResult>
-
-
 }

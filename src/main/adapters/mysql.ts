@@ -355,9 +355,10 @@ export class MySQLAdapter implements SQLAdapter {
     const { schema, table, values } = options
 
     // Filter out undefined values and prepare data
-    const cleanedValues = Object.entries(values).filter(
-      ([, value]) => value !== undefined
-    ) as [string, unknown][]
+    const cleanedValues = Object.entries(values).filter(([, value]) => value !== undefined) as [
+      string,
+      unknown
+    ][]
 
     if (cleanedValues.length === 0) {
       throw new Error('No values provided for insert')
@@ -466,7 +467,9 @@ export class MySQLAdapter implements SQLAdapter {
     createTableLines.push(columnDefs.join(',\n'))
 
     // Add primary key constraint
-    const primaryKeys = columnInfo.filter(col => col.isPrimaryKey).map(col => quoteIdentifier(col.name))
+    const primaryKeys = columnInfo
+      .filter((col) => col.isPrimaryKey)
+      .map((col) => quoteIdentifier(col.name))
     if (primaryKeys.length > 0) {
       createTableLines.push(`,\n  PRIMARY KEY (${primaryKeys.join(', ')})`)
     }
@@ -485,17 +488,6 @@ export class MySQLAdapter implements SQLAdapter {
     const { query, params } = buildTableDataQuery(dataOptions)
     const [rows] = await pool.query<RowDataPacket[]>(query, params)
 
-    // Filter out auto-increment columns for INSERT statements
-    // For MySQL, auto_increment is typically used with primary keys
-    // We'll check if the column is a primary key with an integer type
-    const autoIncrementCols = columnInfo.filter(col => {
-      if (!col.isPrimaryKey) return false
-      const typeLower = col.type.toLowerCase()
-      return typeLower.includes('int') || typeLower.includes('serial')
-    }).map(col => col.name)
-
-    const insertColumns = columnInfo.filter(col => !autoIncrementCols.includes(col.name))
-
     // Serialize SQL
     const serializeSqlValue = (value: unknown): string => {
       if (value === null || value === undefined) return 'NULL'
@@ -506,19 +498,20 @@ export class MySQLAdapter implements SQLAdapter {
     }
 
     let statements: string[] = []
-    if (rows.length > 0 && insertColumns.length > 0) {
-      const columnList = insertColumns.map((col) => quoteIdentifier(col.name)).join(', ')
+    if (rows.length > 0 && columnInfo.length > 0) {
+      const columnList = columnInfo.map((col) => quoteIdentifier(col.name)).join(', ')
 
       statements = rows.map((row) => {
         const record = row as Record<string, unknown>
-        const values = insertColumns.map((col) => serializeSqlValue(record[col.name])).join(', ')
+        const values = columnInfo.map((col) => serializeSqlValue(record[col.name])).join(', ')
         return `INSERT INTO ${quotedTableName} (${columnList}) VALUES (${values});`
       })
     }
 
-    const sql = statements.length > 0
-      ? [createTableStatement, '', ...statements].join('\n')
-      : createTableStatement
+    const sql =
+      statements.length > 0
+        ? [createTableStatement, '', ...statements].join('\n')
+        : createTableStatement
     const base64Content = Buffer.from(sql, 'utf-8').toString('base64')
     const filename = `${schema}.${table}.sql`
 
@@ -571,10 +564,6 @@ export class MySQLAdapter implements SQLAdapter {
 
   private buildColumnDefinition(col: ColumnDefinition): string {
     let def = `${quoteIdentifier(col.name)} ${col.type.toUpperCase()}`
-
-    if (col.autoIncrement) {
-      def += ' AUTO_INCREMENT'
-    }
 
     if (col.nullable === false) {
       def += ' NOT NULL'

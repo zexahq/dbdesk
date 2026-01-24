@@ -40,16 +40,14 @@ export const TableDrawer = ({
 }: TableDrawerProps) => {
   const [tableName, setTableName] = useState('')
   const [columns, setColumns] = useState<ColumnDefinition[]>([
-    { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, autoIncrement: true }
+    { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true }
   ])
   const [editingForeignKey, setEditingForeignKey] = useState<number | null>(null)
 
   useEffect(() => {
     if (open) {
       setTableName('')
-      setColumns([
-        { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true, autoIncrement: true }
-      ])
+      setColumns([{ name: 'id', type: 'INT', nullable: false, isPrimaryKey: true }])
     }
   }, [open])
 
@@ -79,7 +77,6 @@ export const TableDrawer = ({
   }
 
   const updateColumn = (index: number, field: keyof ColumnDefinition, value: unknown) => {
-    // Prevent duplicate column names (case-insensitive)
     if (field === 'name' && typeof value === 'string') {
       const lowerValue = value.toLowerCase()
       const isDuplicate = columns.some(
@@ -93,28 +90,6 @@ export const TableDrawer = ({
 
     const newColumns = [...columns]
     newColumns[index] = { ...newColumns[index], [field]: value }
-
-    // Auto-enable autoIncrement for id columns with INT type
-    if (
-      field === 'name' &&
-      value === 'id' &&
-      newColumns[index].type.toUpperCase().includes('INT')
-    ) {
-      newColumns[index].autoIncrement = true
-      newColumns[index].isPrimaryKey = true
-      newColumns[index].nullable = false
-    }
-
-    // Auto-enable autoIncrement when changing type to INT on id column
-    if (
-      field === 'type' &&
-      newColumns[index].name === 'id' &&
-      String(value).toUpperCase().includes('INT')
-    ) {
-      newColumns[index].autoIncrement = true
-      newColumns[index].isPrimaryKey = true
-      newColumns[index].nullable = false
-    }
 
     setColumns(newColumns)
   }
@@ -144,9 +119,7 @@ export const TableDrawer = ({
         {/* Section 1: Header + Table Name */}
         <div className="flex flex-col border-b">
           <div className="flex items-center justify-between px-6 py-4">
-            <h2 className="text-lg font-semibold">
-              Create New Table
-            </h2>
+            <h2 className="text-lg font-semibold">Create New Table</h2>
             <span className="text-sm text-muted-foreground">
               Schema: <span className="font-medium">{schema}</span>
             </span>
@@ -268,24 +241,6 @@ export const TableDrawer = ({
                           disabled={isPending}
                         >
                           Unique
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={column.autoIncrement === true}
-                          onCheckedChange={(checked) => {
-                            const newColumns = [...columns]
-                            newColumns[index] = {
-                              ...newColumns[index],
-                              autoIncrement: checked === true
-                            }
-                            // Suggest IDENTITY type if auto-increment is enabled
-                            if (checked && !column.type.toUpperCase().includes('IDENTITY')) {
-                              newColumns[index].type = 'INTEGER IDENTITY'
-                            }
-                            setColumns(newColumns)
-                          }}
-                          disabled={isPending}
-                        >
-                          Auto-Generate
                         </DropdownMenuCheckboxItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
