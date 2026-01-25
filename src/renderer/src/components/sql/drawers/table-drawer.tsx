@@ -115,7 +115,7 @@ export const TableDrawer = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl [&>button]:hidden gap-0">
+      <SheetContent side="right" className="w-full sm:max-w-3xl [&>button]:hidden gap-0">
         {/* Section 1: Header + Table Name */}
         <div className="flex flex-col border-b">
           <div className="flex items-center justify-between px-6 py-4">
@@ -171,7 +171,7 @@ export const TableDrawer = ({
                         className="h-9 border-border focus:border-white! focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0"
                       />
                     </div>
-                    <div className="w-40">
+                    <div className="w-50">
                       <Select
                         value={
                           DATA_TYPES.find(
