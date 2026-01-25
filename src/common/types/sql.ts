@@ -4,7 +4,13 @@ import type { BaseAdapter } from './adapter'
 /**
  * PostgreSQL SSL mode
  */
-export type PostgreSQLSslMode = 'disable' | 'allow' | 'prefer' | 'require' | 'verify-ca' | 'verify-full'
+export type PostgreSQLSslMode =
+  | 'disable'
+  | 'allow'
+  | 'prefer'
+  | 'require'
+  | 'verify-ca'
+  | 'verify-full'
 
 /**
  * SQL database connection options (PostgreSQL, MySQL)
@@ -187,6 +193,22 @@ export interface UpdateTableCellResult {
 }
 
 /**
+ * Options for inserting a new row into a table
+ */
+export interface InsertTableRowOptions {
+  schema: string
+  table: string
+  values: Record<string, unknown>
+}
+
+/**
+ * Result of inserting a table row
+ */
+export interface InsertTableRowResult {
+  insertedRowCount: number
+}
+
+/**
  * Options for exporting table data
  */
 export interface ExportTableOptions {
@@ -211,6 +233,40 @@ export interface DeleteTableOptions {
 }
 
 export interface DeleteTableResult {
+  success: boolean
+}
+
+/**
+ * Column definition for creating/altering tables
+ */
+export interface ColumnDefinition {
+  name: string
+  type: string
+  nullable?: boolean
+  defaultValue?: string
+  isPrimaryKey?: boolean
+  isUnique?: boolean
+  foreignKey?: {
+    table: string
+    column: string
+    onDelete?: 'CASCADE' | 'RESTRICT' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION'
+    onUpdate?: 'CASCADE' | 'RESTRICT' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION'
+  }
+}
+
+/**
+ * Options for creating a new table
+ */
+export interface CreateTableOptions {
+  schema: string
+  table: string
+  columns: ColumnDefinition[]
+}
+
+/**
+ * Result of creating a table
+ */
+export interface CreateTableResult {
   success: boolean
 }
 
@@ -262,6 +318,11 @@ export interface SQLAdapter extends BaseAdapter {
   updateTableCell(options: UpdateTableCellOptions): Promise<UpdateTableCellResult>
 
   /**
+   * Insert a new row into a table
+   */
+  insertTableRow(options: InsertTableRowOptions): Promise<InsertTableRowResult>
+
+  /**
    * Export table data as CSV
    */
   exportTableAsCSV(options: ExportTableOptions): Promise<ExportTableResult>
@@ -275,4 +336,9 @@ export interface SQLAdapter extends BaseAdapter {
    * Delete a table from the database
    */
   deleteTable(options: DeleteTableOptions): Promise<DeleteTableResult>
+
+  /**
+   * Create a new table in the database
+   */
+  createTable(options: CreateTableOptions): Promise<CreateTableResult>
 }

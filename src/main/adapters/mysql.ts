@@ -1,8 +1,12 @@
 import type {
+  CreateTableOptions,
+  CreateTableResult,
   DeleteTableOptions,
   DeleteTableResult,
   DeleteTableRowsOptions,
   DeleteTableRowsResult,
+  InsertTableRowOptions,
+  InsertTableRowResult,
   QueryResult,
   RunQueryOptions,
   SQLAdapter,
@@ -24,6 +28,7 @@ import type {
 } from '@common/types/sql'
 import {
   QUERIES,
+  buildCreateTableQuery,
   buildTableCountQuery,
   buildTableDataQuery,
   buildUpdateCellQuery
@@ -345,6 +350,49 @@ export class MySQLAdapter implements SQLAdapter {
     }
   }
 
+  public async insertTableRow(options: InsertTableRowOptions): Promise<InsertTableRowResult> {
+    const pool = this.ensurePool()
+    const { schema, table, values } = options
+
+    // Filter out undefined values and prepare data
+    const cleanedValues = Object.entries(values).filter(([, value]) => value !== undefined) as [
+      string,
+      unknown
+    ][]
+
+    if (cleanedValues.length === 0) {
+      throw new Error('No values provided for insert')
+    }
+
+    const columns = cleanedValues.map(([col]) => `\`${col}\``)
+    const placeholders = cleanedValues.map(() => '?')
+    const params = cleanedValues.map(([, value]) => value)
+
+    const query = `
+      INSERT INTO \`${schema}\`.\`${table}\` (${columns.join(', ')})
+      VALUES (${placeholders.join(', ')})
+    `
+
+    const connection = await pool.getConnection()
+
+    try {
+      await connection.beginTransaction()
+
+      const [result] = await connection.query<ResultSetHeader>(query, params)
+
+      await connection.commit()
+
+      return {
+        insertedRowCount: result.affectedRows ?? 0
+      }
+    } catch (error) {
+      await connection.rollback().catch(() => {})
+      throw error
+    } finally {
+      connection.release()
+    }
+  }
+
   public async exportTableAsCSV(options: ExportTableOptions): Promise<ExportTableResult> {
     const pool = this.ensurePool()
     const { schema, table } = options
@@ -446,6 +494,24 @@ export class MySQLAdapter implements SQLAdapter {
       return { success: true }
     } catch (error) {
       throw new Error(`${error}`)
+    }
+  }
+
+  public async createTable(options: CreateTableOptions): Promise<CreateTableResult> {
+    const pool = this.ensurePool()
+    const { schema, table, columns } = options
+
+    if (!columns || columns.length === 0) {
+      throw new Error('At least one column is required to create a table')
+    }
+
+    const { query } = buildCreateTableQuery({ schema, table, columns })
+
+    try {
+      await pool.query(query)
+      return { success: true }
+    } catch (error) {
+      throw new Error(`Failed to create table: ${error}`)
     }
   }
 

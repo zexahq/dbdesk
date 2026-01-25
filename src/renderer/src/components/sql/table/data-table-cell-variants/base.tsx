@@ -4,7 +4,7 @@ import type { TableCell } from '@renderer/components/ui/table'
 import { formatCellValue, getEditorLanguage } from '@renderer/lib/data-table'
 import { cn } from '@renderer/lib/utils'
 import { flexRender } from '@tanstack/react-table'
-import { useRef, useMemo, useCallback, type ComponentProps } from 'react'
+import { useCallback, useMemo, useRef, type ComponentProps } from 'react'
 
 import type { DataTableCellProps } from '../data-table-cell.types'
 
@@ -35,13 +35,14 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   )
 
   const cellValue = cell.getValue()
-  const dataType = (cell.column.columnDef.meta as { dataType?: string } | undefined)?.dataType
+  const columnMeta = cell.column.columnDef.meta as
+    | { dataType?: string; variant?: string }
+    | undefined
+  const dataType = columnMeta?.dataType
+  const variant = columnMeta?.variant
 
   // Memoize expensive computations
-  const cellValueString = useMemo(
-    () => formatCellValue(cellValue, dataType),
-    [cellValue, dataType]
-  )
+  const cellValueString = useMemo(() => formatCellValue(cellValue, dataType), [cellValue, dataType])
 
   const editorLanguage = useMemo(() => getEditorLanguage(dataType), [dataType])
 
@@ -87,10 +88,10 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   const cellClassName = useMemo(
     () =>
       cn(
-        'border-border border-x first:border-l last:border-r',
-        'truncate bg-accent/50',
-        !isSelectColumn && 'cursor-pointer',
-        isFocused && 'outline-2 outline-ring outline-offset-0'
+      'border-border border-x first:border-l last:border-r',
+      'truncate bg-accent/50',
+      !isSelectColumn && 'cursor-pointer',
+      isFocused && 'shadow-[inset_0_0_0_2px_var(--color-ring)] bg-ring/20'
       ),
     [isSelectColumn, isFocused]
   )
@@ -107,7 +108,15 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
       onClick: allowCellInteraction ? handleClick : undefined,
       onDoubleClick: allowCellInteraction ? handleDoubleClick : undefined
     }),
-    [columnId, cellClassName, cellStyle, cellValueString, allowCellInteraction, handleClick, handleDoubleClick]
+    [
+      columnId,
+      cellClassName,
+      cellStyle,
+      cellValueString,
+      allowCellInteraction,
+      handleClick,
+      handleDoubleClick
+    ]
   )
 
   return {
@@ -115,6 +124,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
     cellValue,
     cellValueString,
     dataType,
+    variant,
     editorLanguage,
     renderedCell,
     isSelectColumn,

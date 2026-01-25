@@ -1,9 +1,11 @@
 import type {
   ConnectionProfile,
   ConnectionWorkspace,
+  CreateTableResult,
   DatabaseType,
   DeleteTableResult,
   DeleteTableRowsResult,
+  InsertTableRowResult,
   QueryResult,
   SavedQuery,
   SchemaWithTables,
@@ -11,7 +13,8 @@ import type {
   TableDataOptions,
   TableDataResult,
   TableInfo,
-  UpdateTableCellResult
+  UpdateTableCellResult,
+  ColumnDefinition
 } from '@common/types'
 import type { ExportTableOptions, ExportTableResult } from '@common/types/sql'
 import { ipcMain } from 'electron'
@@ -296,6 +299,36 @@ export const registerIpcHandlers = () => {
     })
   })
 
+  safeHandle('table:insertRow', async (payload): Promise<InsertTableRowResult> => {
+    const { connectionId, schema, table, values } = payload as {
+      connectionId: string
+      schema: string
+      table: string
+      values: Record<string, unknown>
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!schema || typeof schema !== 'string') {
+      throw new ValidationError('schema is required')
+    }
+    if (!table || typeof table !== 'string') {
+      throw new ValidationError('table is required')
+    }
+    if (!values || typeof values !== 'object') {
+      throw new ValidationError('values is required and must be an object')
+    }
+
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    return adapter.insertTableRow({
+      schema,
+      table,
+      values
+    })
+  })
+
   safeHandle('table:exportCSV', async (payload): Promise<ExportTableResult> => {
     const { connectionId, schema, table, sortRules, filters } = payload as {
       connectionId: string
@@ -378,6 +411,51 @@ export const registerIpcHandlers = () => {
     const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
 
     return adapter.deleteTable({ schema, table })
+  })
+
+  safeHandle('table:create', async (payload): Promise<CreateTableResult> => {
+    const { connectionId, schema, table, columns } = payload as {
+      connectionId: string
+      schema: string
+      table: string
+      columns: unknown[]
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!schema || typeof schema !== 'string') {
+      throw new ValidationError('schema is required')
+    }
+    if (!table || typeof table !== 'string') {
+      throw new ValidationError('table is required')
+    }
+    if (!Array.isArray(columns) || columns.length === 0) {
+      throw new ValidationError('At least one column is required')
+    }
+
+    // Validate every column is a valid ColumnDefinition
+    const validatedColumns: ColumnDefinition[] = columns.map((col, idx) => {
+      if (typeof col !== 'object' || col === null) {
+        throw new ValidationError(`Column at index ${idx} must be an object`)
+      }
+
+      const { name, type } = col as Partial<ColumnDefinition>
+
+      if (typeof name !== 'string' || !name.trim()) {
+        throw new ValidationError(`Column at index ${idx} is missing a valid 'name'`)
+      }
+
+      if (typeof type !== 'string' || !type.trim()) {
+        throw new ValidationError(`Column at index ${idx} is missing a valid 'type'`)
+      }
+
+      return col as ColumnDefinition
+    })
+
+    const adapter = ensureSQLAdapter(connectionManager.getSQLConnection(connectionId), connectionId)
+
+    return adapter.createTable({ schema, table, columns: validatedColumns })
   })
 
   // Workspace handlers

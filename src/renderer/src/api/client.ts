@@ -1,12 +1,15 @@
 import type {
+  ColumnDefinition,
   ConnectionProfile,
   ConnectionWorkspace,
+  CreateTableResult,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableResult,
   DeleteTableRowsResult,
   ExportTableOptions,
   ExportTableResult,
+  InsertTableRowResult,
   QueryResult,
   QueryResultRow,
   SavedQuery,
@@ -121,6 +124,15 @@ export const dbdeskClient = {
     return getDbdesk().updateTableCell(connectionId, schema, table, columnToUpdate, newValue, row)
   },
 
+  async insertTableRow(
+    connectionId: string,
+    schema: string,
+    table: string,
+    values: Record<string, unknown>
+  ): Promise<InsertTableRowResult> {
+    return getDbdesk().insertTableRow(connectionId, schema, table, values)
+  },
+
   async loadWorkspace(connectionId: string): Promise<ConnectionWorkspace | undefined> {
     return getDbdesk().loadWorkspace(connectionId) as Promise<ConnectionWorkspace | undefined>
   },
@@ -183,11 +195,23 @@ export const dbdeskClient = {
     table: string
   ): Promise<DeleteTableResult> {
     return getDbdesk().deleteTable(connectionId, schema, table)
-  }
+  },
+
+  async createTable(
+    connectionId: string,
+    schema: string,
+    table: string,
+    columns: ColumnDefinition[]
+  ): Promise<CreateTableResult> {
+    return getDbdesk().createTable(connectionId, schema, table, columns)
+  },
+
 }
 
 export type {
+  ColumnDefinition,
   ConnectionProfile,
+  CreateTableResult,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableRowsResult,
