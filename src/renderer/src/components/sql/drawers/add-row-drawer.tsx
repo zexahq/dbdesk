@@ -154,6 +154,7 @@ export function AddRowDrawer({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit(values)
+    setValues({})
   }
 
   const handleValueChange = (columnName: string, value: string | null) => {
@@ -186,7 +187,6 @@ export function AddRowDrawer({
                 >
                   <span>
                     {column.name}
-                    {!column.nullable && <span className="text-destructive/70 ml-1">*</span>}
                   </span>
                   <span className="text-muted-foreground text-xs">{column.type}</span>
                 </Label>
