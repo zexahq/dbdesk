@@ -19,7 +19,6 @@ compression: maximum
 asar: true
 asarUnpack:
   - resources/**
-electronLanguages: 'en'
 # Remove unnecessary Electron files
 removePackageKeywords: true
 win:
