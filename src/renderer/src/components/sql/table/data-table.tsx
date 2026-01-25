@@ -24,6 +24,7 @@ interface DataTableProps<TData, TValue> {
   rowSelection: RowSelectionState
   onRowSelectionChange: OnChangeFn<RowSelectionState>
   sortRules?: TableSortRule[]
+  tabId?: string
 }
 
 export function DataTable<TData, TValue>({
@@ -33,7 +34,8 @@ export function DataTable<TData, TValue>({
   onTableInteract,
   rowSelection,
   onRowSelectionChange,
-  sortRules
+  sortRules,
+  tabId
 }: DataTableProps<TData, TValue>) {
   const {
     table,
@@ -52,7 +54,8 @@ export function DataTable<TData, TValue>({
     onTableInteract,
     rowSelection,
     onRowSelectionChange,
-    sortRules
+    sortRules,
+    tabId
   })
 
   const rowModel = table.getRowModel()

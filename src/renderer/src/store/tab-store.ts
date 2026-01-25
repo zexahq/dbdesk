@@ -23,6 +23,7 @@ export interface TableTab extends BaseTab {
   offset: number
   filters?: TableFilterCondition[]
   sortRules?: TableSortRule[]
+  origin?: { rowIndex: number; columnId: string }
 }
 
 export interface QueryTab extends BaseTab {
@@ -53,6 +54,7 @@ interface TabStore {
   addTableTab: (schema: string, table: string) => string
   updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => void
   makeTabPermanent: (tabId: string) => void
+  updateTableOrigin: (tabId: string, origin: { rowIndex: number; columnId: string } | undefined) => void
   getTableTabBySchemaTable: (schema: string, table: string) => TableTab | undefined
   findTableTabById: (tabId: string) => TableTab | undefined
 
@@ -76,7 +78,8 @@ const createDefaultTableTab = (schema: string, table: string, isTemporary = true
   limit: 50,
   offset: 0,
   filters: undefined,
-  sortRules: undefined
+  sortRules: undefined,
+  origin: undefined
 })
 
 const createDefaultQueryTab = (): QueryTab => ({
@@ -176,6 +179,14 @@ export const useTabStore = create<TabStore>((set, get) => ({
   makeTabPermanent: (tabId: string) => {
     set((state) => ({
       tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, isTemporary: false } : tab))
+    }))
+  },
+
+  updateTableOrigin: (tabId: string, origin: { rowIndex: number; columnId: string } | undefined) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.id === tabId && tab.kind === 'table' ? { ...tab, origin } : tab
+      )
     }))
   },
 
