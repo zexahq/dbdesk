@@ -1,5 +1,5 @@
-import { DATA_TYPES } from '@common/constants'
-import type { ColumnDefinition } from '@common/types'
+import { POSTGRES_DATA_TYPES, MYSQL_DATA_TYPES } from '@common/utils'
+import type { ColumnDefinition, DatabaseType } from '@common/types'
 import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu,
@@ -23,26 +23,30 @@ import { showWarning } from '@renderer/lib/toast'
 import { MoreVerticalIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-interface TableDrawerProps {
+interface AddTableSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   schema: string
   onSubmit: (tableName: string, columns: ColumnDefinition[]) => void
   isPending?: boolean
+  databaseType: DatabaseType
 }
 
-export const TableDrawer = ({
+export const AddTableSheet = ({
   open,
   onOpenChange,
   schema,
   onSubmit,
-  isPending = false
-}: TableDrawerProps) => {
+  isPending = false,
+  databaseType
+}: AddTableSheetProps) => {
   const [tableName, setTableName] = useState('')
   const [columns, setColumns] = useState<ColumnDefinition[]>([
     { name: 'id', type: 'INT', nullable: false, isPrimaryKey: true }
   ])
   const [editingForeignKey, setEditingForeignKey] = useState<number | null>(null)
+
+  const DATA_TYPES = databaseType === 'postgres' ? POSTGRES_DATA_TYPES : MYSQL_DATA_TYPES
 
   useEffect(() => {
     if (open) {

@@ -1,6 +1,6 @@
 import type { SQLConnectionProfile } from '@common/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
-import { TableDrawer } from '@renderer/components/sql/drawers/table-drawer'
+import { AddTableSheet } from '@renderer/components/sql/sheets/add-table-sheet'
 import { TableOptionsDropdown } from '@renderer/components/sql/table-view/table-options-dropdown'
 import {
   Collapsible,
@@ -219,6 +219,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
                           activeTab={activeTab}
                           onTableClick={handleTableClick}
                           onDuplicateToQuery={handleDuplicateToQuery}
+                          profile={profile}
                         />
                       ))
                     )}
@@ -331,9 +332,17 @@ type SchemaTreeProps = {
   activeTab: Tab | null
   onTableClick: (schema: string, table: string) => void
   onDuplicateToQuery: (schema: string, table: string) => void
+  profile: SQLConnectionProfile
 }
 
-function SchemaTree({ connectionId, schema, tables, activeTab, onTableClick }: SchemaTreeProps) {
+function SchemaTree({
+  connectionId,
+  schema,
+  tables,
+  activeTab,
+  onTableClick,
+  profile
+}: SchemaTreeProps) {
   const isPublic = schema === 'public'
   const [createTableDrawerOpen, setCreateTableDrawerOpen] = useState(false)
   const createTableMutation = useCreateTable(connectionId)
@@ -413,12 +422,13 @@ function SchemaTree({ connectionId, schema, tables, activeTab, onTableClick }: S
         </Collapsible>
       </SidebarMenuItem>
 
-      <TableDrawer
+      <AddTableSheet
         open={createTableDrawerOpen}
         onOpenChange={setCreateTableDrawerOpen}
         schema={schema}
         onSubmit={handleCreateTable}
         isPending={createTableMutation.isPending}
+        databaseType={profile.type}
       />
     </>
   )

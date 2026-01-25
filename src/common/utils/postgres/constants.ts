@@ -1,5 +1,5 @@
 // Database data types
-export const DATA_TYPES = [
+export const POSTGRES_DATA_TYPES = [
   // Numeric types
   { label: 'smallint', value: 'smallint' },
   { label: 'integer', value: 'integer' },

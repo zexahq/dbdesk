@@ -13,7 +13,7 @@ import {
 } from '@renderer/components/ui/select'
 import { useState } from 'react'
 
-interface AddRowDialogProps {
+interface AddRowSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   columns: ColumnInfo[]
@@ -141,14 +141,14 @@ function RowInputField({
   }
 }
 
-export function AddRowDrawer({
+export function AddRowSheet({
   open,
   onOpenChange,
   columns,
   onSubmit,
   isPending,
   tableName
-}: AddRowDialogProps) {
+}: AddRowSheetProps) {
   const [values, setValues] = useState<Record<string, string | null>>({})
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -185,9 +185,7 @@ export function AddRowDrawer({
                   htmlFor={column.name}
                   className="text-sm font-medium flex justify-between items-center"
                 >
-                  <span>
-                    {column.name}
-                  </span>
+                  <span>{column.name}</span>
                   <span className="text-muted-foreground text-xs">{column.type}</span>
                 </Label>
                 <RowInputField

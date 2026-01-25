@@ -1,5 +1,4 @@
 import type {
-  ColumnDefinition,
   CreateTableOptions,
   CreateTableResult,
   DeleteTableOptions,
@@ -30,6 +29,7 @@ import type {
 import type { QueryResultRow } from 'pg'
 import {
   QUERIES,
+  buildCreateTableQuery,
   buildTableCountQuery,
   buildTableDataQuery,
   buildUpdateCellQuery
@@ -512,15 +512,7 @@ export class PostgresAdapter implements SQLAdapter {
       throw new Error('At least one column is required to create a table')
     }
 
-    const columnDefinitions = columns.map((col) => this.buildColumnDefinition(col)).join(', ')
-
-    const primaryKeys = columns.filter((col) => col.isPrimaryKey).map((col) => col.name)
-    const primaryKeyConstraint =
-      primaryKeys.length > 0
-        ? `, PRIMARY KEY (${primaryKeys.map((name) => quoteIdentifier(name)).join(', ')})`
-        : ''
-
-    const query = `CREATE TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnDefinitions}${primaryKeyConstraint})`
+    const { query } = buildCreateTableQuery({ schema, table, columns })
 
     try {
       await pool.query(query)
@@ -528,37 +520,6 @@ export class PostgresAdapter implements SQLAdapter {
     } catch (error) {
       throw new Error(`Failed to create table: ${error}`)
     }
-  }
-
-  private buildColumnDefinition(col: ColumnDefinition): string {
-    let def = `${quoteIdentifier(col.name)} ${col.type.toUpperCase()}`
-
-    if (col.nullable === false) {
-      def += ' NOT NULL'
-    } else if (col.nullable === true) {
-      def += ' NULL'
-    }
-
-    if (col.defaultValue !== undefined) {
-      def += ` DEFAULT ${col.defaultValue}`
-    }
-
-    if (col.isUnique) {
-      def += ' UNIQUE'
-    }
-
-    // Foreign key constraint
-    if (col.foreignKey) {
-      def += ` REFERENCES ${quoteIdentifier(col.foreignKey.table)}(${quoteIdentifier(col.foreignKey.column)})`
-      if (col.foreignKey.onDelete) {
-        def += ` ON DELETE ${col.foreignKey.onDelete}`
-      }
-      if (col.foreignKey.onUpdate) {
-        def += ` ON UPDATE ${col.foreignKey.onUpdate}`
-      }
-    }
-
-    return def
   }
 
   private ensurePool(): Pool {

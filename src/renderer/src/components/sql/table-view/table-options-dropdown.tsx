@@ -1,6 +1,10 @@
 import { useExportTableAsCSV, useExportTableAsSQL } from '@renderer/api/queries/export'
-import { useDeleteTable, useInsertTableRow, useTableIntrospection } from '@renderer/api/queries/schema'
-import { AddRowDrawer } from '@renderer/components/sql/drawers/add-row-drawer'
+import {
+  useDeleteTable,
+  useInsertTableRow,
+  useTableIntrospection
+} from '@renderer/api/queries/schema'
+import { AddRowSheet } from '@renderer/components/sql/sheets/add-row-sheet'
 import { DeleteTableConfirmationDialog } from '@renderer/components/sql/dialogs/delete-table-confirmation-dialog'
 import { Button } from '@renderer/components/ui/button'
 import {
@@ -131,8 +135,7 @@ export function TableOptionsDropdown({
         isPending={deleteTableMutation.isPending}
       />
 
-
-      <AddRowDrawer
+      <AddRowSheet
         open={addRowDialogOpen}
         onOpenChange={setAddRowDialogOpen}
         columns={tableInfo?.columns ?? []}

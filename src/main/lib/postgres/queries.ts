@@ -1,6 +1,6 @@
 // SQL Queries for database introspection and operations
 
-import type { SqlParameter, TableDataOptions } from '@common/types/sql'
+import type { ColumnDefinition, SqlParameter, TableDataOptions } from '@common/types/sql'
 import { buildWhereClause, quoteIdentifier } from './utils'
 
 export const QUERIES = {
@@ -244,4 +244,63 @@ export function buildUpdateCellQuery(options: {
   const query = `UPDATE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} SET ${setClause} WHERE ${whereClause}`
 
   return { query, params }
+}
+
+/**
+ * Build column definition SQL string for CREATE TABLE
+ */
+function buildColumnDefinition(col: ColumnDefinition): string {
+  let definition = `${quoteIdentifier(col.name)} ${col.type.toUpperCase()}`
+
+  if (col.nullable === false) {
+    definition += ' NOT NULL'
+  } else if (col.nullable === true) {
+    definition += ' NULL'
+  }
+
+  if (col.defaultValue !== undefined && col.defaultValue.trim() !== '') {
+    definition += ` DEFAULT ${col.defaultValue}`
+  }
+
+  if (col.isUnique) {
+    definition += ' UNIQUE'
+  }
+
+  // Foreign key constraint
+  if (col.foreignKey) {
+    definition += ` REFERENCES ${quoteIdentifier(col.foreignKey.table)}(${quoteIdentifier(col.foreignKey.column)})`
+    if (col.foreignKey.onDelete) {
+      definition += ` ON DELETE ${col.foreignKey.onDelete}`
+    }
+    if (col.foreignKey.onUpdate) {
+      definition += ` ON UPDATE ${col.foreignKey.onUpdate}`
+    }
+  }
+
+  return definition
+}
+
+/**
+ * Build a CREATE TABLE query
+ */
+export function buildCreateTableQuery(options: {
+  schema: string
+  table: string
+  columns: ColumnDefinition[]
+}): {
+  query: string
+} {
+  const { schema, table, columns } = options
+
+  const columnDefinitions = columns.map((col) => buildColumnDefinition(col)).join(', ')
+
+  const primaryKeys = columns.filter((col) => col.isPrimaryKey).map((col) => col.name)
+  const primaryKeyConstraint =
+    primaryKeys.length > 0
+      ? `, PRIMARY KEY (${primaryKeys.map((name) => quoteIdentifier(name)).join(', ')})`
+      : ''
+
+  const query = `CREATE TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} (${columnDefinitions}${primaryKeyConstraint})`
+
+  return { query }
 }
