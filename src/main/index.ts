@@ -4,6 +4,7 @@ import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import './adapters'
 import { connectionManager } from './connectionManager'
+import { initDashboardStorage, persistAllDashboards } from './dashboard-yaml-storage'
 import { registerIpcHandlers } from './ipc-handlers'
 import { AssetServer } from './protocols/asset-server'
 import { AssetUrl } from './protocols/asset-url'
@@ -95,7 +96,15 @@ const requestWorkspaceFlush = async (): Promise<void> => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Initialize dashboard YAML storage
+  try {
+    await initDashboardStorage()
+    console.log('Dashboard storage initialized')
+  } catch (error) {
+    console.error('Failed to initialize dashboard storage:', error)
+  }
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -234,6 +243,14 @@ app.on('before-quit', (event) => {
       await requestWorkspaceFlush()
     } catch (error) {
       console.warn('Workspace flush on quit failed:', error)
+    }
+
+    // Persist all dashboards to YAML file before quitting
+    try {
+      await persistAllDashboards()
+      console.log('Dashboards persisted successfully')
+    } catch (error) {
+      console.warn('Dashboard persistence on quit failed:', error)
     }
 
     await connectionManager.closeAll()

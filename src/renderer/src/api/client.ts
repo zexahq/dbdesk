@@ -1,6 +1,7 @@
 import type {
   ConnectionProfile,
   ConnectionWorkspace,
+  DashboardConfig,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableResult,
@@ -183,11 +184,56 @@ export const dbdeskClient = {
     table: string
   ): Promise<DeleteTableResult> {
     return getDbdesk().deleteTable(connectionId, schema, table)
+  },
+
+  // ============================================================================
+  // DASHBOARD METHODS
+  // ============================================================================
+
+  async loadDashboards(connectionId: string): Promise<DashboardConfig[]> {
+    return getDbdesk().loadDashboards(connectionId)
+  },
+
+  async getDashboard(
+    connectionId: string,
+    dashboardId: string
+  ): Promise<DashboardConfig | undefined> {
+    return getDbdesk().getDashboard(connectionId, dashboardId)
+  },
+
+  async saveDashboard(dashboard: DashboardConfig): Promise<DashboardConfig> {
+    return getDbdesk().saveDashboard(dashboard)
+  },
+
+  async deleteDashboard(connectionId: string, dashboardId: string): Promise<boolean> {
+    return getDbdesk().deleteDashboard(connectionId, dashboardId)
+  },
+
+  async persistDashboard(dashboardId: string): Promise<void> {
+    return getDbdesk().persistDashboard(dashboardId)
+  },
+
+  async persistAllDashboards(): Promise<void> {
+    return getDbdesk().persistAllDashboards()
+  },
+
+  async exportDashboards(
+    connectionId?: string
+  ): Promise<{ version: string; exportedAt: string; dashboards: DashboardConfig[] }> {
+    return getDbdesk().exportDashboards(connectionId)
+  },
+
+  async importDashboards(
+    dashboards: DashboardConfig[],
+    overwrite?: boolean
+  ): Promise<{ imported: number; skipped: number }> {
+    return getDbdesk().importDashboards(dashboards, overwrite)
   }
 }
 
 export type {
   ConnectionProfile,
+  DashboardConfig,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableRowsResult,

@@ -1,5 +1,6 @@
 import type {
   ConnectionProfile,
+  DashboardConfig,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableResult,
@@ -546,6 +547,110 @@ export const dbdeskAPI = {
       schema: schema.trim(),
       table: table.trim()
     })
+  },
+
+  // ============================================================================
+  // DASHBOARD METHODS
+  // ============================================================================
+
+  /**
+   * Load all dashboards for a connection
+   */
+  async loadDashboards(connectionId: string): Promise<DashboardConfig[]> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+
+    return ipcRenderer.invoke('dashboards:load', { connectionId: connectionId.trim() })
+  },
+
+  /**
+   * Get a specific dashboard
+   */
+  async getDashboard(
+    connectionId: string,
+    dashboardId: string
+  ): Promise<DashboardConfig | undefined> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!dashboardId || typeof dashboardId !== 'string' || dashboardId.trim() === '') {
+      throw new Error('Dashboard ID is required')
+    }
+
+    return ipcRenderer.invoke('dashboards:get', {
+      connectionId: connectionId.trim(),
+      dashboardId: dashboardId.trim()
+    })
+  },
+
+  /**
+   * Save a dashboard (create or update) - updates in-memory cache
+   */
+  async saveDashboard(dashboard: DashboardConfig): Promise<DashboardConfig> {
+    if (!dashboard || typeof dashboard !== 'object') {
+      throw new Error('Dashboard data is required')
+    }
+
+    return ipcRenderer.invoke('dashboards:save', dashboard)
+  },
+
+  /**
+   * Delete a dashboard
+   */
+  async deleteDashboard(connectionId: string, dashboardId: string): Promise<boolean> {
+    if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      throw new Error('Connection ID is required')
+    }
+    if (!dashboardId || typeof dashboardId !== 'string' || dashboardId.trim() === '') {
+      throw new Error('Dashboard ID is required')
+    }
+
+    return ipcRenderer.invoke('dashboards:delete', {
+      connectionId: connectionId.trim(),
+      dashboardId: dashboardId.trim()
+    })
+  },
+
+  /**
+   * Persist a specific dashboard to disk (call on dashboard close)
+   */
+  async persistDashboard(dashboardId: string): Promise<void> {
+    if (!dashboardId || typeof dashboardId !== 'string' || dashboardId.trim() === '') {
+      throw new Error('Dashboard ID is required')
+    }
+
+    return ipcRenderer.invoke('dashboards:persist', { dashboardId: dashboardId.trim() })
+  },
+
+  /**
+   * Persist all dashboards to disk (call on app close)
+   */
+  async persistAllDashboards(): Promise<void> {
+    return ipcRenderer.invoke('dashboards:persist-all')
+  },
+
+  /**
+   * Export dashboards to portable format
+   */
+  async exportDashboards(
+    connectionId?: string
+  ): Promise<{ version: string; exportedAt: string; dashboards: DashboardConfig[] }> {
+    return ipcRenderer.invoke('dashboards:export', { connectionId })
+  },
+
+  /**
+   * Import dashboards from array
+   */
+  async importDashboards(
+    dashboards: DashboardConfig[],
+    overwrite?: boolean
+  ): Promise<{ imported: number; skipped: number }> {
+    if (!dashboards || !Array.isArray(dashboards)) {
+      throw new Error('Dashboards array is required')
+    }
+
+    return ipcRenderer.invoke('dashboards:import', { dashboards, overwrite })
   },
 
   /**

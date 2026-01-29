@@ -458,16 +458,17 @@ export class MySQLAdapter implements SQLAdapter {
   }
 
   private transformResult(
-    rows: RowDataPacket[],
-    fields: FieldPacket[],
+    rows: RowDataPacket[] | undefined,
+    fields: FieldPacket[] | undefined,
     executionTime: number
   ): QueryResult {
-    const columns = fields.map((field) => field.name)
+    const columns = fields?.map((field) => field.name) ?? []
+    const safeRows = (rows ?? []) as Record<string, unknown>[]
 
     return {
-      rows: rows as Record<string, unknown>[],
+      rows: safeRows,
       columns,
-      rowCount: rows.length,
+      rowCount: safeRows.length,
       executionTime
     }
   }

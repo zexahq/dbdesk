@@ -468,12 +468,13 @@ export class PostgresAdapter implements SQLAdapter {
     result: PgQueryResult<QueryResultRow>,
     executionTime: number
   ): QueryResult {
-    const columns = result.fields.map((field) => field.name)
+    const columns = result?.fields?.map((field) => field.name) ?? []
+    const rows = result?.rows ?? []
 
     return {
-      rows: result.rows,
+      rows,
       columns,
-      rowCount: typeof result.rowCount === 'number' ? result.rowCount : result.rows.length,
+      rowCount: typeof result?.rowCount === 'number' ? result.rowCount : rows.length,
       executionTime
     }
   }

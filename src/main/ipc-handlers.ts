@@ -1,6 +1,7 @@
 import type {
   ConnectionProfile,
   ConnectionWorkspace,
+  DashboardConfig,
   DatabaseType,
   DeleteTableResult,
   DeleteTableRowsResult,
@@ -25,6 +26,17 @@ import {
   saveQuery,
   updateQuery
 } from './saved-queries-storage'
+import {
+  deleteDashboard,
+  deleteAllDashboardsForConnection,
+  exportDashboards,
+  getDashboard,
+  importDashboards,
+  loadDashboards,
+  persistAllDashboards,
+  persistDashboard,
+  saveDashboard
+} from './dashboard-yaml-storage'
 import { deleteProfile, getProfile, loadProfiles, saveProfile } from './storage'
 import { ConnectionError, QueryError, sanitizeError, ValidationError } from './utils/errors'
 import {
@@ -189,6 +201,7 @@ export const registerIpcHandlers = () => {
     await deleteProfile(connectionId)
     await deleteWorkspace(connectionId).catch(() => {}) // Clean up workspace data
     await deleteAllQueriesForConnection(connectionId).catch(() => {}) // Clean up saved queries
+    await deleteAllDashboardsForConnection(connectionId).catch(() => {}) // Clean up dashboards
 
     return { success: true }
   })
@@ -462,4 +475,111 @@ export const registerIpcHandlers = () => {
 
     return updateQuery(connectionId, queryId, name, content)
   })
+
+  // ============================================================================
+  // DASHBOARD HANDLERS
+  // ============================================================================
+
+  safeHandle('dashboards:load', async (payload): Promise<DashboardConfig[]> => {
+    const { connectionId } = validateConnectionIdentifier(payload)
+    return loadDashboards(connectionId)
+  })
+
+  safeHandle('dashboards:get', async (payload): Promise<DashboardConfig | undefined> => {
+    const { connectionId, dashboardId } = payload as {
+      connectionId: string
+      dashboardId: string
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!dashboardId || typeof dashboardId !== 'string') {
+      throw new ValidationError('dashboardId is required')
+    }
+
+    return getDashboard(connectionId, dashboardId)
+  })
+
+  safeHandle('dashboards:save', async (payload): Promise<DashboardConfig> => {
+    const dashboard = payload as DashboardConfig
+
+    if (!dashboard || typeof dashboard !== 'object') {
+      throw new ValidationError('Dashboard data is required')
+    }
+    if (!dashboard.dashboardId || typeof dashboard.dashboardId !== 'string') {
+      throw new ValidationError('Dashboard ID is required')
+    }
+    if (!dashboard.connectionId || typeof dashboard.connectionId !== 'string') {
+      throw new ValidationError('Connection ID is required')
+    }
+    if (!dashboard.name || typeof dashboard.name !== 'string') {
+      throw new ValidationError('Dashboard name is required')
+    }
+
+    // Ensure dates are Date objects
+    const dashboardWithDates: DashboardConfig = {
+      ...dashboard,
+      createdAt: dashboard.createdAt ? new Date(dashboard.createdAt) : new Date(),
+      updatedAt: new Date()
+    }
+
+    return saveDashboard(dashboardWithDates)
+  })
+
+  safeHandle('dashboards:delete', async (payload): Promise<boolean> => {
+    const { connectionId, dashboardId } = payload as {
+      connectionId: string
+      dashboardId: string
+    }
+
+    if (!connectionId || typeof connectionId !== 'string') {
+      throw new ValidationError('connectionId is required')
+    }
+    if (!dashboardId || typeof dashboardId !== 'string') {
+      throw new ValidationError('dashboardId is required')
+    }
+
+    return deleteDashboard(connectionId, dashboardId)
+  })
+
+  // Persist a specific dashboard to disk (call on dashboard close)
+  safeHandle('dashboards:persist', async (payload): Promise<void> => {
+    const { dashboardId } = payload as { dashboardId: string }
+
+    if (!dashboardId || typeof dashboardId !== 'string') {
+      throw new ValidationError('dashboardId is required')
+    }
+
+    return persistDashboard(dashboardId)
+  })
+
+  // Persist all dashboards to disk (call on app close)
+  safeHandle('dashboards:persist-all', async (): Promise<void> => {
+    return persistAllDashboards()
+  })
+
+  safeHandle(
+    'dashboards:export',
+    async (payload): Promise<{ version: string; exportedAt: string; dashboards: DashboardConfig[] }> => {
+      const { connectionId } = (payload as { connectionId?: string }) || {}
+      return exportDashboards(connectionId)
+    }
+  )
+
+  safeHandle(
+    'dashboards:import',
+    async (payload): Promise<{ imported: number; skipped: number }> => {
+      const { dashboards, overwrite } = payload as {
+        dashboards: DashboardConfig[]
+        overwrite?: boolean
+      }
+
+      if (!dashboards || !Array.isArray(dashboards)) {
+        throw new ValidationError('Dashboards array is required')
+      }
+
+      return importDashboards(dashboards, overwrite ?? false)
+    }
+  )
 }
