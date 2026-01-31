@@ -87,6 +87,9 @@ export const AddTableSheet = ({
       {
         onSuccess: () => {
           onOpenChange(false)
+          setTableName('')
+          setColumns([])
+          setEditingForeignKey(null)
         }
       }
     )
@@ -99,6 +102,12 @@ export const AddTableSheet = ({
     newColumns[editingForeignKey].foreignKey = foreignKey
     setColumns(newColumns)
     setEditingForeignKey(null)
+  }
+
+  const clearForeignKey = (index: number) => {
+    const newColumns = [...columns]
+    newColumns[index] = { ...newColumns[index], foreignKey: undefined }
+    setColumns(newColumns)
   }
 
   const isValid = useMemo(() => {
@@ -309,6 +318,64 @@ export const AddTableSheet = ({
                     ))}
                   </TableBody>
                 </Table>
+              )}
+
+              {/* Foreign Keys summary */}
+              {columns.some((c) => c.foreignKey) && (
+                <div className="flex flex-col gap-3 pt-4 border-t">
+                  <Label className="text-sm font-medium">Foreign Keys</Label>
+                  <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
+                    {columns.map(
+                      (column, index) =>
+                        column.foreignKey && (
+                          <div
+                            key={index}
+                            className="flex gap-1.5 rounded-md border border-border/60 bg-background/80 px-3 py-2.5 text-sm"
+                          >
+                            <div className="flex flex-col gap-3 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground text-sm">
+                                  Foreign key relation to:
+                                </span>
+                                <span className="inline-flex items-center rounded-md border border-border bg-muted/50 px-2 py-0.5 font-medium text-foreground">
+                                  {column.foreignKey.schema}.{column.foreignKey.table}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-muted-foreground text-sm">Columns:</span>
+                                <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-0.5 text-muted-foreground">
+                                  {column.name}
+                                  <span className="text-muted-foreground/70">→</span>
+                                  {column.foreignKey.schema}.{column.foreignKey.table}.
+                                  {column.foreignKey.column}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-1 flex justify-end gap-1">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => setEditingForeignKey(index)}
+                                disabled={isPending}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => clearForeignKey(index)}
+                                disabled={isPending}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                    )}
+                  </div>
+                </div>
               )}
             </div>
             {/* Bottom fade anchored to footer's top border */}
