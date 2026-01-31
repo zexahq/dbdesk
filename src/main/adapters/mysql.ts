@@ -511,7 +511,7 @@ export class MySQLAdapter implements SQLAdapter {
       await pool.query(query)
       return { success: true }
     } catch (error) {
-      throw new Error(`Failed to create table: ${error}`)
+      throw new Error(`${error}`)
     }
   }
 

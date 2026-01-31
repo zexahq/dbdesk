@@ -247,10 +247,11 @@ export interface ColumnDefinition {
   isPrimaryKey?: boolean
   isUnique?: boolean
   foreignKey?: {
+    schema: string
     table: string
     column: string
-    onDelete?: 'CASCADE' | 'RESTRICT' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION'
-    onUpdate?: 'CASCADE' | 'RESTRICT' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION'
+    onDelete: 'CASCADE' | 'RESTRICT' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION'
+    onUpdate: 'CASCADE' | 'RESTRICT' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION'
   }
 }
 

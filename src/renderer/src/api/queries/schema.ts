@@ -1,5 +1,6 @@
 import type {
   ColumnDefinition,
+  ColumnInfo,
   CreateTableResult,
   DeleteTableResult,
   DeleteTableRowsResult,
@@ -78,6 +79,28 @@ export function useTableIntrospection(connectionId?: string, schema?: string, ta
     queryFn: () =>
       dbdeskClient.introspectTable(connectionId as string, schema as string, table as string),
     enabled
+  })
+}
+
+export function useTableColumns() {
+  return useMutation({
+    mutationFn: async ({
+      connectionId,
+      schema,
+      table
+    }: {
+      connectionId: string
+      schema: string
+      table: string
+    }): Promise<ColumnInfo[]> => {
+      const tableInfo = await dbdeskClient.introspectTable(
+        connectionId as string,
+        schema as string,
+        table as string
+      )
+
+      return tableInfo.columns
+    }
   })
 }
 
@@ -234,7 +257,9 @@ export function useInsertTableRow(connectionId?: string, schema?: string, table?
     },
     onSuccess: (_result, _variables, _ctx, client) => {
       if (connectionId && schema && table) {
-        client.client.invalidateQueries({ queryKey: keys.tableData(connectionId, schema, table, {}) })
+        client.client.invalidateQueries({
+          queryKey: keys.tableData(connectionId, schema, table, {})
+        })
       }
       toast.success('Row inserted successfully')
     },

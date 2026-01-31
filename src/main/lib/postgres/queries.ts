@@ -268,7 +268,7 @@ function buildColumnDefinition(col: ColumnDefinition): string {
 
   // Foreign key constraint
   if (col.foreignKey) {
-    definition += ` REFERENCES ${quoteIdentifier(col.foreignKey.table)}(${quoteIdentifier(col.foreignKey.column)})`
+    definition += ` REFERENCES ${quoteIdentifier(col.foreignKey.schema)}.${quoteIdentifier(col.foreignKey.table)}(${quoteIdentifier(col.foreignKey.column)})`
     if (col.foreignKey.onDelete) {
       definition += ` ON DELETE ${col.foreignKey.onDelete}`
     }

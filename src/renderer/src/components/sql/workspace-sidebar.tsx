@@ -45,8 +45,6 @@ import {
 import { queryClient } from '@renderer/lib/query-client'
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
-import { useCreateTable } from '@renderer/api/queries/schema'
-import type { ColumnDefinition } from '@common/types'
 
 type WorkspaceSidebarProps = {
   profile: SQLConnectionProfile
@@ -345,18 +343,6 @@ function SchemaTree({
 }: SchemaTreeProps) {
   const isPublic = schema === 'public'
   const [createTableDrawerOpen, setCreateTableDrawerOpen] = useState(false)
-  const createTableMutation = useCreateTable(connectionId)
-
-  const handleCreateTable = (tableName: string, columns: ColumnDefinition[]) => {
-    createTableMutation.mutate(
-      { schema, table: tableName, columns },
-      {
-        onSuccess: () => {
-          setCreateTableDrawerOpen(false)
-        }
-      }
-    )
-  }
 
   return (
     <>
@@ -368,7 +354,7 @@ function SchemaTree({
           <div className="flex items-center gap-1">
             <CollapsibleTrigger asChild>
               <SidebarMenuButton className="cursor-pointer h-9 flex-1">
-                <ChevronRight className="size-4 transition-transform" />
+                <ChevronRight className="size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
                 <DatabaseIcon className="size-4" />
                 <span>{schema}</span>
               </SidebarMenuButton>
@@ -425,9 +411,8 @@ function SchemaTree({
       <AddTableSheet
         open={createTableDrawerOpen}
         onOpenChange={setCreateTableDrawerOpen}
+        connectionId={connectionId}
         schema={schema}
-        onSubmit={handleCreateTable}
-        isPending={createTableMutation.isPending}
         databaseType={profile.type}
       />
     </>
