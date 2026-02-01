@@ -1,6 +1,7 @@
 import { windowClient } from '@renderer/api/window'
 import { useSqlWorkspaceStore } from '@renderer/store/sql-workspace-store'
 import { Minus, Square, X } from 'lucide-react'
+import dbdeskLogo from '@renderer/assets/dbdesk-logo.svg'
 import { Title } from './title'
 
 export function Titlebar() {
@@ -15,7 +16,10 @@ export function Titlebar() {
       className="h-9 shrink-0 bg-main-sidebar backdrop-blur flex items-center justify-between select-none"
       style={{ appRegion: 'drag' } as React.CSSProperties}
     >
-      <div className="pl-4 text-sm font-medium text-zinc-800 dark:text-zinc-400 w-24">DBDesk</div>
+      <div className="pl-4 flex items-center gap-1 text-sm font-medium text-zinc-800 dark:text-zinc-400 w-24">
+        <img src={dbdeskLogo} alt="DBDesk" className="w-5 h-5 brightness-0 dark:brightness-100" />
+        <span className='font-medium'>DBDesk</span>
+      </div>
 
       <div className="flex-1 flex justify-center">
         {connectionId && <Title connectionId={connectionId} />}
