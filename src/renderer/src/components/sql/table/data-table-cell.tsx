@@ -27,7 +27,8 @@ function DataTableCellInner<TData, TValue>(props: DataTableCellProps<TData, TVal
       return <NumericDataTableCell {...props} />
     case 'boolean':
       return <BooleanDataTableCell {...props} />
-    case 'date':
+    case 'date_with_timezone':
+    case 'date_without_timezone':
       return <DateTimeDataTableCell {...props} />
     case 'enum':
       return <EnumDataTableCell {...props} />

@@ -2,7 +2,7 @@
 
 import { BasicEditor } from '@renderer/components/editor/basic-editor'
 import { Button } from '@renderer/components/ui/button'
-import { Sheet, SheetContent, SheetTitle } from '@renderer/components/ui/sheet'
+import { Sheet, SheetContent, SheetFooter, SheetTitle } from '@renderer/components/ui/sheet'
 
 interface CellEditorSheetProps {
   open: boolean
@@ -42,14 +42,14 @@ export function CellEditorSheet({
               language={language}
             />
           </div>
-          <div className="flex items-center justify-end gap-2 border-t p-4 bg-muted/50">
+          <SheetFooter className="flex flex-row items-center justify-end gap-2 border-t p-4 bg-muted/50">
             <Button variant="outline" size="sm" onClick={onCancel} className="gap-2">
               <span>Cancel</span>
             </Button>
             <Button variant="default" size="sm" onClick={onSave} className="gap-2">
               <span>Save changes</span>
             </Button>
-          </div>
+          </SheetFooter>
         </div>
       </SheetContent>
     </Sheet>

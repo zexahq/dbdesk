@@ -57,7 +57,7 @@ export function SimpleTable({ columns, data }: SimpleTableProps) {
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
 
   const table = useReactTable({
-    data,
+    data: data,
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,

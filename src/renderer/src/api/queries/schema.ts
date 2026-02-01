@@ -1,6 +1,10 @@
 import type {
+  ColumnDefinition,
+  ColumnInfo,
+  CreateTableResult,
   DeleteTableResult,
   DeleteTableRowsResult,
+  InsertTableRowResult,
   QueryResultRow,
   SchemaWithTables,
   TableDataOptions,
@@ -75,6 +79,28 @@ export function useTableIntrospection(connectionId?: string, schema?: string, ta
     queryFn: () =>
       dbdeskClient.introspectTable(connectionId as string, schema as string, table as string),
     enabled
+  })
+}
+
+export function useTableColumns() {
+  return useMutation({
+    mutationFn: async ({
+      connectionId,
+      schema,
+      table
+    }: {
+      connectionId: string
+      schema: string
+      table: string
+    }): Promise<ColumnInfo[]> => {
+      const tableInfo = await dbdeskClient.introspectTable(
+        connectionId as string,
+        schema as string,
+        table as string
+      )
+
+      return tableInfo.columns
+    }
   })
 }
 
@@ -190,6 +216,55 @@ export function useDeleteTable(connectionId?: string) {
       toast.error('Failed to delete table', {
         description: cleanErrorMessage(error.message)
       })
+    }
+  })
+}
+export function useCreateTable(connectionId?: string) {
+  return useMutation({
+    mutationFn: ({
+      schema,
+      table,
+      columns
+    }: {
+      schema: string
+      table: string
+      columns: ColumnDefinition[]
+    }): Promise<CreateTableResult> => {
+      if (!connectionId) {
+        throw new Error('Connection ID is required to create table')
+      }
+      return dbdeskClient.createTable(connectionId, schema, table, columns)
+    },
+    onSuccess: (result, variables, _ctx, client) => {
+      if (result.success) {
+        toast.success(`Table ${variables.schema}.${variables.table} created successfully`)
+        client.client.invalidateQueries({ queryKey: keys.schemasWithTables(connectionId!) })
+      }
+    },
+    onError: (error) => {
+      toast.error('Failed to create table', { description: cleanErrorMessage(error.message) })
+    }
+  })
+}
+
+export function useInsertTableRow(connectionId?: string, schema?: string, table?: string) {
+  return useMutation({
+    mutationFn: (values: Record<string, unknown>): Promise<InsertTableRowResult> => {
+      if (!connectionId || !schema || !table) {
+        throw new Error('Connection ID, schema, and table are required')
+      }
+      return dbdeskClient.insertTableRow(connectionId, schema, table, values)
+    },
+    onSuccess: (_result, _variables, _ctx, client) => {
+      if (connectionId && schema && table) {
+        client.client.invalidateQueries({
+          queryKey: keys.tableData(connectionId, schema, table, {})
+        })
+      }
+      toast.success('Row inserted successfully')
+    },
+    onError: (error) => {
+      toast.error('Failed to insert row', { description: cleanErrorMessage(error.message) })
     }
   })
 }

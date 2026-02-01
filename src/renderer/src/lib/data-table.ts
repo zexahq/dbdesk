@@ -63,7 +63,14 @@ export function formatCellValue(value: unknown, dataType?: string): string {
   return String(value)
 }
 
-export type DataTableCellVariant = 'text' | 'numeric' | 'json' | 'boolean' | 'date' | 'enum'
+export type DataTableCellVariant =
+  | 'text'
+  | 'numeric'
+  | 'json'
+  | 'boolean'
+  | 'date_with_timezone'
+  | 'date_without_timezone'
+  | 'enum'
 
 const JSON_TYPES = new Set(['json', 'jsonb'])
 const BOOLEAN_TYPES = new Set(['boolean', 'bool'])
@@ -90,16 +97,19 @@ const NUMERIC_TYPES = new Set([
   'money'
 ])
 
-const DATE_TYPES = new Set([
+const DATE_WITH_TZ_TYPES = new Set([
+  'timestamp with time zone',
+  'timestamptz',
+  'time with time zone',
+  'timetz'
+])
+
+const DATE_WITHOUT_TZ_TYPES = new Set([
   'date',
   'timestamp',
   'timestamp without time zone',
-  'timestamp with time zone',
-  'timestamptz',
   'time',
   'time without time zone',
-  'time with time zone',
-  'timetz',
   'interval'
 ])
 
@@ -123,8 +133,11 @@ export function getCellVariant(
   if (NUMERIC_TYPES.has(normalizedType)) {
     return 'numeric'
   }
-  if (DATE_TYPES.has(normalizedType)) {
-    return 'date'
+  if (DATE_WITH_TZ_TYPES.has(normalizedType)) {
+    return 'date_with_timezone'
+  }
+  if (DATE_WITHOUT_TZ_TYPES.has(normalizedType)) {
+    return 'date_without_timezone'
   }
 
   return 'text'

@@ -1,5 +1,10 @@
 import { useExportTableAsCSV, useExportTableAsSQL } from '@renderer/api/queries/export'
-import { useDeleteTable } from '@renderer/api/queries/schema'
+import {
+  useDeleteTable,
+  useInsertTableRow,
+  useTableIntrospection
+} from '@renderer/api/queries/schema'
+import { AddRowSheet } from '@renderer/components/sql/sheets/add-row-sheet'
 import { DeleteTableConfirmationDialog } from '@renderer/components/sql/dialogs/delete-table-confirmation-dialog'
 import { Button } from '@renderer/components/ui/button'
 import {
@@ -11,7 +16,7 @@ import {
 } from '@renderer/components/ui/dropdown-menu'
 import { cn } from '@renderer/lib/utils'
 import { useTabStore } from '@renderer/store/tab-store'
-import { FileCode2, FileDown, MoreVertical, Trash2 } from 'lucide-react'
+import { FileCode2, FileDown, MoreVertical, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 interface TableOptionsDropdownProps {
@@ -28,9 +33,13 @@ export function TableOptionsDropdown({
   disabled
 }: TableOptionsDropdownProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [addRowDialogOpen, setAddRowDialogOpen] = useState(false)
   const exportCSVMutation = useExportTableAsCSV(connectionId)
   const exportSQLMutation = useExportTableAsSQL(connectionId)
   const deleteTableMutation = useDeleteTable(connectionId)
+  const insertRowMutation = useInsertTableRow(connectionId, schema, table)
+
+  const { data: tableInfo } = useTableIntrospection(connectionId, schema, table)
 
   const removeTab = useTabStore((s) => s.removeTab)
   const findTableTabById = useTabStore((s) => s.findTableTabById)
@@ -54,56 +63,69 @@ export function TableOptionsDropdown({
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            'h-8 w-8 cursor-pointer text-muted-foreground/60 hover:text-foreground hover:bg-accent active:text-foreground active:bg-accent'
-          )}
-          disabled={disabled}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'h-8 w-8 cursor-pointer text-muted-foreground/60 hover:text-foreground hover:bg-accent active:text-foreground active:bg-accent'
+            )}
+            disabled={disabled}
+          >
+            <MoreVertical className="size-4" />
+            <span className="sr-only">Table options</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          side="bottom"
+          className="w-52"
+          sideOffset={4}
+          avoidCollisions
         >
-          <MoreVertical className="size-4" />
-          <span className="sr-only">Table options</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        side="bottom"
-        className="w-52"
-        sideOffset={4}
-        avoidCollisions
-      >
-        <DropdownMenuItem
-          className="cursor-pointer text-sm flex items-center gap-2"
-          onSelect={() => {
-            exportCSVMutation.mutate({ schema, table })
-          }}
-        >
-          <FileDown className="size-4" />
-          <span>Export as CSV</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="cursor-pointer text-sm flex items-center gap-2"
-          onSelect={() => {
-            exportSQLMutation.mutate({ schema, table })
-          }}
-        >
-          <FileCode2 className="size-4" />
-          <span>Export as SQL</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="cursor-pointer text-sm flex items-center gap-2"
-          onSelect={() => {
-            setDeleteDialogOpen(true)
-          }}
-        >
-          <Trash2 className="size-4" />
-          <span>Delete table</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
+          <DropdownMenuItem
+            className="cursor-pointer text-sm flex items-center gap-2"
+            onSelect={() => {
+              setAddRowDialogOpen(true)
+            }}
+          >
+            <Plus className="size-4" />
+            <span>Add row</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer text-sm flex items-center gap-2"
+            onSelect={() => {
+              exportCSVMutation.mutate({ schema, table })
+            }}
+          >
+            <FileDown className="size-4" />
+            <span>Export as CSV</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="cursor-pointer text-sm flex items-center gap-2"
+            onSelect={() => {
+              exportSQLMutation.mutate({ schema, table })
+            }}
+          >
+            <FileCode2 className="size-4" />
+            <span>Export as SQL</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer text-sm flex items-center gap-2"
+            onSelect={() => {
+              setDeleteDialogOpen(true)
+            }}
+          >
+            <Trash2 className="size-4" />
+            <span>Delete table</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <DeleteTableConfirmationDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -112,6 +134,21 @@ export function TableOptionsDropdown({
         schema={schema}
         isPending={deleteTableMutation.isPending}
       />
-    </DropdownMenu>
+
+      <AddRowSheet
+        open={addRowDialogOpen}
+        onOpenChange={setAddRowDialogOpen}
+        columns={tableInfo?.columns ?? []}
+        tableName={table}
+        onSubmit={(values) => {
+          insertRowMutation.mutate(values, {
+            onSuccess: () => {
+              setAddRowDialogOpen(false)
+            }
+          })
+        }}
+        isPending={insertRowMutation.isPending}
+      />
+    </>
   )
 }
