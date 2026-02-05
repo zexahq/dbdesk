@@ -1,6 +1,6 @@
 {
   "name": "dbdesk",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "description": "The cleanest database management tool for your databases.",
   "main": "./out/main/index.js",
   "author": "example.com",
@@ -24,6 +24,8 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@radix-ui/react-avatar": "^1.1.11",
+    "better-auth": "^1.4.18",
     "monaco-sql-languages": "^0.15.1",
     "mysql2": "^3.16.0",
     "pg": "^8.16.3"

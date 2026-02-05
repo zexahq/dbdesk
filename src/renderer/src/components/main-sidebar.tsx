@@ -1,5 +1,5 @@
 import { QuickPanel } from './quick-panel'
-import { ThemeToggle } from './theme-toggle'
+import { UserMenu } from './user-menu'
 
 export function MainSidebar() {
   return (
@@ -9,7 +9,7 @@ export function MainSidebar() {
           <QuickPanel />
         </div>
         <div className="flex flex-col gap-2 items-center">
-          <ThemeToggle />
+          <UserMenu />
         </div>
       </div>
     </div>

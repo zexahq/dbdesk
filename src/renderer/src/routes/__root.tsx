@@ -1,21 +1,33 @@
-import { createRootRoute, Navigate, Outlet } from '@tanstack/react-router'
-// import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { MainSidebar } from '@renderer/components/main-sidebar'
+import { createRootRoute, Navigate, Outlet, useMatches } from '@tanstack/react-router'
 import { Titlebar } from '@renderer/components/titlebar'
 import { Toaster } from '@renderer/components/ui/sonner'
+import { AuthObserver } from '@renderer/components/auth/auth-observer'
+import { DeepLinkObserver } from '@renderer/components/auth/deep-link-observer'
+import { MainSidebar } from '@renderer/components/main-sidebar'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
-const RootLayout = () => (
-  <div className="h-full flex flex-col overflow-hidden">
-    <Titlebar />
-    <div className="flex flex-1 min-h-0 overflow-hidden select-none">
-      <MainSidebar />
-      <main className="flex-1 min-h-0 overflow-y-auto">
-        <Outlet />
-      </main>
+const RootLayout = () => {
+  const matches = useMatches()
+  const isAuthRoute = matches.some((match) => match.routeId === '/auth')
+
+  return (
+    <>
+      <div className="h-full flex flex-col overflow-hidden">
+        <AuthObserver />
+        <DeepLinkObserver />
+        <Titlebar />
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {!isAuthRoute && <MainSidebar />}
+          <main className="flex-1 min-h-0 overflow-y-auto">
+            <Outlet />
+          </main>
+        </div>
+      </div>
       <Toaster position="top-right" />
-    </div>
-  </div>
-)
+      <TanStackRouterDevtools position="bottom-right" />
+    </>
+  )
+}
 
 const NotFound = () => <Navigate to="/" replace />
 

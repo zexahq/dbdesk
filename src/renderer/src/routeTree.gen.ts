@@ -9,48 +9,72 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ConnectionIdRouteImport } from './routes/$connectionId'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ConnectionsConnectionIdRouteImport } from './routes/connections.$connectionId'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectionIdRoute = ConnectionIdRouteImport.update({
+  id: '/$connectionId',
+  path: '/$connectionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConnectionsConnectionIdRoute = ConnectionsConnectionIdRouteImport.update({
-  id: '/connections/$connectionId',
-  path: '/connections/$connectionId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/connections/$connectionId': typeof ConnectionsConnectionIdRoute
+  '/$connectionId': typeof ConnectionIdRoute
+  '/auth': typeof AuthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/connections/$connectionId': typeof ConnectionsConnectionIdRoute
+  '/$connectionId': typeof ConnectionIdRoute
+  '/auth': typeof AuthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/connections/$connectionId': typeof ConnectionsConnectionIdRoute
+  '/$connectionId': typeof ConnectionIdRoute
+  '/auth': typeof AuthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/connections/$connectionId'
+  fullPaths: '/' | '/$connectionId' | '/auth'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/connections/$connectionId'
-  id: '__root__' | '/' | '/connections/$connectionId'
+  to: '/' | '/$connectionId' | '/auth'
+  id: '__root__' | '/' | '/$connectionId' | '/auth'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ConnectionsConnectionIdRoute: typeof ConnectionsConnectionIdRoute
+  ConnectionIdRoute: typeof ConnectionIdRoute
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$connectionId': {
+      id: '/$connectionId'
+      path: '/$connectionId'
+      fullPath: '/$connectionId'
+      preLoaderRoute: typeof ConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -58,19 +82,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/connections/$connectionId': {
-      id: '/connections/$connectionId'
-      path: '/connections/$connectionId'
-      fullPath: '/connections/$connectionId'
-      preLoaderRoute: typeof ConnectionsConnectionIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ConnectionsConnectionIdRoute: ConnectionsConnectionIdRoute,
+  ConnectionIdRoute: ConnectionIdRoute,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
