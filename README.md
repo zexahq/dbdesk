@@ -1,4 +1,11 @@
-# DBDesk
+<h1 align="center">
+  <img
+    src="https://github.com/user-attachments/assets/08b9db99-9e85-47a3-b72f-11616033cad6"
+    alt="DBDesk banner"
+    width="280"
+  />
+</h1>
+
 
 **The cleanest database management tool you've been waiting for.**
 
