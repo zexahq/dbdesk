@@ -80,7 +80,7 @@ const UpsertForeignKeySheet = ({ onClose, onSubmit, foreignKey }: UpsertForeignK
             <SelectTrigger className="h-9 w-full">
               <SelectValue placeholder="Select schema" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-100">
               {schemasWithTables.map((s) => (
                 <SelectItem key={s.schema} value={s.schema}>
                   {s.schema}
@@ -113,7 +113,7 @@ const UpsertForeignKeySheet = ({ onClose, onSubmit, foreignKey }: UpsertForeignK
             <SelectTrigger className="h-9 w-full">
               <SelectValue placeholder="Select table" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-100">
               {schemasWithTables
                 .find((s) => s.schema === schema)
                 ?.tables.map((table) => (
@@ -142,7 +142,7 @@ const UpsertForeignKeySheet = ({ onClose, onSubmit, foreignKey }: UpsertForeignK
                     <SelectTrigger className="h-9 w-full">
                       <SelectValue placeholder="Select column" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-100">
                       {columns.map((c) => (
                         <SelectItem key={c.name} value={c.name}>
                           {c.name}
@@ -160,7 +160,7 @@ const UpsertForeignKeySheet = ({ onClose, onSubmit, foreignKey }: UpsertForeignK
                     <SelectTrigger className="h-9 w-full">
                       <SelectValue placeholder="Select on delete" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-100">
                       <SelectItem value="CASCADE">CASCADE</SelectItem>
                       <SelectItem value="RESTRICT">RESTRICT</SelectItem>
                       <SelectItem value="SET NULL">SET NULL</SelectItem>
@@ -178,7 +178,7 @@ const UpsertForeignKeySheet = ({ onClose, onSubmit, foreignKey }: UpsertForeignK
                     <SelectTrigger className="h-9 w-full">
                       <SelectValue placeholder="Select on update" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-100">
                       <SelectItem value="CASCADE">CASCADE</SelectItem>
                       <SelectItem value="RESTRICT">RESTRICT</SelectItem>
                       <SelectItem value="SET NULL">SET NULL</SelectItem>
