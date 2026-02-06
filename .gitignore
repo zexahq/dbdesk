@@ -9,4 +9,5 @@ agent_plans/
 .tanstack
 .agents
 package-lock.json
+.env
 .env.*
