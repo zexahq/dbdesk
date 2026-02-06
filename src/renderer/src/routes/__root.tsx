@@ -4,7 +4,6 @@ import { Toaster } from '@renderer/components/ui/sonner'
 import { AuthObserver } from '@renderer/components/auth/auth-observer'
 import { DeepLinkObserver } from '@renderer/components/auth/deep-link-observer'
 import { MainSidebar } from '@renderer/components/main-sidebar'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 const RootLayout = () => {
   const matches = useMatches()
@@ -24,7 +23,6 @@ const RootLayout = () => {
         </div>
       </div>
       <Toaster position="top-right" />
-      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }
