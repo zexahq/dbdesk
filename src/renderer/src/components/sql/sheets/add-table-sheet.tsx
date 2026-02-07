@@ -216,7 +216,7 @@ export const AddTableSheet = ({
                             <SelectTrigger className="h-9 w-full">
                               <SelectValue placeholder="Select data type" />
                             </SelectTrigger>
-                            <SelectContent className="max-h-[400px]">
+                            <SelectContent className="max-h-100">
                               {DATA_TYPES.map((type) => (
                                 <SelectItem key={type.value} value={type.value}>
                                   {type.label}
