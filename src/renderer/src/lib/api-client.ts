@@ -1,7 +1,5 @@
 import { bearerToken, fullSignOut } from './auth'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9876'
-
 interface RequestConfig extends RequestInit {
   skipAuth?: boolean
 }
@@ -30,7 +28,7 @@ class ApiClient {
       Object.assign(headers, await this.getAuthHeader())
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${window.env.API_URL}${endpoint}`, {
       ...fetchConfig,
       headers,
     })

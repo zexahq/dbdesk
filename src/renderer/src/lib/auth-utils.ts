@@ -1,32 +1,23 @@
-import { decryptChallenge, encryptChallenge, generateCodeChallenge } from './crypto'
 import { authClient, bearerToken } from './auth'
 import { useAuthStore } from '@renderer/store/auth-store'
 
 const CHALLENGE_STORAGE_KEY = 'dbdesk_auth_challenge'
-const SECRET_KEY = import.meta.env.VITE_AUTH_SECRET || 'default-secret-key-change-in-prod'
-const WEB_URL = import.meta.env.VITE_WEB_URL || 'http://localhost:3000'
 
 /**
- * Store and manage code challenge
+ * Store and manage code challenge using preload secure crypto
  */
 export const codeChallenge = {
   generate(): string {
-    const challenge = generateCodeChallenge()
-    const encrypted = encryptChallenge(challenge, SECRET_KEY)
+    const encrypted = window.challenge.generate()
     localStorage.setItem(CHALLENGE_STORAGE_KEY, encrypted)
-    return challenge
+    // Return encrypted so we can pass it in URL
+    return encrypted
   },
   verify(challenge: string): boolean {
     const encrypted = localStorage.getItem(CHALLENGE_STORAGE_KEY)
     if (!encrypted) return false
 
-    try {
-      const decrypted = decryptChallenge(encrypted, SECRET_KEY)
-      return decrypted === challenge
-    } catch (error) {
-      console.error('Failed to decrypt challenge:', error)
-      return false
-    }
+    return window.challenge.verify(encrypted, challenge)
   },
   clear(): void {
     localStorage.removeItem(CHALLENGE_STORAGE_KEY)
@@ -37,8 +28,8 @@ export const codeChallenge = {
  * Get the social login URL for the web app
  */
 export function getLoginUrl(): string {
-  const challenge = codeChallenge.generate()
-  return `${WEB_URL}/login?challenge=${challenge}`
+  const encryptedChallenge = codeChallenge.generate()
+  return `${window.env.WEB_URL}/login?challenge=${encryptedChallenge}`
 }
 
 /**

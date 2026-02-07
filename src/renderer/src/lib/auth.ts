@@ -3,7 +3,6 @@ import { createAuthClient } from 'better-auth/react'
 import { useAuthStore } from '@renderer/store/auth-store'
 
 const BEARER_TOKEN_KEY = 'dbdesk_bearer_token'
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9876'
 
 /**
  * Store bearer token in localStorage
@@ -18,7 +17,7 @@ export const bearerToken = {
  * Create auth client with better-auth
  */
 export const authClient = createAuthClient({
-  baseURL: API_URL,
+  baseURL: window.env.API_URL,
   basePath: '/api/auth',
   plugins: [bearer()],
   fetchOptions: {
