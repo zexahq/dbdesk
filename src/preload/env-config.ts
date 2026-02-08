@@ -1,3 +1,11 @@
+import { config } from 'dotenv'
+
+/**
+ * Load environment variables from .env file
+ * Must be called before accessing process.env
+ */
+config()
+
 /**
  * Environment configuration - only access env vars in preload
  * Never expose secrets directly to renderer

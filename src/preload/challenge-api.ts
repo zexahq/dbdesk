@@ -58,11 +58,14 @@ export const challengeAPI = {
    * Generate challenge and encrypt it with stored secret
    * @returns encrypted challenge to send to web app
    */
-  generate(): string {
+  generate(): { challenge: string; encrypted: string } {
     const challenge = generateCodeChallenge()
     const encrypted = encryptChallenge(challenge, envConfig.CHALLENGE_SECRET)
     // Store in localStorage via renderer (challenge manager will handle this)
-    return encrypted
+    return {
+      challenge,
+      encrypted
+    }
   },
 
   /**

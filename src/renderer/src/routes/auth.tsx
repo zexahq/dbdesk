@@ -20,14 +20,14 @@ const AuthPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex h-[calc(100vh-36px)] items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-background">
+    <div className="flex h-[calc(100vh-36px)]  items-center justify-center bg-background">
       <div className="w-full max-w-md space-y-8 rounded-lg p-8 flex flex-col -translate-y-16">
         <div className="flex flex-col gap-2">
           <img src={DbDeskLogo} alt="DBDesk" className="h-8 w-8" />

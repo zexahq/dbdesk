@@ -12,9 +12,9 @@ const RootLayout = () => {
   return (
     <>
       <div className="h-full flex flex-col overflow-hidden">
+        <Titlebar />
         <AuthObserver />
         <DeepLinkObserver />
-        <Titlebar />
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {!isAuthRoute && <MainSidebar />}
           <main className="flex-1 min-h-0 overflow-y-auto">

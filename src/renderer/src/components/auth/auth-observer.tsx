@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { authClient, bearerToken } from '@renderer/lib/auth'
 import { useAppStore } from '@renderer/store/app-store'
 import { useAuthStore } from '@renderer/store/auth-store'
+import { Loader2 } from 'lucide-react'
 
 /**
  * Monitors session state and manages navigation between protected and public routes
@@ -47,15 +48,25 @@ export function AuthObserver() {
 
   // Notify user when in offline mode
   useEffect(() => {
+    // Notify user if they have valid credentials but server is unreachable
     if (hasCredentialsButServerError && isOnline) {
       toast.error(
         'Server connection lost. You can continue working offline, but some features may not work as expected.'
       )
     }
+    // Notify user if they have valid credentials but are currently offline
     if (hasCredentialsButServerError && !isOnline) {
       toast.error('Connection unavailable. You can still work on offline databases.')
     }
   }, [hasCredentialsButServerError, isOnline])
+
+  if (isPending) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
+      </div>
+    )
+  }
 
   return null
 }

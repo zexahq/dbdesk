@@ -8,10 +8,10 @@ const CHALLENGE_STORAGE_KEY = 'dbdesk_auth_challenge'
  */
 export const codeChallenge = {
   generate(): string {
-    const encrypted = window.challenge.generate()
+    const { challenge, encrypted } = window.challenge.generate()
     localStorage.setItem(CHALLENGE_STORAGE_KEY, encrypted)
     // Return encrypted so we can pass it in URL
-    return encrypted
+    return challenge
   },
   verify(challenge: string): boolean {
     const encrypted = localStorage.getItem(CHALLENGE_STORAGE_KEY)

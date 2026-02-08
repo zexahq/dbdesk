@@ -20,7 +20,7 @@ function setupContentSecurityPolicy() {
   const apiUrl = window.env.API_URL
   const apiHost = new URL(apiUrl).origin
 
-  const csp = `default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src 'self' ${apiHost}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:`
+  const csp = `default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src 'self' ${apiHost}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://lh3.googleusercontent.com`
 
   const meta = document.createElement('meta')
   meta.httpEquiv = 'Content-Security-Policy'
