@@ -92,28 +92,43 @@ export class MySQLAdapter implements SQLAdapter {
 
     // Check if this is a SELECT query that can be paginated
     if (options && isSelectableQuery(normalizedQuery)) {
-      // Execute count query and paginated query in parallel
-      const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
-      const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${options.limit ?? 50} OFFSET ${options.offset ?? 0}`
+      const limit = options.limit ?? 50
+      const offset = options.offset ?? 0
 
-      const [countResult, pageResult] = await Promise.all([
-        pool.query<RowDataPacket[]>(countQuery),
-        pool.query<RowDataPacket[]>(paginatedQuery)
-      ])
+      const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${limit} OFFSET ${offset}`
 
+      if (options.includeTotalRowCount) {
+        // Execute count query and paginated query in parallel
+        const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
+
+        const [countResult, pageResult] = await Promise.all([
+          pool.query<RowDataPacket[]>(countQuery),
+          pool.query<RowDataPacket[]>(paginatedQuery)
+        ])
+
+        const executionTime = performance.now() - start
+        const [countRows] = countResult
+        const [pageRows, pageFields] = pageResult
+
+        const totalRow = (countRows as RowDataPacket[])[0]?.total
+        const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
+
+        const transformedResult = this.transformResult(pageRows, pageFields, executionTime)
+        return {
+          ...transformedResult,
+          totalRowCount,
+          limit,
+          offset
+        }
+      }
+
+      const [pageRows, pageFields] = await pool.query<RowDataPacket[]>(paginatedQuery)
       const executionTime = performance.now() - start
-      const [countRows] = countResult
-      const [pageRows, pageFields] = pageResult
-
-      const totalRow = (countRows as RowDataPacket[])[0]?.total
-      const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
-
       const transformedResult = this.transformResult(pageRows, pageFields, executionTime)
       return {
         ...transformedResult,
-        totalRowCount,
-        limit: options.limit,
-        offset: options.offset
+        limit,
+        offset
       }
     }
 
@@ -524,16 +539,17 @@ export class MySQLAdapter implements SQLAdapter {
   }
 
   private transformResult(
-    rows: RowDataPacket[],
-    fields: FieldPacket[],
+    rows: RowDataPacket[] | undefined,
+    fields: FieldPacket[] | undefined,
     executionTime: number
   ): QueryResult {
-    const columns = fields.map((field) => field.name)
+    const columns = fields?.map((field) => field.name) ?? []
+    const safeRows = (rows ?? []) as Record<string, unknown>[]
 
     return {
-      rows: rows as Record<string, unknown>[],
+      rows: safeRows,
       columns,
-      rowCount: rows.length,
+      rowCount: safeRows.length,
       executionTime
     }
   }

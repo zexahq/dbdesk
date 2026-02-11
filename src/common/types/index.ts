@@ -67,3 +67,24 @@ export type {
   SerializedTableTab,
   WorkspaceStorage
 } from './workspace'
+
+// Dashboard types
+export type {
+  ChartWidgetSettings,
+  CloudStorageConfig,
+  CloudStorageProvider,
+  DashboardConfig,
+  DashboardExport,
+  DashboardLayout,
+  DashboardStorage,
+  DashboardSyncStatus,
+  KPIWidgetSettings,
+  MarkdownWidgetSettings,
+  PieChartWidgetSettings,
+  ScatterWidgetSettings,
+  TableWidgetSettings,
+  Widget,
+  WidgetPosition,
+  WidgetSettings,
+  WidgetType
+} from './dashboard'

@@ -115,25 +115,41 @@ export class PostgresAdapter implements SQLAdapter {
 
     // Check if this is a SELECT query that can be paginated
     if (options && isSelectableQuery(normalizedQuery)) {
-      // Execute count query and paginated query in parallel
-      const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
-      const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${options.limit ?? 50} OFFSET ${options.offset ?? 0}`
+      const limit = options.limit ?? 50
+      const offset = options.offset ?? 0
 
-      const [countResult, pageResult] = await Promise.all([
-        pool.query<{ total: number }>(countQuery),
-        pool.query<QueryResultRow>(paginatedQuery)
-      ])
+      const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${limit} OFFSET ${offset}`
 
+      if (options.includeTotalRowCount) {
+        // Execute count query and paginated query in parallel
+        const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
+
+        const [countResult, pageResult] = await Promise.all([
+          pool.query<{ total: number }>(countQuery),
+          pool.query<QueryResultRow>(paginatedQuery)
+        ])
+
+        const executionTime = performance.now() - start
+        const totalRow = countResult.rows[0]?.total
+        const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
+
+        const transformedResult = this.transformResult(pageResult, executionTime)
+        return {
+          ...transformedResult,
+          totalRowCount,
+          limit,
+          offset
+        }
+      }
+
+      const pageResult = await pool.query<QueryResultRow>(paginatedQuery)
       const executionTime = performance.now() - start
-      const totalRow = countResult.rows[0]?.total
-      const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
 
       const transformedResult = this.transformResult(pageResult, executionTime)
       return {
         ...transformedResult,
-        totalRowCount,
-        limit: options.limit,
-        offset: options.offset
+        limit,
+        offset
       }
     }
 
@@ -534,12 +550,13 @@ export class PostgresAdapter implements SQLAdapter {
     result: PgQueryResult<QueryResultRow>,
     executionTime: number
   ): QueryResult {
-    const columns = result.fields.map((field) => field.name)
+    const columns = result?.fields?.map((field) => field.name) ?? []
+    const rows = result?.rows ?? []
 
     return {
-      rows: result.rows,
+      rows,
       columns,
-      rowCount: typeof result.rowCount === 'number' ? result.rowCount : result.rows.length,
+      rowCount: typeof result?.rowCount === 'number' ? result.rowCount : rows.length,
       executionTime
     }
   }

@@ -129,3 +129,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* React Grid Layout resize handle styles */
+.react-grid-item > .react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.react-grid-item:hover > .react-resizable-handle {
+  opacity: 1;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  border-color: var(--ring) !important;
+}

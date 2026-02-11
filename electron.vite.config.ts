@@ -82,7 +82,11 @@ export default defineConfig({
       alias: {
         '@renderer': resolve('src/renderer/src'),
         '@common': resolve('src/common')
-      }
+      },
+      dedupe: ['react', 'react-dom']
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom']
     },
     plugins: [
       monacoSelectiveLanguageRegistration(),

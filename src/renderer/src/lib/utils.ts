@@ -14,3 +14,11 @@ export function cleanErrorMessage(message: string): string {
   cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
   return cleaned
 }
+
+/**
+ * Generate a unique ID with prefix
+ * Uses timestamp + random suffix for uniqueness without external dependencies
+ */
+export function createId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}

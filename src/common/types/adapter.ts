@@ -9,6 +9,11 @@ import type { SQLAdapter } from './sql'
 export interface RunQueryOptions {
   limit?: number
   offset?: number
+  /**
+   * When true, returns totalRowCount for selectable queries.
+   * Defaults to false to avoid expensive COUNT(*) subqueries.
+   */
+  includeTotalRowCount?: boolean
 }
 
 /**
