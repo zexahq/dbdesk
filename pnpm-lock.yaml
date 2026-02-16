@@ -10,10 +10,10 @@ importers:
     dependencies:
       '@electron-toolkit/preload':
         specifier: ^3.0.2
-        version: 3.0.2(electron@38.8.0)
+        version: 3.0.2(electron@38.8.2)
       '@electron-toolkit/utils':
         specifier: ^4.0.0
-        version: 4.0.0(electron@38.8.0)
+        version: 4.0.0(electron@38.8.2)
       monaco-sql-languages:
         specifier: ^0.15.1
         version: 0.15.1(antlr4ng-cli@1.0.7)(monaco-editor@0.54.0)
@@ -136,8 +136,8 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       electron:
-        specifier: ^38.8.0
-        version: 38.8.0
+        specifier: ^38.8.2
+        version: 38.8.2
       electron-builder:
         specifier: ^26.7.0
         version: 26.7.0(electron-builder-squirrel-windows@25.1.8)
@@ -1899,8 +1899,8 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
-  '@types/node@22.19.10':
-    resolution: {integrity: sha512-tF5VOugLS/EuDlTBijk0MqABfP8UxgYazTLo3uIn3b4yJgg26QRbVYJYsDtHrjdDUIRfP70+VfhTTc+CE1yskw==}
+  '@types/node@22.19.11':
+    resolution: {integrity: sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w==}
 
   '@types/node@25.2.2':
     resolution: {integrity: sha512-BkmoP5/FhRYek5izySdkOneRyXYN35I860MFAGupTdebyE66uZaR+bXLHq8k4DirE5DwQi3NuhvRU1jqTVwUrQ==}
@@ -2586,8 +2586,8 @@ packages:
       '@swc/core':
         optional: true
 
-  electron@38.8.0:
-    resolution: {integrity: sha512-cMvNuIFdXXDr4pJd5xD+F8FDjQhin9vyJ5hGSb5cZRIUb1VqfvRyP2nLBzU2Iazj0z3L686AUOkykp6Xd8bT1w==}
+  electron@38.8.2:
+    resolution: {integrity: sha512-EvXHgoy7NJ/O1mg6ZIEq5jgYnm1LHy4dNDMh/jhiJz6rAOH9VKDfXhx7Y65LYaTyntukNQhS90KBY3zk4t4+ow==}
     engines: {node: '>= 12.20.55'}
     hasBin: true
 
@@ -4844,17 +4844,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@electron-toolkit/preload@3.0.2(electron@38.8.0)':
+  '@electron-toolkit/preload@3.0.2(electron@38.8.2)':
     dependencies:
-      electron: 38.8.0
+      electron: 38.8.2
 
   '@electron-toolkit/tsconfig@2.0.0(@types/node@25.2.2)':
     dependencies:
       '@types/node': 25.2.2
 
-  '@electron-toolkit/utils@4.0.0(electron@38.8.0)':
+  '@electron-toolkit/utils@4.0.0(electron@38.8.2)':
     dependencies:
-      electron: 38.8.0
+      electron: 38.8.2
 
   '@electron/asar@3.4.1':
     dependencies:
@@ -6208,7 +6208,7 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
-  '@types/node@22.19.10':
+  '@types/node@22.19.11':
     dependencies:
       undici-types: 6.21.0
 
@@ -7177,10 +7177,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@38.8.0:
+  electron@38.8.2:
     dependencies:
       '@electron/get': 2.0.3
-      '@types/node': 22.19.10
+      '@types/node': 22.19.11
       extract-zip: 2.0.1
     transitivePeerDependencies:
       - supports-color

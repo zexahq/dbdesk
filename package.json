@@ -66,7 +66,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
-    "electron": "^38.8.0",
+    "electron": "^38.8.2",
     "electron-builder": "^26.7.0",
     "electron-updater": "^6.7.3",
     "electron-vite": "^5.0.0",
