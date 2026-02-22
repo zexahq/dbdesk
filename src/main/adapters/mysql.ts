@@ -15,7 +15,8 @@ import type {
   UpdateTableCellOptions,
   UpdateTableCellResult
 } from '@common/types'
-import type { FieldPacket, Pool, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
+import type { MySQLSslMode } from '@common/types/sql'
+import type { FieldPacket, Pool, ResultSetHeader, RowDataPacket, SslOptions } from 'mysql2/promise'
 import * as mysql from 'mysql2/promise'
 import { performance } from 'node:perf_hooks'
 
@@ -38,6 +39,26 @@ import { isSelectableQuery, normalizeQuery } from '../lib/sql-parser'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
+/**
+ * Convert MySQL SSL mode to mysql2 client SSL configuration
+ */
+function getSslConfig(sslMode?: MySQLSslMode): string | SslOptions | undefined {
+  switch (sslMode) {
+    case 'disable':
+      return undefined
+    case 'prefer':
+      return { rejectUnauthorized: false }
+    case 'require':
+      return { rejectUnauthorized: false }
+    case 'verify-ca':
+      return { rejectUnauthorized: true, verifyIdentity: false }
+    case 'verify-identity':
+      return { rejectUnauthorized: true, verifyIdentity: true }
+    default:
+      return undefined
+  }
+}
+
 export class MySQLAdapter implements SQLAdapter {
   private pool: Pool | null = null
 
@@ -48,12 +69,15 @@ export class MySQLAdapter implements SQLAdapter {
       return
     }
 
+    const ssl = getSslConfig(this.options.mysqlSslMode)
+
     const pool = mysql.createPool({
       host: this.options.host,
       port: this.options.port,
       database: this.options.database,
       user: this.options.user,
       password: this.options.password,
+      ssl,
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,

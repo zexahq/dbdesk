@@ -11,7 +11,7 @@ interface MySQLQuickConnectProps {
     database: string
     user: string
     password: string
-    ssl: boolean
+    mysqlSslMode?: string
   }) => void
 }
 
@@ -42,11 +42,14 @@ export function MySQLQuickConnect({ onSuccess }: MySQLQuickConnectProps) {
 
       // Parse SSL mode from query parameters
       const sslMode = url.searchParams.get('sslmode') || url.searchParams.get('ssl-mode')
-      const sslEnabled =
-        sslMode === 'require' ||
-        sslMode === 'prefer' ||
-        sslMode === 'verify-full' ||
-        sslMode === 'verify-ca'
+      const mysqlSslMode =
+        sslMode === 'require' || sslMode === 'verify-ca' || sslMode === 'verify-identity'
+          ? sslMode
+          : sslMode === 'prefer' || sslMode === 'preferred'
+            ? 'prefer'
+            : sslMode === 'verify-full' || sslMode === 'verify_identity'
+              ? 'verify-identity'
+              : undefined
 
       onSuccess({
         name,
@@ -55,7 +58,7 @@ export function MySQLQuickConnect({ onSuccess }: MySQLQuickConnectProps) {
         database,
         user: decodeURIComponent(url.username),
         password: decodeURIComponent(url.password),
-        ssl: sslEnabled
+        mysqlSslMode
       })
       setDsn('')
     } catch {

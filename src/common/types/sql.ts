@@ -13,6 +13,11 @@ export type PostgreSQLSslMode =
   | 'verify-full'
 
 /**
+ * MySQL SSL mode
+ */
+export type MySQLSslMode = 'disable' | 'prefer' | 'require' | 'verify-ca' | 'verify-identity'
+
+/**
  * SQL database connection options (PostgreSQL, MySQL)
  */
 export interface SQLConnectionOptions {
@@ -22,6 +27,7 @@ export interface SQLConnectionOptions {
   user: string
   password: string
   sslMode?: PostgreSQLSslMode
+  mysqlSslMode?: MySQLSslMode
 }
 
 /**

@@ -8,7 +8,7 @@ import type {
   TableFilterCondition,
   TableSortRule
 } from '@common/types'
-import type { PostgreSQLSslMode } from '@common/types/sql'
+import type { MySQLSslMode, PostgreSQLSslMode } from '@common/types/sql'
 import { ValidationError } from './errors'
 
 type CreateConnectionInput = {
@@ -122,6 +122,7 @@ const validateSQLConnectionOptions = (options: unknown): SQLConnectionOptions =>
   const password = toNonEmptyString(options.password, 'password')
   const port = toPort(options.port)
   const sslMode = toOptionalSslMode(options.sslMode)
+  const mysqlSslMode = toOptionalMysqlSslMode(options.mysqlSslMode)
 
   return {
     host,
@@ -129,7 +130,8 @@ const validateSQLConnectionOptions = (options: unknown): SQLConnectionOptions =>
     user,
     password,
     port,
-    sslMode
+    sslMode,
+    mysqlSslMode
   }
 }
 
@@ -443,6 +445,25 @@ const toOptionalSslMode = (value: unknown): PostgreSQLSslMode | undefined => {
   }
 
   return value as PostgreSQLSslMode
+}
+
+const toOptionalMysqlSslMode = (value: unknown): MySQLSslMode | undefined => {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+
+  if (typeof value !== 'string') {
+    throw new ValidationError('Invalid value for "mysqlSslMode": expected string or undefined')
+  }
+
+  const validModes: MySQLSslMode[] = ['disable', 'prefer', 'require', 'verify-ca', 'verify-identity']
+  if (!validModes.includes(value as MySQLSslMode)) {
+    throw new ValidationError(
+      `Invalid value for "mysqlSslMode": expected one of ${validModes.join(', ')}`
+    )
+  }
+
+  return value as MySQLSslMode
 }
 
 const toOptionalInteger = (

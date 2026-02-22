@@ -1,15 +1,24 @@
 import type { ConnectionProfile, DBConnectionOptions } from '@common/types'
+import type { MySQLSslMode } from '@common/types/sql'
 import { useCreateConnection, useUpdateConnection } from '@renderer/api/queries/connections'
 import { Button } from '@renderer/components/ui/button'
-import { Checkbox } from '@renderer/components/ui/checkbox'
 import { FieldError, FieldGroup, FieldLabel, Field as UIField } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@renderer/components/ui/select'
 import { Separator } from '@renderer/components/ui/separator'
 import { useForm } from '@tanstack/react-form'
 import { Eye, EyeOff } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import * as z from 'zod'
 import { MySQLQuickConnect } from './mysql-quick-connect'
+
+const SSL_MODE_OPTIONS: MySQLSslMode[] = ['disable', 'prefer', 'require', 'verify-ca', 'verify-identity']
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -18,7 +27,7 @@ const formSchema = z.object({
   database: z.string().min(1, 'Database is required'),
   user: z.string().min(1, 'User is required'),
   password: z.string(),
-  ssl: z.boolean()
+  mysqlSslMode: z.enum(['disable', 'prefer', 'require', 'verify-ca', 'verify-identity'])
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -32,7 +41,7 @@ function toDefaults(connection?: ConnectionProfile | null): FormValues {
       database: '',
       user: '',
       password: '',
-      ssl: false
+      mysqlSslMode: 'disable'
     }
   }
 
@@ -42,7 +51,7 @@ function toDefaults(connection?: ConnectionProfile | null): FormValues {
     database: string
     user: string
     password: string
-    ssl: boolean
+    mysqlSslMode: MySQLSslMode
   }>
 
   return {
@@ -52,7 +61,7 @@ function toDefaults(connection?: ConnectionProfile | null): FormValues {
     database: opts.database ?? '',
     user: opts.user ?? '',
     password: opts.password ?? '',
-    ssl: Boolean(opts.ssl)
+    mysqlSslMode: opts.mysqlSslMode ?? 'disable'
   }
 }
 
@@ -75,7 +84,7 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
       onSubmit: formSchema
     },
     onSubmit: async ({ value }) => {
-      const { name, host, port, database, user, password, ssl } = value
+      const { name, host, port, database, user, password, mysqlSslMode } = value
 
       let finalPassword = password ?? ''
       if (connection && !finalPassword) {
@@ -89,7 +98,7 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
         database,
         user,
         password: finalPassword,
-        ssl
+        mysqlSslMode
       }
 
       let profile: ConnectionProfile
@@ -119,7 +128,7 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
     database: string
     user: string
     password?: string
-    ssl: boolean
+    mysqlSslMode?: string
   }) => {
     form.setFieldValue('name', values.name)
     form.setFieldValue('host', values.host)
@@ -127,7 +136,7 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
     form.setFieldValue('database', values.database)
     form.setFieldValue('user', values.user)
     form.setFieldValue('password', values.password || '')
-    form.setFieldValue('ssl', values.ssl)
+    form.setFieldValue('mysqlSslMode', (values.mysqlSslMode as MySQLSslMode) || 'disable')
   }
 
   return (
@@ -297,22 +306,31 @@ export function MySQLConnectionForm({ connection, onSuccess }: MySQLConnectionFo
           }}
         </form.Field>
 
-        <form.Field name="ssl">
-          {(field) => (
-            <UIField>
-              <FieldLabel htmlFor={field.name}>SSL</FieldLabel>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id={field.name}
-                  checked={field.state.value}
-                  onCheckedChange={(v) => field.handleChange(Boolean(v))}
-                />
-                <label htmlFor={field.name} className="text-sm text-muted-foreground select-none">
-                  Enable SSL
-                </label>
-              </div>
-            </UIField>
-          )}
+        <form.Field name="mysqlSslMode">
+          {(field) => {
+            const invalid = field.state.meta.isTouched && !field.state.meta.isValid
+            return (
+              <UIField data-invalid={invalid}>
+                <FieldLabel htmlFor={field.name}>SSL Mode</FieldLabel>
+                <Select
+                  value={field.state.value}
+                  onValueChange={(v) => field.handleChange(v as typeof field.state.value)}
+                >
+                  <SelectTrigger id={field.name}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SSL_MODE_OPTIONS.map((mode) => (
+                      <SelectItem key={mode} value={mode}>
+                        {mode}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {invalid && <FieldError errors={field.state.meta.errors} />}
+              </UIField>
+            )
+          }}
         </form.Field>
       </FieldGroup>
 
