@@ -7,27 +7,30 @@ import { connectionManager } from './connectionManager'
 import { registerIpcHandlers } from './ipc-handlers'
 import { AssetServer } from './protocols/asset-server'
 import { AssetUrl } from './protocols/asset-url'
+import { setupDeepLinkProtocol, setupSingleInstanceLock, sendDeepLinkToRenderer, registerDeepLinkHandler } from './lib/deep-link'
+
+let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
    // Create the browser window.
-   const mainWindow = new BrowserWindow({
-     width: 900,
-     height: 670,
-     show: false,
-     frame: false,
-     autoHideMenuBar: true,
-     ...(process.platform === 'linux' ? { icon } : {}),
-     webPreferences: {
-       preload: join(__dirname, '../preload/index.js'),
-       sandbox: false,
-       contextIsolation: true,
-       nodeIntegration: false
-     }
-   })
+   mainWindow = new BrowserWindow({
+      width: 900,
+      height: 670,
+      show: false,
+      frame: false,
+      autoHideMenuBar: true,
+      ...(process.platform === 'linux' ? { icon } : {}),
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false
+      }
+    })
 
-   mainWindow.on('ready-to-show', () => {
-     mainWindow.show()
-   })
+    mainWindow.on('ready-to-show', () => {
+      mainWindow?.show()
+    })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -36,7 +39,7 @@ function createWindow() {
 
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'F12') {
-      mainWindow.webContents.toggleDevTools()
+      mainWindow?.webContents.toggleDevTools()
     }
   })
 
@@ -47,7 +50,9 @@ function createWindow() {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
-}
+
+  return mainWindow
+  }
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -56,6 +61,14 @@ protocol.registerSchemesAsPrivileged([
       standard: true,
       supportFetchAPI: true,
       bypassCSP: true
+    }
+  },
+  {
+    scheme: 'dbdesk',
+    privileges: {
+      standard: true,
+      secure: true,
+      allowServiceWorkers: true
     }
   }
 ])
@@ -101,6 +114,16 @@ app.whenReady().then(() => {
 
   // Remove the application menu
   Menu.setApplicationMenu(null)
+
+  // Setup single instance lock to prevent multiple instances
+  // and handle deep links
+  const lockAcquired = setupSingleInstanceLock()
+  if (!lockAcquired) {
+    return
+  }
+
+  // Setup deep link protocol handler
+  setupDeepLinkProtocol()
 
   protocol.handle('app-asset', (request) => {
     const asset = new AssetUrl(request.url)
@@ -210,6 +233,13 @@ app.whenReady().then(() => {
   registerIpcHandlers()
 
   createWindow()
+
+  // Register handler for incoming deep links
+  registerDeepLinkHandler((url) => {
+    if (mainWindow) {
+      sendDeepLinkToRenderer(mainWindow, url)
+    }
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

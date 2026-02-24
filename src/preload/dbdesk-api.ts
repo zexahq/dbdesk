@@ -612,6 +612,20 @@ export const dbdeskAPI = {
   },
 
   /**
+   * Auth methods
+   */
+  onDeepLink(callback: (data: { token: string; challenge: string }) => void): () => void {
+    const handler = (_event: Electron.IpcRendererEvent, data: { token: string; challenge: string }) => {
+      callback(data)
+    }
+    ipcRenderer.on('deep-link:auth-callback', handler)
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener('deep-link:auth-callback', handler)
+    }
+  },
+
+  /**
    * Window control methods
    */
   async minimizeWindow(): Promise<void> {

@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useConnection } from '../api/queries/connections'
 import { SqlWorkspace } from '../components/sql'
 
-export const Route = createFileRoute('/connections/$connectionId')({
+export const Route = createFileRoute('/$connectionId')({
   component: ConnectionPage
 })
 
