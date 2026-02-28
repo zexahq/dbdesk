@@ -44,22 +44,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build for Linux
+      - name: Build and publish for Linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+        working-directory: apps/desktop
         run: |
           pnpm exec electron-vite build
-          pnpm exec electron-builder --linux --publish never
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dbdesk-linux
-          path: |
-            dist/*.AppImage
-            dist/*.deb
-            dist/latest-linux.yml
-          if-no-files-found: error
+          pnpm exec electron-builder --linux --publish always
 
   build-windows:
     runs-on: windows-latest
@@ -90,21 +83,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build for Windows
+      - name: Build and publish for Windows
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+        working-directory: apps/desktop
         run: |
           pnpm exec electron-vite build
-          pnpm exec electron-builder --win --publish never
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dbdesk-windows
-          path: |
-            dist/*.exe
-            dist/latest.yml
-          if-no-files-found: error
+          pnpm exec electron-builder --win --publish always
 
   build-mac:
     runs-on: macos-latest
@@ -135,42 +122,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build for macOS
+      - name: Build and publish for macOS
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+        working-directory: apps/desktop
         run: |
           pnpm exec electron-vite build
-          pnpm exec electron-builder --mac --publish never
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dbdesk-mac
-          path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/latest-mac.yml
-          if-no-files-found: error
-
-  release:
-    needs: [build-linux, build-windows, build-mac]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-
-      - name: List artifacts
-        run: ls -la dist/
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          draft: true
-          generate_release_notes: true
+          pnpm exec electron-builder --mac --publish always

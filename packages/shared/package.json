@@ -1,0 +1,45 @@
+{
+  "name": "@dbdesk/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./types": {
+      "types": "./src/types/index.ts",
+      "default": "./src/types/index.ts"
+    },
+    "./schemas": {
+      "types": "./src/schemas/index.ts",
+      "default": "./src/schemas/index.ts"
+    },
+    "./schemas/*": {
+      "types": "./src/schemas/*.ts",
+      "default": "./src/schemas/*.ts"
+    },
+    "./constants": {
+      "types": "./src/constants/index.ts",
+      "default": "./src/constants/index.ts"
+    },
+    "./ipc": {
+      "types": "./src/ipc/index.ts",
+      "default": "./src/ipc/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@dbdesk/tsconfig": "workspace:*",
+    "@types/node": "^22.19.13",
+    "typescript": "^5.9.2"
+  }
+}

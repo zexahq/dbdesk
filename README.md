@@ -69,7 +69,22 @@ Download and run the installer from the releases page. The installer will handle
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18+)
-- [pnpm](https://pnpm.io/)
+- [pnpm](https://pnpm.io/) (v9+)
+
+### Monorepo Structure
+
+```
+dbdesk/
+├── apps/
+│   ├── desktop/      # Electron desktop app
+│   └── server/       # Hono API server
+├── packages/
+│   ├── api-client/   # Type-safe Hono RPC client
+│   ├── shared/       # Shared types, schemas & utils
+│   └── tsconfig/     # Shared TypeScript configs
+├── turbo.json        # Turborepo task config
+└── pnpm-workspace.yaml
+```
 
 ### Setup
 
@@ -81,21 +96,30 @@ cd dbdesk
 # Install dependencies
 pnpm install
 
-# Start development server
+# Start all apps in development
 pnpm dev
+
+# Start only the desktop app
+pnpm dev:desktop
+
+# Start only the server
+pnpm dev:server
 ```
 
 ### Build
 
 ```bash
-# Windows
-pnpm build:win
+# Build all workspace packages
+pnpm build
 
-# macOS
-pnpm build:mac
+# Typecheck everything
+pnpm typecheck
 
-# Linux
-pnpm build:linux
+# Build desktop installers
+cd apps/desktop
+pnpm build:mac   # macOS
+pnpm build:win   # Windows
+pnpm build:linux # Linux
 ```
 
 ## 🔗 Connect

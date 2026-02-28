@@ -1,0 +1,1 @@
+ALTER TABLE "verification" ADD CONSTRAINT "verification_identifier_unique" UNIQUE("identifier");
