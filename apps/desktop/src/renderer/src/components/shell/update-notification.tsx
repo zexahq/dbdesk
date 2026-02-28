@@ -101,6 +101,8 @@ export function UpdateNotification() {
         </div>
 
         <button
+          type='button'
+          title='close'
           onClick={() => setDismissed(true)}
           className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 cursor-pointer"
         >

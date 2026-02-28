@@ -1,5 +1,3 @@
-/* global __API_URL__, __WEB_URL__ */
-
 declare const __API_URL__: string
 declare const __WEB_URL__: string
 

@@ -123,6 +123,8 @@ function NumericDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDat
     >
       {isEditing ? (
         <input
+          type='text'
+          title='.'
           ref={inputRef}
           value={value}
           onChange={onInputChange}

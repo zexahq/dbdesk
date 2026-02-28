@@ -116,6 +116,8 @@ function DateTimeDataTableCellInner<TData, TValue>(props: DataTableCellProps<TDa
     >
       {isEditing ? (
         <input
+          type='text'
+          title='.'
           ref={inputRef}
           value={value}
           onChange={onInputChange}
