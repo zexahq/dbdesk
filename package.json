@@ -9,6 +9,8 @@
     "dev": "turbo run dev",
     "dev:desktop": "turbo run dev --filter=@dbdesk/desktop",
     "dev:server": "turbo run dev --filter=@dbdesk/server",
+    "dev:web": "turbo run dev --filter=@dbdesk/web",
+    "clean": "rm -rf .turbo node_modules apps/*/.turbo apps/*/.next apps/*/.source apps/*/node_modules apps/*/dist packages/*/.turbo packages/*/.next packages/*/node_modules packages/*/dist",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "format": "prettier --write ."
