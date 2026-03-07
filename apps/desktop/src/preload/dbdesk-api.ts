@@ -119,17 +119,9 @@ export const dbdeskAPI = {
     typedInvoke('queries:update', { connectionId, queryId, name, content }),
 
   // ── Auth ──
-  getLoginUrl: () => typedInvoke('auth:get-login-url'),
   getSession: () => typedInvoke('auth:get-session'),
   getToken: () => typedInvoke('auth:get-token'),
   logout: () => typedInvoke('auth:logout'),
-
-  /** Notified when the main process completes a deep-link auth exchange */
-  onAuthSessionChanged(callback: () => void): () => void {
-    const handler = () => callback()
-    ipcRenderer.on('auth:session-changed', handler)
-    return () => ipcRenderer.removeListener('auth:session-changed', handler)
-  },
 
   // ── Updates ──
   checkForUpdate: () => typedInvoke('update:check'),

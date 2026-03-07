@@ -1,46 +1,18 @@
-import "dotenv/config";
-import { betterAuth } from "better-auth";
-import { bearer } from "better-auth/plugins";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { createAuthMiddleware } from "better-auth/api";
-import type { BetterAuthPlugin } from "better-auth";
-import { db } from "./db/index";
-import * as schema from "./db/schema";
-
-// ===== CUSTOM PLUGIN: Prevent cookies for desktop clients =====
-// Desktop clients send 'x-desktop: true' header
-// This ensures they only receive bearer tokens, not cookies
-function noSetCookiePlugin() {
-  return {
-    id: "no-set-cookie",
-    hooks: {
-      after: [
-        {
-          matcher: (ctx) => !!ctx.request?.headers.get("x-desktop"),
-          handler: createAuthMiddleware(async (ctx) => {
-            const headers = ctx.context.responseHeaders;
-
-            if (headers instanceof Headers) {
-              const setCookies = headers.get("set-cookie");
-
-              if (!setCookies) return;
-
-              headers.delete("set-cookie");
-            }
-          }),
-        },
-      ],
-    },
-  } satisfies BetterAuthPlugin;
-}
+import 'dotenv/config'
+import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { betterAuth } from 'better-auth'
+import { electron } from '@better-auth/electron'
+import { bearer } from 'better-auth/plugins'
+import { db } from './db/index'
+import * as schema from './db/schema'
 
 export const auth = betterAuth({
-  appName: "DBDesk",
+  appName: 'DBDesk',
   database: drizzleAdapter(db, {
-    provider: "pg",
+    provider: 'pg',
     schema,
   }),
-  plugins: [bearer(), noSetCookiePlugin()],
+  plugins: [bearer(), electron()],
   emailAndPassword: {
     enabled: true,
   },
@@ -58,11 +30,12 @@ export const auth = betterAuth({
   },
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.API_URL,
-  basePath: "/api/auth",
+  basePath: '/api/auth',
   trustedOrigins: [
-    process.env.WEB_URL || "http://localhost:3000",
+    process.env.WEB_URL || 'http://localhost:3001',
+    'dbdesk:/',
     ...(process.env.NODE_ENV === "development"
       ? ["http://localhost:5173", "http://localhost:3000"]
       : []),
   ],
-});
+})

@@ -1,36 +1,43 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { getSession, signOut } from "@/app/lib/auth-client";
+import { useState } from 'react'
+import type { ElectronAuthQuery } from '@/app/lib/auth-client'
+import { authClient, toLoginURL, transferElectronUser } from '@/app/lib/auth-client'
 
 interface LoggedInViewProps {
-  email: string;
-  challenge: string | null;
+  email: string
+  query: ElectronAuthQuery
 }
 
-export function LoggedInView({ email, challenge }: LoggedInViewProps) {
-  const [signingOut, setSigningOut] = useState(false);
+export function LoggedInView({ email, query }: LoggedInViewProps) {
+  const [isContinuing, setIsContinuing] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
 
   const handleContinue = async () => {
+    setIsContinuing(true)
+
     try {
-      const sessionData = await getSession();
-      const token = sessionData?.data?.session?.token;
+      const result = await transferElectronUser(query)
 
-      if (!token) {
-        throw new Error("Failed to get token");
+      if (result.redirect && result.url) {
+        window.location.href = result.url
       }
-
-      const deepLinkUrl = `dbdesk://session?token=${encodeURIComponent(token)}&challenge=${encodeURIComponent(challenge || "")}`;
-      window.location.href = deepLinkUrl;
     } catch (error) {
-      console.error("Error:", error);
+      console.error(error)
+      setIsContinuing(false)
     }
-  };
+  }
 
   const handleLogout = async () => {
-    setSigningOut(true);
-    await signOut(challenge);
-  };
+    setSigningOut(true)
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          window.location.href = toLoginURL(query)
+        },
+      },
+    })
+  }
 
   return (
     <div className="flex flex-col flex-1 -translate-y-16">
@@ -52,28 +59,28 @@ export function LoggedInView({ email, challenge }: LoggedInViewProps) {
           </div>
 
           <p className="text-fd-muted-foreground text-sm">
-            Please only log in if you just came from the DBDesk app.
+            If DBDesk is not currently signed in, use the button below to send
+            this web session back to the desktop app.
           </p>
 
-          <div className="grid grid-cols-2 gap-3 pt-4">
+          <div className="grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
+            <button
+              onClick={() => void handleContinue()}
+              disabled={isContinuing || signingOut}
+              className="w-full rounded-lg border border-fd-foreground bg-fd-foreground px-4 py-3 font-medium text-fd-background transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isContinuing ? 'Opening DBDesk...' : 'Open DBDesk'}
+            </button>
             <button
               onClick={handleLogout}
-              disabled={signingOut}
-              className="rounded-lg border border-fd-border bg-fd-secondary/30 px-4 py-3 font-medium text-fd-foreground transition-all hover:bg-fd-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={signingOut || isContinuing}
+              className="w-full rounded-lg border border-fd-border bg-fd-secondary/30 px-4 py-3 font-medium text-fd-foreground transition-all hover:bg-fd-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {signingOut ? "Logging out..." : "LOGOUT"}
-            </button>
-
-            <button
-              onClick={handleContinue}
-              disabled={signingOut}
-              className="rounded-lg border border-fd-border bg-fd-foreground px-4 py-3 font-medium text-fd-background transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {signingOut ? "Continuing..." : "YES, LOG IN"}
+              {signingOut ? 'Logging out...' : 'Use a different account'}
             </button>
           </div>
         </div>
       </section>
     </div>
-  );
+  )
 }

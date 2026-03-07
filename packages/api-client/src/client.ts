@@ -24,7 +24,6 @@ export function createApiClient(baseUrl: string, options: CreateApiClientOptions
   return hc<AppType>(baseUrl, {
     headers() {
       const h: Record<string, string> = {
-        'x-desktop': 'true',
         ...options.headers,
       }
 

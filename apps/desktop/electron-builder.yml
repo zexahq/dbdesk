@@ -23,9 +23,13 @@ asarUnpack:
 removePackageKeywords: true
 publish:
   provider: github
-  owner: ${env.GH_OWNER}
-  repo: ${env.GH_REPO}
+  owner: zexahq
+  repo: dbdesk
   releaseType: release
+protocols:
+  - name: DBDesk
+    schemes:
+      - dbdesk
 win:
   executableName: dbdesk
 nsis:
@@ -49,8 +53,11 @@ linux:
     - deb
   maintainer: electronjs.org
   category: Utility
+  executableName: dbdesk
 deb:
   afterInstall: build/linux/after-install.sh
+  artifactName: ${productName}_${version}_${arch}.${ext}
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${productName}-${version}.${ext}
+  publish: null
 npmRebuild: false

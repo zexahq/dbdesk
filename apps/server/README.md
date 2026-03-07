@@ -1,6 +1,6 @@
 ## Local development (Hono + Better Auth + Drizzle)
 
-1. Copy `.env.example` to `.env` and set `DATABASE_URL`, `BETTER_AUTH_SECRET`, and optionally `BETTER_AUTH_URL`, `CORS_ORIGIN`, `PORT`.
+1. Copy `.env.example` to `.env` and set `DATABASE_URL`, `BETTER_AUTH_SECRET`, `API_URL`, `WEB_URL`, and optionally `PORT`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`.
 2. Create the DB and run migrations:
    ```bash
    pnpm db:generate   # generate migration from schema

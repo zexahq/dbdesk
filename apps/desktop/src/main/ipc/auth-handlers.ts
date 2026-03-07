@@ -2,11 +2,6 @@ import { typedHandle } from './typed-handle'
 import { authManager } from '../lib/auth-manager'
 
 export function registerAuthHandlers() {
-  typedHandle('auth:get-login-url', async () => {
-    const url = authManager.getLoginUrl()
-    return { url }
-  })
-
   typedHandle('auth:get-session', async () => {
     return authManager.getSession()
   })

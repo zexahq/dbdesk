@@ -1,42 +1,52 @@
-"use client";
+"use client"
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { LoginForm } from "./login-form";
-import { LoggedInView } from "./logged-in-view";
-import { authClient } from "@/app/lib/auth-client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import {
+  authClient,
+  getElectronAuthQuery,
+  hasElectronAuthQuery,
+} from '@/app/lib/auth-client'
+import { LoggedInView } from './logged-in-view'
+import { LoginForm } from './login-form'
 
 function LoginContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const challenge = searchParams.get("challenge");
-  const { data: session, isPending } = authClient.useSession();
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const electronQuery = getElectronAuthQuery(searchParams)
+  const isElectronFlow = hasElectronAuthQuery(electronQuery)
+  const { data: session, isPending } = authClient.useSession()
 
   useEffect(() => {
-    if (!challenge && !isPending) {
-      router.replace("/");
+    if (!isElectronFlow && !isPending) {
+      router.replace('/')
     }
-  }, [challenge, isPending, router]);
+  }, [isElectronFlow, isPending, router])
+
+  useEffect(() => {
+    if (!isElectronFlow) return
+
+    const timeout = authClient.ensureElectronRedirect()
+    return () => clearTimeout(timeout)
+  }, [isElectronFlow])
 
   if (isPending) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center -translate-y-16">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-fd-border border-t-fd-foreground" />
       </div>
-    );
+    )
   }
 
-  if (!challenge) {
-    return null;
+  if (!isElectronFlow) {
+    return null
   }
 
   if (session?.user?.email) {
-    return <LoggedInView email={session.user.email} challenge={challenge} />;
+    return <LoggedInView email={session.user.email} query={electronQuery} />
   }
 
-  return <LoginForm challenge={challenge} />;
+  return <LoginForm query={electronQuery} />
 }
 
 export default function LoginPage() {
@@ -50,5 +60,5 @@ export default function LoginPage() {
     >
       <LoginContent />
     </Suspense>
-  );
+  )
 }

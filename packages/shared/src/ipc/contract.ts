@@ -194,10 +194,6 @@ export interface IpcContract {
   }
 
   // -- Auth --
-  'auth:get-login-url': {
-    payload: void
-    result: { url: string }
-  }
   'auth:get-session': {
     payload: void
     result: {

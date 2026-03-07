@@ -1,8 +1,11 @@
 import { electronAPI } from '@electron-toolkit/preload'
 import { contextBridge } from 'electron'
+import { setupRenderer } from '@better-auth/electron/preload'
 import { dbdeskAPI } from './dbdesk-api'
 import { windowAPI } from './window-api'
 import { envConfig } from './env-config'
+
+setupRenderer()
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

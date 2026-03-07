@@ -1,29 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Button } from '@renderer/components/ui/button'
-import { getLoginUrl } from '@renderer/features/auth/lib/auth-utils'
+import { requestSignIn } from '@renderer/features/auth/lib/auth-utils'
 import DbDeskLogo from '@renderer/assets/dbdesk-logo.svg'
 import { Toaster } from '@renderer/components/ui/sonner'
-import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
-import { Loader2 } from 'lucide-react'
 
 const AuthPage = () => {
-  const { isLoading } = useAuthStore()
-
   const handleLogin = async () => {
     try {
-      const url = await getLoginUrl()
-      window.open(url, '_blank')
+      await requestSignIn()
     } catch (error) {
-      console.error('Failed to initiate social login:', error)
+      console.error('Failed to initiate login:', error)
     }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex h-[calc(100vh-36px)] items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
-      </div>
-    )
   }
 
   return (

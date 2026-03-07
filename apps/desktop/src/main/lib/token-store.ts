@@ -6,10 +6,7 @@ import { app } from 'electron'
 const AUTH_FILENAME = 'auth.json'
 
 interface StoredAuth {
-  /** safeStorage-encrypted access token, base64-encoded */
-  accessToken?: string
-  /** safeStorage-encrypted refresh token, base64-encoded */
-  refreshToken?: string
+  values?: Record<string, string>
 }
 
 const getStoragePath = (): string => join(app.getPath('userData'), AUTH_FILENAME)
@@ -52,42 +49,31 @@ function decrypt(encoded: string): string {
  * Windows DPAPI, Linux libsecret). Falls back to base64 if unavailable.
  */
 export const tokenStore = {
-  async setTokens(accessToken: string, refreshToken?: string): Promise<void> {
-    const data: StoredAuth = {
-      accessToken: encrypt(accessToken),
-    }
-    if (refreshToken) {
-      data.refreshToken = encrypt(refreshToken)
-    }
-    await writeStore(data)
-  },
-
-  async getAccessToken(): Promise<string | null> {
+  async getItem(key: string): Promise<unknown | null> {
     const data = await readStore()
-    if (!data.accessToken) return null
+    const value = data.values?.[key]
+    if (!value) return null
     try {
-      return decrypt(data.accessToken)
+      return JSON.parse(decrypt(value)) as unknown
     } catch {
       return null
     }
   },
 
-  async getRefreshToken(): Promise<string | null> {
+  async setItem(key: string, value: unknown): Promise<void> {
     const data = await readStore()
-    if (!data.refreshToken) return null
-    try {
-      return decrypt(data.refreshToken)
-    } catch {
-      return null
+    const values = { ...(data.values ?? {}) }
+
+    if (value === null) {
+      delete values[key]
+    } else {
+      values[key] = encrypt(JSON.stringify(value))
     }
+
+    await writeStore({ values })
   },
 
   async clear(): Promise<void> {
-    await writeStore({})
-  },
-
-  async hasToken(): Promise<boolean> {
-    const data = await readStore()
-    return !!data.accessToken
+    await writeStore({ values: {} })
   },
 }

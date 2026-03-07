@@ -5,9 +5,9 @@ import icon from '../../resources/icon.png?asset'
 import './adapters'
 import { connectionManager } from './connectionManager'
 import { registerAllIpcHandlers } from './ipc'
+import { authManager } from './lib/auth-manager'
 import { AssetServer } from './protocols/asset-server'
 import { AssetUrl } from './protocols/asset-url'
-import { setupDeepLinkProtocol, setupSingleInstanceLock, handleAuthDeepLink, registerDeepLinkHandler } from './lib/deep-link'
 import { initAutoUpdater } from './lib/auto-updater'
 
 let mainWindow: BrowserWindow | null = null
@@ -63,16 +63,9 @@ protocol.registerSchemesAsPrivileged([
       supportFetchAPI: true,
       bypassCSP: true
     }
-  },
-  {
-    scheme: 'dbdesk',
-    privileges: {
-      standard: true,
-      secure: true,
-      allowServiceWorkers: true
-    }
   }
 ])
+authManager.setup(() => mainWindow)
 
 const server = new AssetServer()
 let workspaceFlushPromise: Promise<void> | null = null
@@ -115,16 +108,6 @@ app.whenReady().then(() => {
 
   // Remove the application menu
   Menu.setApplicationMenu(null)
-
-  // Setup single instance lock to prevent multiple instances
-  // and handle deep links
-  const lockAcquired = setupSingleInstanceLock()
-  if (!lockAcquired) {
-    return
-  }
-
-  // Setup deep link protocol handler
-  setupDeepLinkProtocol()
 
   protocol.handle('app-asset', (request) => {
     const asset = new AssetUrl(request.url)
@@ -235,13 +218,6 @@ app.whenReady().then(() => {
   initAutoUpdater()
 
   createWindow()
-
-  // Register handler for incoming deep links
-  registerDeepLinkHandler((url) => {
-    if (mainWindow) {
-      void handleAuthDeepLink(mainWindow, url)
-    }
-  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

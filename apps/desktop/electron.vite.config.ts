@@ -91,6 +91,7 @@ export default defineConfig({
       bytecode: true,
       externalizeDeps: {
         exclude: ['@dbdesk/shared', '@dbdesk/api-client'],
+        include: ['mysql2', 'pg', 'better-auth', '@better-auth/core', '@better-auth/electron', 'sql-escaper'],
       },
     },
   },
@@ -98,9 +99,6 @@ export default defineConfig({
     define: envDefines(),
     build: {
       bytecode: true,
-      externalizeDeps: {
-        exclude: ['@dbdesk/shared', '@dbdesk/api-client'],
-      },
     },
   },
   renderer: {

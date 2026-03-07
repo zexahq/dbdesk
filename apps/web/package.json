@@ -11,8 +11,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@better-auth/electron": "^1.5.4",
     "@octokit/rest": "^21.0.0",
-    "better-auth": "^1.4.18",
+    "better-auth": "^1.5.4",
     "clsx": "^2.1.1",
     "fumadocs-core": "16.1.0",
     "fumadocs-mdx": "14.0.3",

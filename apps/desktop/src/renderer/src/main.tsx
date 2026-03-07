@@ -5,8 +5,10 @@ import ReactDOM from 'react-dom/client'
 
 import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { toast } from 'sonner'
 
 // Import the generated route tree
+import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
 import { queryClient } from '@renderer/shared/lib/query-client'
 import { registerWorkspaceFlushListener } from '@renderer/features/sql-workspace/lib/workspace'
 import { routeTree } from './routeTree.gen'
@@ -34,6 +36,23 @@ setupContentSecurityPolicy()
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent'
+})
+
+async function refreshAuthRouting() {
+  await useAuthStore.getState().refreshSession()
+  await router.invalidate()
+}
+
+window.onAuthenticated(() => {
+  void refreshAuthRouting()
+})
+
+window.onUserUpdated(() => {
+  void refreshAuthRouting()
+})
+
+window.onAuthError((ctx) => {
+  toast.error(ctx.message || 'Authentication failed.')
 })
 
 // Register the router instance for type safety
