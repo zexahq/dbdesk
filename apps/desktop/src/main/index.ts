@@ -55,6 +55,10 @@ function createWindow() {
   return mainWindow
   }
 
+// Register ALL custom schemes in a single call — Electron only allows
+// protocol.registerSchemesAsPrivileged to be called once before app ready.
+// The @better-auth/electron plugin also calls it internally for 'dbdesk'
+// and 'user-image', so we monkey-patch it to a no-op after our call.
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'app-asset',
@@ -63,8 +67,32 @@ protocol.registerSchemesAsPrivileged([
       supportFetchAPI: true,
       bypassCSP: true
     }
+  },
+  {
+    scheme: 'dbdesk',
+    privileges: {
+      secure: true,
+      standard: false
+    }
+  },
+  {
+    scheme: 'user-image',
+    privileges: {
+      standard: false,
+      secure: true,
+      bypassCSP: true,
+      stream: true
+    }
   }
 ])
+// Prevent the plugin from calling registerSchemesAsPrivileged again (would throw)
+protocol.registerSchemesAsPrivileged = () => {}
+
+// Debug: log deep link events (these fire in the main process → visible in terminal)
+app.on('open-url', (_event, url) => {
+  console.log('[deep-link] open-url received:', url)
+})
+
 authManager.setup(() => mainWindow)
 
 const server = new AssetServer()

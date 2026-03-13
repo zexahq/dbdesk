@@ -20,12 +20,18 @@ function unwrapData<T>(value: unknown): T | null {
 
 export const authManager = {
   setup(getWindow?: () => BrowserWindow | null) {
-    betterAuthClient.setupMain({
-      bridges: true,
-      csp: true,
-      getWindow,
-      scheme: true,
-    })
+    console.log('[auth-manager] setup called')
+    try {
+      betterAuthClient.setupMain({
+        bridges: true,
+        csp: true,
+        getWindow,
+        scheme: true,
+      })
+      console.log('[auth-manager] setupMain completed successfully')
+    } catch (err) {
+      console.error('[auth-manager] setupMain failed:', err)
+    }
   },
 
   async requestAuth(): Promise<void> {
@@ -45,8 +51,11 @@ export const authManager = {
   async _fetchSession(): Promise<SessionResponse | null> {
     try {
       const session = await betterAuthClient.getSession()
-      return unwrapData<SessionResponse>(session)
-    } catch {
+      const result = unwrapData<SessionResponse>(session)
+      console.log('[auth-manager] _fetchSession result:', result ? `user=${result.user?.email}` : 'null')
+      return result
+    } catch (err) {
+      console.error('[auth-manager] _fetchSession error:', err)
       return null
     }
   },

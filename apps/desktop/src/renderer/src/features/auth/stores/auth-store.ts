@@ -54,10 +54,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   refreshSession: async () => {
     try {
+      console.log('[auth-store] refreshSession called')
       const [session, tokenResult] = await Promise.all([
         window.dbdesk.getSession(),
         window.dbdesk.getToken(),
       ])
+      console.log('[auth-store] refreshSession result:', { hasUser: !!session?.user, hasToken: !!tokenResult?.token })
 
       if (session?.user) {
         set({
@@ -67,14 +69,24 @@ export const useAuthStore = create<AuthState>((set) => ({
           isLoading: false,
         })
       } else {
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isLoading: false,
-        })
+        // Only clear auth state if we weren't already authenticated.
+        // After deep-link auth the token store write may still be in-flight,
+        // so getSession() can transiently return null. Preserve the user that
+        // was set directly by onAuthenticated; only logout() should clear it.
+        const current = useAuthStore.getState()
+        if (!current.isAuthenticated) {
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isLoading: false,
+          })
+        } else {
+          set({ isLoading: false })
+        }
       }
-    } catch {
+    } catch (err) {
+      console.error('[auth-store] refreshSession error:', err)
       set({ isLoading: false })
     }
   },

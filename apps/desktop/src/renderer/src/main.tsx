@@ -40,18 +40,51 @@ const router = createRouter({
 
 async function refreshAuthRouting() {
   await useAuthStore.getState().refreshSession()
+  const { isAuthenticated } = useAuthStore.getState()
+  if (isAuthenticated) {
+    await router.navigate({ to: '/' })
+  }
   await router.invalidate()
 }
 
-window.onAuthenticated(() => {
-  void refreshAuthRouting()
+window.onAuthenticated(async (user) => {
+  console.log('[auth] onAuthenticated fired, user:', user)
+  if (user) {
+    // Trust the user from the main process immediately — avoids race condition
+    // where tokenStore hasn't persisted the session cookie yet when getSession()
+    // is called
+    useAuthStore.getState().setUser(user)
+
+    // Navigate to home immediately
+    await router.navigate({ to: '/' })
+
+    // Fetch the bearer token in the background with retries
+    // (the token store write may still be in-flight)
+    const fetchTokenWithRetry = async (retries = 5, delay = 500): Promise<void> => {
+      for (let i = 0; i < retries; i++) {
+        await new Promise((r) => setTimeout(r, delay))
+        try {
+          const tokenResult = await window.dbdesk.getToken()
+          if (tokenResult?.token) {
+            useAuthStore.getState().setToken(tokenResult.token)
+            console.log('[auth] token fetched on retry', i + 1)
+            return
+          }
+        } catch { /* retry */ }
+      }
+      console.warn('[auth] could not fetch token after retries')
+    }
+    void fetchTokenWithRetry()
+  }
 })
 
-window.onUserUpdated(() => {
+window.onUserUpdated((user) => {
+  console.log('[auth] onUserUpdated fired, user:', user)
   void refreshAuthRouting()
 })
 
 window.onAuthError((ctx) => {
+  console.error('[auth] onAuthError fired:', ctx)
   toast.error(ctx.message || 'Authentication failed.')
 })
 
