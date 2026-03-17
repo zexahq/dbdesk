@@ -12,4 +12,3 @@ agent_plans/
 .agents
 package-lock.json
 .env
-.env.*
