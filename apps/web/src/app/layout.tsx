@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, Viaoda_Libre } from 'next/font/google'
-import Script from 'next/script'
 import type { ReactNode } from 'react'
 import { RootProvider } from 'fumadocs-ui/provider/next'
 
@@ -124,7 +123,7 @@ export default function Layout({ children }: RootLayoutProps) {
       suppressHydrationWarning
     >
       <head>
-        <Script
+        <script
           defer
           src="https://cloud.umami.is/script.js"
           data-website-id="f94ecf0a-dfaf-46ae-a004-a0f29dee626c"
