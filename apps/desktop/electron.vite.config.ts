@@ -88,17 +88,14 @@ export default defineConfig({
   main: {
     define: envDefines(),
     build: {
-      bytecode: true,
-      externalizeDeps: {
-        exclude: ['@dbdesk/shared', '@dbdesk/api-client'],
-        include: ['pg', 'better-auth', '@better-auth/core', '@better-auth/electron', 'sql-escaper'],
-      },
+      externalizeDeps: false,
     },
   },
   preload: {
     define: envDefines(),
     build: {
       bytecode: true,
+      externalizeDeps: false,
     },
   },
   renderer: {
