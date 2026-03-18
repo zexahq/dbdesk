@@ -1,7 +1,6 @@
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 
-import MySQLWorker from 'monaco-sql-languages/esm/languages/mysql/mysql.worker?worker'
 import PGSQLWorker from 'monaco-sql-languages/esm/languages/pgsql/pgsql.worker?worker'
 
 import { LanguageIdEnum, setupLanguageFeatures } from 'monaco-sql-languages'
@@ -18,22 +17,11 @@ window.MonacoEnvironment = {
     if (label === LanguageIdEnum.PG) {
       return new PGSQLWorker()
     }
-    if (label === LanguageIdEnum.MYSQL) {
-      return new MySQLWorker()
-    }
     return new EditorWorker()
   }
 }
 
 setupLanguageFeatures(LanguageIdEnum.PG, {
-  completionItems: {
-    enable: true,
-    triggerCharacters: [' ', '.'],
-    completionService: createCompletionService()
-  }
-})
-
-setupLanguageFeatures(LanguageIdEnum.MYSQL, {
   completionItems: {
     enable: true,
     triggerCharacters: [' ', '.'],

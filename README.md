@@ -11,7 +11,7 @@
 
 A fast, intuitive, and UI/UX-focused desktop application for managing your databases. Built for developers who want a simple yet powerful interface without the bloat.
 
-Currently supports **PostgreSQL** and **MySQL**, with more SQL databases coming soon—and NoSQL support on the roadmap.
+Currently supports **PostgreSQL**, with more SQL databases coming soon—and NoSQL support on the roadmap.
 
 <img width="3840" height="2090" alt="dbdesk" src="https://github.com/user-attachments/assets/73edba41-7fe7-499f-8327-5a22b36fbfe0" />
 

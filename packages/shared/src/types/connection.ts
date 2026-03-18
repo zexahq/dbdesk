@@ -5,12 +5,12 @@ import type { RedisConnectionOptions } from './redis'
 /**
  * Supported database adapter types
  */
-export type DatabaseType = 'postgres' | 'mysql' | 'mongodb' | 'redis'
+export type DatabaseType = 'postgres' | 'mongodb' | 'redis'
 
 /**
  * SQL database types
  */
-export type SQLDatabaseType = 'postgres' | 'mysql'
+export type SQLDatabaseType = 'postgres'
 
 /**
  * Union type for all database connection options

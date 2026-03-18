@@ -11,19 +11,11 @@ export const postgreSQLSslModeSchema = z.enum([
   'verify-full',
 ])
 
-export const mySQLSslModeSchema = z.enum([
-  'disable',
-  'prefer',
-  'require',
-  'verify-ca',
-  'verify-identity',
-])
-
 // ── Database Types ──
 
-export const databaseTypeSchema = z.enum(['postgres', 'mysql', 'mongodb', 'redis'])
+export const databaseTypeSchema = z.enum(['postgres', 'mongodb', 'redis'])
 
-export const sqlDatabaseTypeSchema = z.enum(['postgres', 'mysql'])
+export const sqlDatabaseTypeSchema = z.enum(['postgres'])
 
 // ── Connection Options ──
 
@@ -34,7 +26,6 @@ export const sqlConnectionOptionsSchema = z.object({
   user: z.string().min(1),
   password: z.string().min(1),
   sslMode: postgreSQLSslModeSchema.optional(),
-  mysqlSslMode: mySQLSslModeSchema.optional(),
 })
 
 export const mongoDBConnectionOptionsSchema = z.object({

@@ -14,7 +14,7 @@ interface SqlEditorProps {
   onExecute?: () => void
 }
 
-export default function SqlEditor({ value, onChange, language, onExecute }: SqlEditorProps) {
+export default function SqlEditor({ value, onChange, onExecute }: SqlEditorProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
@@ -22,7 +22,7 @@ export default function SqlEditor({ value, onChange, language, onExecute }: SqlE
   const [height, setHeight] = useState('400px')
 
   const editorTheme = theme === 'dark' ? 'vs-dark' : 'vs'
-  const languageId = language === 'mysql' ? LanguageIdEnum.MYSQL : LanguageIdEnum.PG
+  const languageId = LanguageIdEnum.PG
 
   // Keep onExecute ref updated
   useEffect(() => {

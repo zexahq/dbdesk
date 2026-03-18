@@ -1,4 +1,4 @@
-import { POSTGRES_DATA_TYPES, MYSQL_DATA_TYPES } from '@dbdesk/shared/constants'
+import { POSTGRES_DATA_TYPES } from '@dbdesk/shared/constants'
 import type { ColumnDefinition, DatabaseType } from '@dbdesk/shared/types'
 import { useCreateTable } from '@renderer/features/sql-workspace/queries/schema'
 import { Button } from '@renderer/components/ui/button'
@@ -44,8 +44,7 @@ export const AddTableSheet = ({
   open,
   onOpenChange,
   connectionId,
-  schema,
-  databaseType
+  schema
 }: AddTableSheetProps) => {
   const [tableName, setTableName] = useState('')
   const [columns, setColumns] = useState<ColumnDefinition[]>([])
@@ -54,7 +53,7 @@ export const AddTableSheet = ({
   const createTableMutation = useCreateTable(connectionId)
   const isPending = createTableMutation.isPending
 
-  const DATA_TYPES = databaseType === 'postgres' ? POSTGRES_DATA_TYPES : MYSQL_DATA_TYPES
+  const DATA_TYPES = POSTGRES_DATA_TYPES
 
   const addColumn = () => {
     setColumns([

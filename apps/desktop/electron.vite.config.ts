@@ -20,7 +20,7 @@ function envDefines() {
 }
 
 // Allowed SQL-related languages from basic-languages folder
-const allowedBasicLanguages = ['sql', 'mysql', 'pgsql', 'redshift', 'msdax']
+const allowedBasicLanguages = ['sql', 'pgsql', 'redshift', 'msdax']
 
 // Allowed languages from language folder (only JSON)
 const allowedLanguageFolder = ['json']
@@ -91,7 +91,7 @@ export default defineConfig({
       bytecode: true,
       externalizeDeps: {
         exclude: ['@dbdesk/shared', '@dbdesk/api-client'],
-        include: ['mysql2', 'pg', 'better-auth', '@better-auth/core', '@better-auth/electron', 'sql-escaper'],
+        include: ['pg', 'better-auth', '@better-auth/core', '@better-auth/electron', 'sql-escaper'],
       },
     },
   },

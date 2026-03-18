@@ -78,14 +78,7 @@ export function ConnectionList() {
                   >
                     PostgreSQL
                   </button>
-                  <button
-                    className="w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => {
-                      handleNewConnection('mysql')
-                    }}
-                  >
-                    MySQL
-                  </button>
+
                 </div>
               </div>
             )}

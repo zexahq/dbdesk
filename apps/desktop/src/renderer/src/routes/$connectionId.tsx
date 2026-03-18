@@ -18,8 +18,8 @@ function ConnectionPage() {
     return <div className="p-6">Connection not found.</div>
   }
 
-  // SQL databases: 'postgres' | 'mysql'
-  const isSql = profile.type === 'postgres' || profile.type === 'mysql'
+  // SQL databases: 'postgres'
+  const isSql = profile.type === 'postgres'
 
   if (isSql) {
     return <SqlWorkspace profile={profile} />

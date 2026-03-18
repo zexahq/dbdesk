@@ -64,7 +64,7 @@ src/main/
 ├── storage.ts                  # Persistent storage
 ├── workspace-storage.ts        # Workspace state persistence
 ├── saved-queries-storage.ts    # Saved SQL queries persistence
-├── adapters/                   # Database adapters (postgres, mysql, registry)
+├── adapters/                   # Database adapters (postgres, registry)
 ├── ipc/                        # Typed IPC handlers by domain
 │   ├── index.ts                # registerAllIpcHandlers()
 │   ├── typed-handle.ts         # typedHandle() with Zod validation
@@ -84,7 +84,6 @@ src/main/
 │   ├── pkce.ts                 # PKCE SHA-256 challenge/verifier generation
 │   ├── token-store.ts          # Electron safeStorage encrypted token persistence
 │   ├── sql-parser.ts           # SQL parsing utilities
-│   ├── mysql/                  # MySQL-specific queries & utils
 │   └── postgres/               # PostgreSQL-specific queries & utils
 ├── protocols/                  # Custom protocol handlers (asset server)
 └── utils/                      # Error sanitization, validation helpers
@@ -125,7 +124,7 @@ src/renderer/src/
 │   │   └── stores/                   # auth-store.ts
 │   ├── connections/                  # Connection CRUD, forms, queries
 │   │   ├── components/               # connection-card, connection-dialog, connection-list
-│   │   │   └── connection-forms/     # MySQL & PostgreSQL form components
+│   │   │   └── connection-forms/     # PostgreSQL form components
 │   │   └── queries/                  # connections.ts (TanStack Query hooks)
 │   ├── sql-workspace/                # SQL workspace, tabs, query/table views
 │   │   ├── components/               # sql-workspace, workspace-sidebar, workspace-topbar
@@ -182,7 +181,7 @@ src/
 ├── index.ts                    # Re-exports everything
 ├── types/                      # TypeScript types (adapter, connection, sql, workspace, etc.)
 ├── schemas/                    # Zod v4 schemas (connection, query, table, workspace, ipc-payloads)
-├── constants/                  # Database constants (mysql, postgres)
+├── constants/                  # Database constants (postgres)
 ├── ipc/
 │   └── contract.ts             # IPC contract: 36 typed channels with payload/result types
 └── utils/                      # Shared utilities

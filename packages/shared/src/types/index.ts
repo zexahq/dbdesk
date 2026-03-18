@@ -23,7 +23,6 @@ export type {
   IndexInfo,
   InsertTableRowOptions,
   InsertTableRowResult,
-  MySQLSslMode,
   PostgreSQLSslMode,
   SQLAdapter,
   SQLConnectionOptions,

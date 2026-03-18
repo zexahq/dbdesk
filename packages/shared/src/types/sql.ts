@@ -12,12 +12,7 @@ export type PostgreSQLSslMode =
   | 'verify-full'
 
 /**
- * MySQL SSL mode
- */
-export type MySQLSslMode = 'disable' | 'prefer' | 'require' | 'verify-ca' | 'verify-identity'
-
-/**
- * SQL database connection options (PostgreSQL, MySQL)
+ * SQL database connection options (PostgreSQL)
  */
 export interface SQLConnectionOptions {
   host: string
@@ -26,7 +21,6 @@ export interface SQLConnectionOptions {
   user: string
   password: string
   sslMode?: PostgreSQLSslMode
-  mysqlSslMode?: MySQLSslMode
 }
 
 /**
@@ -285,7 +279,7 @@ export interface SchemaWithTables {
 }
 
 /**
- * SQL adapter interface (PostgreSQL, MySQL)
+ * SQL adapter interface (PostgreSQL)
  */
 export interface SQLAdapter extends BaseAdapter {
   listSchemas(): Promise<string[]>
