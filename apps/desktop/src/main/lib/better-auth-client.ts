@@ -1,6 +1,6 @@
 import { electronClient } from '@better-auth/electron/client'
 import { createAuthClient } from 'better-auth/client'
-import { tokenStore } from './token-store'
+import { authStorage } from './auth-storage'
 
 declare const __API_URL__: string
 declare const __WEB_URL__: string
@@ -14,10 +14,7 @@ export const betterAuthClient = createAuthClient({
         scheme: 'dbdesk',
       },
       callbackPath: '/callback',
-      storage: {
-        getItem: async (key) => tokenStore.getItem(key),
-        setItem: async (key, value) => tokenStore.setItem(key, value),
-      },
+      storage: authStorage,
     }),
   ],
 })

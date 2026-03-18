@@ -89,6 +89,9 @@ export default defineConfig({
     define: envDefines(),
     build: {
       externalizeDeps: false,
+      rollupOptions: {
+        external: ['pg-native'],
+      },
     },
   },
   preload: {
