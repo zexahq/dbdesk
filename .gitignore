@@ -1,6 +1,8 @@
 node_modules
 dist
 out
+.turbo
+.plans
 .DS_Store
 .eslintcache
 *.log*
@@ -10,4 +12,3 @@ agent_plans/
 .agents
 package-lock.json
 .env
-.env.*

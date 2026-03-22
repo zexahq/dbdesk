@@ -1,0 +1,26 @@
+{
+  "name": "@dbdesk/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.11.4"
+  },
+  "devDependencies": {
+    "@dbdesk/server": "workspace:*",
+    "@dbdesk/tsconfig": "workspace:*",
+    "@types/node": "^22.19.13",
+    "typescript": "^5.9.2"
+  }
+}
