@@ -1,45 +1,64 @@
-# dbdesk-website
+# DBDesk Website
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+Official website and documentation for [DBDesk](https://github.com/zexahq/dbdesk) — a modern desktop application for managing PostgreSQL databases.
 
-Run development server:
+## Development
+
+**Start the development server:**
 
 ```bash
-npm run dev
-# or
 pnpm dev
-# or
-yarn dev
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+Opens on `http://localhost:3001`.
 
-## Explore
+## Structure
 
-In the project, you can see:
+| Directory              | Purpose                                                   |
+| ---------------------- | --------------------------------------------------------- |
+| `src/app/(home)`       | Landing page and marketing pages                          |
+| `src/app/(auth)`       | Authentication pages (login, signup)                      |
+| `src/app/docs`         | Documentation layout and pages (using Fumadocs)           |
+| `src/app/api`          | API routes (search, auth callbacks)                       |
+| `src/components`       | Reusable React components                                 |
+| `src/lib`              | Utilities, Fumadocs source configuration                  |
+| `content/docs`         | Documentation MDX files                                   |
+| `public`               | Static assets                                             |
+| `src/app/global.css`   | Tailwind CSS styles                                       |
 
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
+## Key Features
 
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/(home)`              | The route group for your landing page and other pages. |
-| `app/docs`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
+- **Next.js 16** — React framework with App Router
+- **Fumadocs** — MDX-based documentation with built-in search
+- **Better Auth** — Authentication with email/password and OAuth
+- **Tailwind CSS** — Styling
+- **TypeScript** — Type-safe development
+- **Responsive Design** — Mobile-friendly UI
 
-### Fumadocs MDX
+## Building
 
-A `source.config.ts` config file has been included, you can customise different options like frontmatter schema.
+```bash
+pnpm build
+pnpm start
+```
 
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
+## Environment Variables
 
-## Learn More
+Create `.env.local`:
 
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
+```
+NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_WEB_URL=http://localhost:3001
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+See `.env.example` for available options.
+
+## Documentation
+
+Documentation files are in `content/docs/` as MDX. The site is configured via:
+
+- `source.config.ts` — Fumadocs metadata & schema
+- `lib/source.ts` — Content loader configuration
+- `src/lib/layout.shared.tsx` — Shared layout options
+
+For more on Fumadocs, see [fumadocs.dev](https://fumadocs.dev)
