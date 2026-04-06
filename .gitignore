@@ -12,3 +12,5 @@ agent_plans/
 .agents
 package-lock.json
 .env
+.vercel
+.env*.local

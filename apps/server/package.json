@@ -22,7 +22,6 @@
   "dependencies": {
     "@better-auth/electron": "^1.5.4",
     "@ai-sdk/google": "^3.0.10",
-    "@dbdesk/shared": "workspace:*",
     "@hono/node-server": "^1.19.9",
     "@hono/zod-validator": "^0.7.6",
     "ai": "^6.0.39",
