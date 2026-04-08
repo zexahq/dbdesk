@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { ElectronAuthQuery } from '@/app/lib/auth-client'
-import { authClient, toLoginURL, transferElectronUser } from '@/app/lib/auth-client'
+import { authClient, toLoginURL, transferElectronUser, redirectToDesktopApp } from '@/app/lib/auth-client'
 
 interface LoggedInViewProps {
   email: string
@@ -19,7 +19,9 @@ export function LoggedInView({ email, query }: LoggedInViewProps) {
     try {
       const result = await transferElectronUser(query)
 
-      if (result.redirect && result.url) {
+      if (result.electron_authorization_code && query.state) {
+        redirectToDesktopApp(result.electron_authorization_code, query.state)
+      } else if (result.redirect && result.url) {
         window.location.href = result.url
       }
     } catch (error) {

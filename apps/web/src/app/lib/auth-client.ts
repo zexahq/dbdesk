@@ -106,3 +106,15 @@ export async function transferElectronUser(
 
   return response.json() as Promise<TransferUserResponse>
 }
+
+/**
+ * Build the deep-link URL from the auth code + state and redirect the browser
+ * to the Electron app directly — no cookie needed.
+ */
+export function redirectToDesktopApp(authCode: string, state: string): void {
+  const token = btoa(JSON.stringify({ identifier: authCode, state }))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+  window.location.replace(`dbdesk:/callback#token=${token}`)
+}

@@ -1,11 +1,13 @@
 "use client"
 
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   authClient,
   getElectronAuthQuery,
   hasElectronAuthQuery,
+  transferElectronUser,
+  redirectToDesktopApp,
 } from '@/app/lib/auth-client'
 
 function CallbackContent() {
@@ -13,6 +15,7 @@ function CallbackContent() {
   const router = useRouter()
   const electronQuery = getElectronAuthQuery(searchParams)
   const isElectronFlow = hasElectronAuthQuery(electronQuery)
+  const redirected = useRef(false)
 
   useEffect(() => {
     if (!isElectronFlow) {
@@ -20,9 +23,29 @@ function CallbackContent() {
       return
     }
 
-    const timeout = authClient.ensureElectronRedirect()
-    return () => clearTimeout(timeout)
-  }, [isElectronFlow, router])
+    // Primary: try cookie-based redirect (works when same domain / cross-subdomain cookies enabled)
+    const pollId = authClient.ensureElectronRedirect()
+
+    // Fallback: if cookie isn't found after 2s, call transfer-user API directly
+    const fallbackTimer = setTimeout(async () => {
+      if (redirected.current) return
+      try {
+        const result = await transferElectronUser(electronQuery)
+        if (redirected.current) return
+        if (result.electron_authorization_code && electronQuery.state) {
+          redirected.current = true
+          redirectToDesktopApp(result.electron_authorization_code, electronQuery.state)
+        }
+      } catch (err) {
+        console.error('[callback] fallback transfer-user failed:', err)
+      }
+    }, 2000)
+
+    return () => {
+      clearInterval(pollId)
+      clearTimeout(fallbackTimer)
+    }
+  }, [isElectronFlow, router, electronQuery])
 
   return (
     <div className="flex flex-col flex-1 -translate-y-16">
