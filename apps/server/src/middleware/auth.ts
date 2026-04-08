@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { auth } from "../auth";
+import { auth } from '../auth.js'
 
 /**
  * Session type from Better Auth (user + session objects).

@@ -3,8 +3,8 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { betterAuth } from 'better-auth'
 import { electron } from '@better-auth/electron'
 import { bearer } from 'better-auth/plugins'
-import { db } from './db/index'
-import * as schema from './db/schema'
+import { db } from './db/index.js'
+import * as schema from './db/schema.js'
 
 export const auth = betterAuth({
   appName: 'DBDesk',
