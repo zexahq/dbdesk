@@ -14,10 +14,11 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useTheme } from '@renderer/shared/hooks/use-theme'
 import { saveCurrentWorkspace } from '@renderer/features/sql-workspace/lib/workspace'
+import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { useNavigate } from '@tanstack/react-router'
-import { Database, Moon, Search, Sun, Table2Icon, Unplug } from 'lucide-react'
+import { Database, Moon, Plus, Search, SquareCode, Sun, Table2Icon, Unplug } from 'lucide-react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
@@ -29,9 +30,15 @@ export function QuickPanel() {
   const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
 
   const addTableTab = useTabStore((s) => s.addTableTab)
+  const addQueryTab = useTabStore((s) => s.addQueryTab)
+  const findQueryTabById = useTabStore((s) => s.findQueryTabById)
+  const updateQueryTab = useTabStore((s) => s.updateQueryTab)
+  const setActiveTab = useTabStore((s) => s.setActiveTab)
   const reset = useTabStore((s) => s.reset)
   const loadFromSerialized = useTabStore((s) => s.loadFromSerialized)
   const { theme, toggleTheme } = useTheme()
+
+  const savedQueries = useSavedQueriesStore((s) => s.queries)
 
   const { data: connections } = useConnections()
   const { mutateAsync: connect } = useConnect()
@@ -93,6 +100,28 @@ export function QuickPanel() {
     setOpen(false)
   }
 
+  const handleNewQuery = () => {
+    addQueryTab()
+    setOpen(false)
+  }
+
+  const handleLoadSavedQuery = (query: (typeof savedQueries)[0]) => {
+    const existingTab = findQueryTabById(query.id)
+    if (existingTab) {
+      setActiveTab(existingTab.id)
+    } else {
+      const newTabId = addQueryTab()
+      updateQueryTab(newTabId, {
+        id: query.id,
+        name: query.name,
+        editorContent: query.content,
+        lastSavedContent: query.content
+      })
+      setActiveTab(query.id)
+    }
+    setOpen(false)
+  }
+
   const handleThemeToggle = () => {
     toggleTheme()
     setOpen(false)
@@ -138,12 +167,20 @@ export function QuickPanel() {
             </>
           )}
           {currentConnectionId && (
-            <CommandGroup heading="Connection Actions" className="py-2">
-              <CommandItem onSelect={handleDisconnect} className="py-2!">
-                <Unplug className="size-4 mr-2" />
-                <span className="text-sm">Disconnect</span>
-              </CommandItem>
-            </CommandGroup>
+            <>
+              <CommandGroup heading="Query" className="py-2">
+                <CommandItem onSelect={handleNewQuery} className="py-2!">
+                  <Plus className="size-4 mr-2" />
+                  <span className="text-sm">New Query</span>
+                </CommandItem>
+              </CommandGroup>
+              <CommandGroup heading="Connection Actions" className="py-2">
+                <CommandItem onSelect={handleDisconnect} className="py-2!">
+                  <Unplug className="size-4 mr-2" />
+                  <span className="text-sm">Disconnect</span>
+                </CommandItem>
+              </CommandGroup>
+            </>
           )}
           <CommandGroup heading="General Settings" className="py-2">
             <CommandItem onSelect={handleThemeToggle} className="py-2!">
@@ -155,6 +192,21 @@ export function QuickPanel() {
               <span className="text-sm">Toggle Theme</span>
             </CommandItem>
           </CommandGroup>
+          {currentConnectionId && savedQueries.length > 0 && (
+            <CommandGroup heading="Saved Queries" className="py-2">
+              {savedQueries.map((query) => (
+                <CommandItem
+                  key={query.id}
+                  value={`saved-query: ${query.name}`}
+                  onSelect={() => handleLoadSavedQuery(query)}
+                  className="py-2!"
+                >
+                  <SquareCode className="size-4 mr-2" />
+                  <span className="text-sm">{query.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
           {schemasWithTables.length > 0 && (
             <>
               <CommandGroup heading="Entities" className="py-2">

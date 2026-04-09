@@ -7,7 +7,7 @@ interface AuthUser {
   image?: string | null
 }
 
-interface AuthState {
+export interface AuthState {
   user: AuthUser | null
   /** In-memory token cache — sourced from safeStorage via IPC, never persisted in renderer */
   token: string | null
@@ -35,12 +35,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) =>
     set({
       user,
-      isAuthenticated: !!user,
+      isAuthenticated: !!user
     }),
 
   setToken: (token) =>
     set({
-      token,
+      token
     }),
 
   setIsLoading: (isLoading) => set({ isLoading }),
@@ -49,24 +49,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({
       user: null,
       token: null,
-      isAuthenticated: false,
+      isAuthenticated: false
     }),
 
   refreshSession: async () => {
     try {
-      console.log('[auth-store] refreshSession called')
       const [session, tokenResult] = await Promise.all([
         window.dbdesk.getSession(),
-        window.dbdesk.getToken(),
+        window.dbdesk.getToken()
       ])
-      console.log('[auth-store] refreshSession result:', { hasUser: !!session?.user, hasToken: !!tokenResult?.token })
 
       if (session?.user) {
         set({
           user: session.user,
           token: tokenResult.token,
           isAuthenticated: true,
-          isLoading: false,
+          isLoading: false
         })
       } else {
         // Only clear auth state if we weren't already authenticated.
@@ -79,7 +77,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             user: null,
             token: null,
             isAuthenticated: false,
-            isLoading: false,
+            isLoading: false
           })
         } else {
           set({ isLoading: false })
@@ -89,5 +87,5 @@ export const useAuthStore = create<AuthState>((set) => ({
       console.error('[auth-store] refreshSession error:', err)
       set({ isLoading: false })
     }
-  },
+  }
 }))

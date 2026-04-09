@@ -1,6 +1,7 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, ipcMain, Menu, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, protocol, safeStorage, shell } from 'electron'
 import { join } from 'path'
+
 import icon from '../../resources/icon.png?asset'
 import './adapters'
 import { connectionManager } from './connectionManager'
@@ -9,6 +10,7 @@ import { authManager } from './lib/auth-manager'
 import { AssetServer } from './protocols/asset-server'
 import { AssetUrl } from './protocols/asset-url'
 import { initAutoUpdater } from './lib/auto-updater'
+import { startDevDeepLinkServer, stopDevDeepLinkServer } from './lib/dev-deep-link'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -87,6 +89,13 @@ protocol.registerSchemesAsPrivileged([
 ])
 // Prevent the plugin from calling registerSchemesAsPrivileged again (would throw)
 protocol.registerSchemesAsPrivileged = () => {}
+
+// On Linux, if no OS keyring (gnome-keyring / kwallet) is available,
+// safeStorage.encryptString / decryptString will throw. Fall back to
+// in-memory plaintext encryption so @better-auth/electron still works.
+if (process.platform === 'linux' && !safeStorage.isEncryptionAvailable()) {
+  safeStorage.setUsePlainTextEncryption(true)
+}
 
 // Debug: log deep link events (these fire in the main process → visible in terminal)
 app.on('open-url', (_event, url) => {
@@ -245,6 +254,12 @@ app.whenReady().then(() => {
   registerAllIpcHandlers()
   initAutoUpdater()
 
+  // In dev on Linux, start a Unix socket server so that the .desktop file
+  // relay script can forward deep link URLs to this running instance.
+  if (is.dev && process.platform === 'linux') {
+    startDevDeepLinkServer()
+  }
+
   createWindow()
 
   app.on('activate', function () {
@@ -273,6 +288,7 @@ app.on('before-quit', (event) => {
     }
 
     await connectionManager.closeAll()
+    stopDevDeepLinkServer()
 
     // Remove this handler to avoid recursion and quit again
     app.removeAllListeners('before-quit')
