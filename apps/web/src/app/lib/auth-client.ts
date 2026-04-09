@@ -116,5 +116,5 @@ export function redirectToDesktopApp(authCode: string, state: string): void {
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '')
-  window.location.replace(`dbdesk:/callback#token=${token}`)
+  window.location.replace(`dbdesk://callback#token=${token}`)
 }

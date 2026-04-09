@@ -2,6 +2,7 @@ import { Loader2, LogOut, Moon, Sun } from 'lucide-react'
 import { fullSignOut } from '@renderer/features/auth/lib/auth'
 import { useTheme } from '@renderer/shared/hooks/use-theme'
 import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
+import { useNavigate } from '@tanstack/react-router'
 import { Avatar, AvatarFallback, AvatarImage } from '@renderer/components/ui/avatar'
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import {
 export function UserMenu() {
   const { user, isLoading } = useAuthStore()
   const { theme, toggleTheme } = useTheme()
+  const navigate = useNavigate()
 
   if (!user) return null
 
@@ -24,6 +26,11 @@ export function UserMenu() {
     .map((n) => n[0])
     .join('')
     .toUpperCase()
+
+  const handleLogout = async () => {
+    await fullSignOut()
+    navigate({ to: '/auth' })
+  }
 
   return (
     <DropdownMenu>
@@ -60,7 +67,7 @@ export function UserMenu() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={fullSignOut}>
+        <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="size-4" />
           Log out
         </DropdownMenuItem>

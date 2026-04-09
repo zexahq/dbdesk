@@ -5,7 +5,9 @@ export async function requestSignIn(): Promise<void> {
 }
 
 /**
- * Sign out: server-side invalidation + clear safeStorage + clear renderer store.
+ * Sign out: server-side invalidation + clear safeStorage + clear renderer store + navigate to auth.
+ * Note: Returns a promise that resolves after logout, but navigation happens asynchronously.
+ * The caller should handle navigation if needed.
  */
 export async function fullSignOut(): Promise<void> {
   await window.dbdesk.logout()

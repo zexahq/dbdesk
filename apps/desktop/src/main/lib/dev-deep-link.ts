@@ -40,8 +40,6 @@ export function startDevDeepLinkServer(): void {
       const url = data.trim()
       if (!url) return
 
-      console.log('[dev-deep-link] received URL via socket:', url)
-
       // Focus the existing window
       const win = BrowserWindow.getAllWindows()[0]
       if (win) {

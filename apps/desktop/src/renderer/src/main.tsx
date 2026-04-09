@@ -48,7 +48,6 @@ async function refreshAuthRouting() {
 }
 
 window.onAuthenticated(async (user) => {
-  console.log('[auth] onAuthenticated fired, user:', user)
   if (user) {
     // Trust the user from the main process immediately — avoids race condition
     // where tokenStore hasn't persisted the session cookie yet when getSession()
@@ -67,12 +66,10 @@ window.onAuthenticated(async (user) => {
           const tokenResult = await window.dbdesk.getToken()
           if (tokenResult?.token) {
             useAuthStore.getState().setToken(tokenResult.token)
-            console.log('[auth] token fetched on retry', i + 1)
             return
           }
         } catch { /* retry */ }
       }
-      console.warn('[auth] could not fetch token after retries')
     }
     void fetchTokenWithRetry()
   }
