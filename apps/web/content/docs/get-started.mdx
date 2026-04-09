@@ -1,0 +1,63 @@
+---
+title: Get Started
+description: Install and start using DBDesk
+---
+
+## Installation
+
+Download the latest installer for your platform from the [GitHub Releases](https://github.com/zexahq/dbdesk/releases) page.
+
+### macOS
+
+Download the `.dmg` installer from the releases page. After mounting, drag DBDesk to your Applications folder.
+
+If you encounter issues with macOS Gatekeeper blocking the app (since it is not signed with an Apple developer certificate), you can bypass this by running:
+
+```bash
+xattr -rd com.apple.quarantine /Applications/dbdesk.app
+```
+
+### Linux
+
+Download the `.AppImage` file from the releases page:
+
+```bash
+chmod +x dbdesk-*.AppImage
+./dbdesk-*.AppImage
+```
+
+### Windows
+
+Download the `.exe` installer from the releases page. Run the installer and follow the setup wizard.
+
+## First Launch
+
+When you open DBDesk for the first time, you'll see an empty connection screen. Let's add your first database:
+
+1. Click **Add Connection** in the sidebar
+2. Select **PostgreSQL** as the database type
+3. Fill in your connection details:
+   - **Connection Name** — A friendly name for your connection
+   - **Host** — Usually `localhost` for local databases
+   - **Port** — Default is `5432`
+   - **Database** — The name of the database to connect to
+   - **Username** — Your PostgreSQL username
+   - **Password** — Your PostgreSQL password
+4. Click **Test Connection** to verify everything works
+5. Click **Save** to add the connection
+
+## Quick Navigation
+
+DBDesk is designed for keyboard-first workflows:
+
+- `Ctrl+P` — Open the Quick Panel for fast navigation
+- `Ctrl+T` — Open a new tab
+- `Ctrl+W` — Close the current tab
+- `Ctrl+S` — Save your current query
+- `Ctrl+Enter` — Execute the selected SQL query
+
+## Next Steps
+
+- Learn about the [Keyboard Shortcuts](/docs/keyboard-shortcuts)
+- Explore the [Tech Stack](/docs/tech-stack)
+- Download DBDesk from the [releases page](/download)

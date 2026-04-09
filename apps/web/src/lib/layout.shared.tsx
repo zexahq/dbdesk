@@ -1,14 +1,12 @@
-import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-import { Navbar } from "@/app/(home)/components/navbar";
+import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared'
 
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      title: "DBDesk",
-      component: <Navbar />,
+      enabled: false
     },
     searchToggle: {
-      enabled: false,
-    },
-  };
+      enabled: false
+    }
+  }
 }

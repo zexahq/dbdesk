@@ -1,16 +1,13 @@
-import Link from "next/link";
-import { Logo } from "@/components/logo";
-import { Icons } from "@/components/icons";
+import Link from 'next/link'
+import { Logo } from '@/components/logo'
+import { Icons } from '@/components/icons'
 
 export const Navbar = () => {
   return (
     <nav className="flex w-full items-center justify-between px-6 py-4 border-b border-dashed border-fd-border relative">
       <div className="flex gap-2 items-center">
         <Logo className="w-8 h-8" />
-        <Link
-          href="/"
-          className="text-2xl flex items-center font-bold tracking-tight"
-        >
+        <Link href="/" className="text-2xl flex items-center font-bold tracking-tight">
           DBDesk
         </Link>
       </div>
@@ -20,6 +17,12 @@ export const Navbar = () => {
           className="text-sm font-medium text-fd-foreground hover:text-fd-foreground/80 transition-colors"
         >
           Features
+        </Link>
+        <Link
+          href="/docs"
+          className="text-sm font-medium text-fd-foreground hover:text-fd-foreground/80 transition-colors"
+        >
+          Docs
         </Link>
         <Link
           href="/download"
@@ -39,5 +42,5 @@ export const Navbar = () => {
         </Link>
       </div>
     </nav>
-  );
-};
+  )
+}

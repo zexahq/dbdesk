@@ -1,0 +1,67 @@
+---
+title: Tech Stack
+description: Technologies that power DBDesk
+---
+
+DBDesk is built using a modern, battle-tested tech stack designed for performance, type safety, and developer experience.
+
+## Desktop App
+
+### Core
+
+- **[Electron](https://www.electronjs.org/)** — Cross-platform desktop app framework
+- **[React](https://react.dev/)** — UI framework for building the user interface
+
+### Routing & State
+
+- **[TanStack Router](https://tanstack.com/router)** — Type-safe routing for React
+- **[TanStack Query](https://tanstack.com/query)** — Data fetching, caching, and synchronization
+- **[TanStack Table](https://tanstack.com/table)** — Powerful, headless table UI
+- **[Zustand](https://zustand.docs.pmnd.rs/)** — Simple, scalable state management
+
+### Editor & UI
+
+- **[Monaco Editor](https://microsoft.github.io/monaco-editor/)** — The code editor that powers VS Code
+- **[Tailwind CSS](https://tailwindcss.com/)** — Utility-first CSS framework
+- **[Radix UI](https://www.radix-ui.com/)** — Accessible, unstyled UI component primitives
+
+## Server
+
+- **[Hono](https://hono.dev/)** — Fast, lightweight web framework
+- **[Drizzle ORM](https://orm.drizzle.team/)** — Lightweight TypeScript ORM
+- **[better-auth](https://better-auth.com/)** — Authentication for web applications
+- **[PostgreSQL](https://www.postgresql.org/)** — The world's most advanced open source relational database
+
+## Monorepo
+
+- **[Turborepo](https://turbo.build/)** — High-performance build system for monorepos
+- **[pnpm](https://pnpm.io/)** — Fast, disk space efficient package manager
+
+## Development Tools
+
+- **[TypeScript](https://www.typescriptlang.org/)** — Typed JavaScript at any scale
+- **[ESLint](https://eslint.org/)** — Pluggable JavaScript linter
+- **[Prettier](https://prettier.io/)** — Opinionated code formatter
+
+## Architecture
+
+```
+dbdesk/
+├── apps/
+│   ├── desktop/      # Electron desktop app
+│   ├── server/      # Hono API server
+│   └── web/         # Next.js marketing website + docs
+├── packages/
+│   ├── api-client/  # Type-safe Hono RPC client
+│   ├── shared/      # Shared types, schemas & utilities
+│   └── tsconfig/    # Shared TypeScript configurations
+```
+
+## Why This Stack?
+
+We chose these technologies to deliver:
+
+- **Performance** — Electron + React provides a native-like experience
+- **Type Safety** — Full TypeScript coverage with TanStack libraries
+- **Developer Experience** — Hot reload, code generation, and strict linting
+- **Maintainability** — Monorepo structure enables code sharing across apps
