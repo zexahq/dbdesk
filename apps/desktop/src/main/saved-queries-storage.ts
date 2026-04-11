@@ -1,151 +1,100 @@
 import type { SavedQueriesStorage, SavedQuery } from '@dbdesk/shared/types'
-import { app } from 'electron'
-import { promises as fs } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { and, eq } from 'drizzle-orm'
+import { getDb, savedQueries } from '@dbdesk/db'
 
-const QUERIES_FILENAME = 'saved-queries.json'
-
-type StoredQuery = Omit<SavedQuery, 'createdAt' | 'updatedAt'> & {
-  createdAt: string
-  updatedAt: string
-}
-
-type StoredQueriesStorage = {
-  [connectionId: string]: StoredQuery[]
-}
-
-const getSavedQueriesStoragePath = (): string => join(app.getPath('userData'), QUERIES_FILENAME)
-
-const serializeQuery = (query: SavedQuery): StoredQuery => ({
-  ...query,
-  createdAt: query.createdAt.toISOString(),
-  updatedAt: query.updatedAt.toISOString()
+const toSavedQuery = (row: typeof savedQueries.$inferSelect): SavedQuery => ({
+  id: row.id,
+  name: row.name,
+  content: row.content,
+  createdAt: new Date(row.createdAt),
+  updatedAt: new Date(row.updatedAt),
 })
-
-const deserializeQuery = (stored: StoredQuery): SavedQuery => ({
-  ...stored,
-  createdAt: new Date(stored.createdAt),
-  updatedAt: new Date(stored.updatedAt)
-})
-
-const readQueriesFromDisk = async (): Promise<StoredQueriesStorage> => {
-  const filePath = getSavedQueriesStoragePath()
-
-  try {
-    const content = await fs.readFile(filePath, 'utf8')
-    if (content.trim() === '') {
-      return {}
-    }
-
-    return JSON.parse(content) as StoredQueriesStorage
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return {}
-    }
-
-    if (error instanceof SyntaxError) {
-      console.warn(`Saved queries storage file is corrupted, resetting: ${error.message}`)
-      return {}
-    }
-
-    throw error
-  }
-}
-
-const writeQueriesToDisk = async (queries: StoredQueriesStorage): Promise<void> => {
-  const filePath = getSavedQueriesStoragePath()
-  await fs.mkdir(dirname(filePath), { recursive: true }).catch(() => {})
-  await fs.writeFile(filePath, JSON.stringify(queries, null, 2), 'utf8')
-}
 
 export const saveQuery = async (
   connectionId: string,
   id: string,
   name: string,
-  content: string
+  content: string,
 ): Promise<SavedQuery> => {
-  const queries = await readQueriesFromDisk()
   const now = new Date()
 
-  const query: SavedQuery = {
-    id,
-    name,
-    content,
-    createdAt: now,
-    updatedAt: now
-  }
+  getDb()
+    .insert(savedQueries)
+    .values({
+      connectionId,
+      id,
+      name,
+      content,
+      createdAt: now.getTime(),
+      updatedAt: now.getTime(),
+    })
+    .run()
 
-  if (!queries[connectionId]) {
-    queries[connectionId] = []
-  }
-
-  queries[connectionId]!.push(serializeQuery(query))
-  await writeQueriesToDisk(queries)
-
-  return query
+  return { id, name, content, createdAt: now, updatedAt: now }
 }
 
 export const updateQuery = async (
   connectionId: string,
   queryId: string,
   name: string,
-  content: string
+  content: string,
 ): Promise<SavedQuery | undefined> => {
-  const queries = await readQueriesFromDisk()
-  const connectionQueries = queries[connectionId]
+  const existing = getDb()
+    .select()
+    .from(savedQueries)
+    .where(and(eq(savedQueries.connectionId, connectionId), eq(savedQueries.id, queryId)))
+    .get()
 
-  if (!connectionQueries) {
-    return undefined
-  }
-
-  const index = connectionQueries.findIndex((q) => q.id === queryId)
-  if (index === -1) {
-    return undefined
-  }
+  if (!existing) return undefined
 
   const now = new Date()
-  const updated: StoredQuery = {
-    ...connectionQueries[index]!,
+
+  getDb()
+    .update(savedQueries)
+    .set({ name, content, updatedAt: now.getTime() })
+    .where(and(eq(savedQueries.connectionId, connectionId), eq(savedQueries.id, queryId)))
+    .run()
+
+  return {
+    id: queryId,
     name,
     content,
-    updatedAt: now.toISOString()
+    createdAt: new Date(existing.createdAt),
+    updatedAt: now,
   }
-
-  connectionQueries[index] = updated
-  await writeQueriesToDisk(queries)
-
-  return deserializeQuery(updated)
 }
 
 export const deleteQuery = async (connectionId: string, queryId: string): Promise<void> => {
-  const queries = await readQueriesFromDisk()
-
-  if (queries[connectionId]) {
-    queries[connectionId] = queries[connectionId]!.filter((q) => q.id !== queryId)
-    await writeQueriesToDisk(queries)
-  }
+  getDb()
+    .delete(savedQueries)
+    .where(and(eq(savedQueries.connectionId, connectionId), eq(savedQueries.id, queryId)))
+    .run()
 }
 
 export const loadQueries = async (connectionId: string): Promise<SavedQuery[]> => {
-  const queries = await readQueriesFromDisk()
-  const connectionQueries = queries[connectionId] || []
+  const rows = getDb()
+    .select()
+    .from(savedQueries)
+    .where(eq(savedQueries.connectionId, connectionId))
+    .all()
 
-  return connectionQueries.map((q) => deserializeQuery(q))
+  return rows.map(toSavedQuery)
 }
 
 export const loadAllQueries = async (): Promise<SavedQueriesStorage> => {
-  const storedQueries = await readQueriesFromDisk()
-  const queries: SavedQueriesStorage = {}
+  const rows = getDb().select().from(savedQueries).all()
+  const result: SavedQueriesStorage = {}
 
-  for (const [connectionId, storedQueryList] of Object.entries(storedQueries)) {
-    queries[connectionId] = storedQueryList.map((q) => deserializeQuery(q))
+  for (const row of rows) {
+    if (!result[row.connectionId]) {
+      result[row.connectionId] = []
+    }
+    result[row.connectionId].push(toSavedQuery(row))
   }
 
-  return queries
+  return result
 }
 
 export const deleteAllQueriesForConnection = async (connectionId: string): Promise<void> => {
-  const queries = await readQueriesFromDisk()
-  delete queries[connectionId]
-  await writeQueriesToDisk(queries)
+  getDb().delete(savedQueries).where(eq(savedQueries.connectionId, connectionId)).run()
 }

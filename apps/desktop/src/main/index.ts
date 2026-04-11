@@ -5,6 +5,8 @@ import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import './adapters'
 import { connectionManager } from './connectionManager'
+import { initDatabase, closeDatabase, runMigrations } from '@dbdesk/db'
+import { runLegacyImportIfNeeded } from './db/legacy-import'
 import { registerAllIpcHandlers } from './ipc'
 import { authManager } from './lib/auth-manager'
 import { AssetServer } from './protocols/asset-server'
@@ -140,6 +142,11 @@ const requestWorkspaceFlush = async (): Promise<void> => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  // Initialize local SQLite database before anything else
+  initDatabase(join(app.getPath('userData'), 'dbdesk.sqlite'))
+  runMigrations()
+  runLegacyImportIfNeeded()
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -288,6 +295,7 @@ app.on('before-quit', (event) => {
     }
 
     await connectionManager.closeAll()
+    closeDatabase()
     stopDevDeepLinkServer()
 
     // Remove this handler to avoid recursion and quit again

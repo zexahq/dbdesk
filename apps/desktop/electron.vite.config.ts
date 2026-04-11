@@ -90,7 +90,7 @@ export default defineConfig({
     build: {
       externalizeDeps: false,
       rollupOptions: {
-        external: ['pg-native'],
+        external: ['pg-native', 'better-sqlite3'],
       },
     },
   },

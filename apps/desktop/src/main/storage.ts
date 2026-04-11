@@ -1,90 +1,58 @@
-import { promises as fs } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { app } from 'electron'
 import type { ConnectionProfile } from '@dbdesk/shared/types'
+import { eq } from 'drizzle-orm'
+import { getDb, connectionProfiles } from '@dbdesk/db'
 
-const STORAGE_FILENAME = 'connections.json'
-
-type StoredConnectionProfile = Omit<
-  ConnectionProfile,
-  'createdAt' | 'updatedAt' | 'lastConnectedAt'
-> & {
-  createdAt: string
-  updatedAt: string
-  lastConnectedAt?: string
-}
-
-const getStoragePath = (): string => join(app.getPath('userData'), STORAGE_FILENAME)
-
-const serializeProfile = (profile: ConnectionProfile): StoredConnectionProfile => ({
-  ...profile,
-  createdAt: profile.createdAt.toISOString(),
-  updatedAt: profile.updatedAt.toISOString(),
-  lastConnectedAt: profile.lastConnectedAt?.toISOString()
-})
-
-const deserializeProfile = (stored: StoredConnectionProfile): ConnectionProfile =>
+const toProfile = (row: typeof connectionProfiles.$inferSelect): ConnectionProfile =>
   ({
-    ...stored,
-    createdAt: new Date(stored.createdAt),
-    updatedAt: new Date(stored.updatedAt),
-    lastConnectedAt: stored.lastConnectedAt ? new Date(stored.lastConnectedAt) : undefined
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    options: JSON.parse(row.optionsJson),
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+    lastConnectedAt: row.lastConnectedAt ? new Date(row.lastConnectedAt) : undefined,
   }) as ConnectionProfile
 
-const readProfilesFromDisk = async (): Promise<StoredConnectionProfile[]> => {
-  const filePath = getStoragePath()
-
-  try {
-    const content = await fs.readFile(filePath, 'utf8')
-    return JSON.parse(content) as StoredConnectionProfile[]
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return []
-    }
-
-    throw error
-  }
-}
-
-const writeProfilesToDisk = async (profiles: StoredConnectionProfile[]): Promise<void> => {
-  const filePath = getStoragePath()
-  await fs.mkdir(dirname(filePath), { recursive: true }).catch(() => {})
-  await fs.writeFile(filePath, JSON.stringify(profiles, null, 2), 'utf8')
-}
-
 export const loadProfiles = async (): Promise<ConnectionProfile[]> => {
-  const storedProfiles = await readProfilesFromDisk()
-  return storedProfiles.map(deserializeProfile)
+  const rows = getDb().select().from(connectionProfiles).all()
+  return rows.map(toProfile)
 }
 
 export const getProfile = async (profileId: string): Promise<ConnectionProfile | undefined> => {
-  const profiles = await loadProfiles()
-  const profile = profiles.find((profile) => profile.id === profileId)
+  const row = getDb()
+    .select()
+    .from(connectionProfiles)
+    .where(eq(connectionProfiles.id, profileId))
+    .get()
 
-  if (!profile) {
-    return undefined
-  }
-  return profile
+  return row ? toProfile(row) : undefined
 }
 
 export const saveProfile = async (profile: ConnectionProfile): Promise<void> => {
-  const storedProfiles = await readProfilesFromDisk()
-  const index = storedProfiles.findIndex((item) => item.id === profile.id)
-
-  const serializedProfile = serializeProfile(profile)
-
-  if (index >= 0) {
-    storedProfiles[index] = serializedProfile
-  } else {
-    storedProfiles.push(serializedProfile)
-  }
-
-  await writeProfilesToDisk(storedProfiles)
+  getDb()
+    .insert(connectionProfiles)
+    .values({
+      id: profile.id,
+      name: profile.name,
+      type: profile.type,
+      optionsJson: JSON.stringify(profile.options),
+      createdAt: profile.createdAt.getTime(),
+      updatedAt: profile.updatedAt.getTime(),
+      lastConnectedAt: profile.lastConnectedAt?.getTime() ?? null,
+    })
+    .onConflictDoUpdate({
+      target: connectionProfiles.id,
+      set: {
+        name: profile.name,
+        type: profile.type,
+        optionsJson: JSON.stringify(profile.options),
+        updatedAt: profile.updatedAt.getTime(),
+        lastConnectedAt: profile.lastConnectedAt?.getTime() ?? null,
+      },
+    })
+    .run()
 }
 
 export const deleteProfile = async (profileId: string): Promise<void> => {
-  const storedProfiles = await readProfilesFromDisk()
-  const filteredProfiles = storedProfiles.filter((profile) => profile.id !== profileId)
-
-  await writeProfilesToDisk(filteredProfiles)
+  getDb().delete(connectionProfiles).where(eq(connectionProfiles.id, profileId)).run()
 }
