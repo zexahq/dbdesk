@@ -164,7 +164,7 @@ if (userDataPath) {
 app.whenReady().then(() => {
   // Initialize local SQLite database before anything else
   initDatabase(join(app.getPath('userData'), 'dbdesk.sqlite'))
-  runMigrations()
+  runMigrations(join(__dirname, 'drizzle'))
   runLegacyImportIfNeeded()
 
   // Set app user model id for windows

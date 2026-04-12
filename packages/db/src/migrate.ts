@@ -2,8 +2,8 @@ import { getDb } from './client'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { resolve } from 'node:path'
 
-export function runMigrations(): void {
+export function runMigrations(migrationsFolder?: string): void {
   const db = getDb()
-  const migrationsFolder = resolve(__dirname, '../../drizzle')
-  migrate(db, { migrationsFolder })
+  const folder = migrationsFolder ?? resolve(__dirname, '../../drizzle')
+  migrate(db, { migrationsFolder: folder })
 }
