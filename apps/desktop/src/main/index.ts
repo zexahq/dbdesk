@@ -139,12 +139,23 @@ const requestWorkspaceFlush = async (): Promise<void> => {
 }
 
 // Override userData path to use a clean name instead of the scoped package name
-if (process.platform !== 'win32') {
-  const configDir =
-    process.platform === 'linux'
-      ? process.env.XDG_CONFIG_HOME || join(process.env.HOME || '', '.config')
-      : join(process.env.HOME || '', 'Library', 'Application Support')
-  app.setPath('userData', join(configDir, 'dbdesk'))
+const getUserDataPath = (): string | undefined => {
+  if (process.platform === 'linux') {
+    const xdgConfig = process.env.XDG_CONFIG_HOME || join(process.env.HOME || '', '.config')
+    return join(xdgConfig, 'dbdesk')
+  }
+  if (process.platform === 'darwin') {
+    return join(process.env.HOME || '', 'Library', 'Application Support', 'dbdesk')
+  }
+  if (process.platform === 'win32') {
+    return join(process.env.APPDATA || '', 'dbdesk')
+  }
+  return undefined
+}
+
+const userDataPath = getUserDataPath()
+if (userDataPath) {
+  app.setPath('userData', userDataPath)
 }
 
 // This method will be called when Electron has finished
