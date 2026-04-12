@@ -13,7 +13,7 @@ export const serializedTableTabSchema = z.object({
   limit: z.number().int().min(1),
   offset: z.number().int().min(0),
   filters: z.array(tableFilterConditionSchema).optional(),
-  sortRules: z.array(tableSortRuleSchema).optional(),
+  sortRules: z.array(tableSortRuleSchema).optional()
 })
 
 export const serializedQueryTabSchema = z.object({
@@ -22,27 +22,24 @@ export const serializedQueryTabSchema = z.object({
   name: z.string().min(1),
   editorContent: z.string(),
   isTemporary: z.boolean(),
-  lastSavedContent: z.string().optional(),
+  lastSavedContent: z.string().optional()
 })
 
 export const serializedTabSchema = z.discriminatedUnion('kind', [
   serializedTableTabSchema,
-  serializedQueryTabSchema,
+  serializedQueryTabSchema
 ])
 
 export const savedQuerySchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  content: z.string(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
+  content: z.string()
 })
 
 export const connectionWorkspaceSchema = z.object({
   connectionId: z.string().min(1),
-  lastUpdated: z.coerce.date(),
   tabs: z.array(serializedTabSchema),
-  activeTabId: z.string().nullable(),
+  activeTabId: z.string().nullable()
 })
 
 // ── Inferred Types ──

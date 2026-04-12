@@ -4,9 +4,7 @@ import { and, eq, getDb, savedQueries } from '@dbdesk/db'
 const toSavedQuery = (row: typeof savedQueries.$inferSelect): SavedQuery => ({
   id: row.id,
   name: row.name,
-  content: row.content,
-  createdAt: new Date(row.createdAt),
-  updatedAt: new Date(row.updatedAt)
+  content: row.content
 })
 
 export const saveQuery = async (
@@ -15,8 +13,6 @@ export const saveQuery = async (
   name: string,
   content: string
 ): Promise<SavedQuery> => {
-  const now = new Date()
-
   getDb()
     .insert(savedQueries)
     .values({
@@ -24,12 +20,12 @@ export const saveQuery = async (
       id,
       name,
       content,
-      createdAt: now.getTime(),
-      updatedAt: now.getTime()
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     })
     .run()
 
-  return { id, name, content, createdAt: now, updatedAt: now }
+  return { id, name, content }
 }
 
 export const updateQuery = async (
@@ -46,21 +42,13 @@ export const updateQuery = async (
 
   if (!existing) return undefined
 
-  const now = new Date()
-
   getDb()
     .update(savedQueries)
-    .set({ name, content, updatedAt: now.getTime() })
+    .set({ name, content, updatedAt: Date.now() })
     .where(and(eq(savedQueries.connectionId, connectionId), eq(savedQueries.id, queryId)))
     .run()
 
-  return {
-    id: queryId,
-    name,
-    content,
-    createdAt: new Date(existing.createdAt),
-    updatedAt: now
-  }
+  return { id: queryId, name, content }
 }
 
 export const deleteQuery = async (connectionId: string, queryId: string): Promise<void> => {

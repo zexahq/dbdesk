@@ -16,7 +16,10 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
@@ -25,6 +28,7 @@
   "devDependencies": {
     "@dbdesk/tsconfig": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
+    "drizzle-kit": "^0.32.2",
     "typescript": "^5.9.2"
   }
 }

@@ -8,15 +8,9 @@ export const connectionProfiles = sqliteTable('connection_profiles', {
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   lastConnectedAt: integer('last_connected_at'),
-})
-
-export const workspaces = sqliteTable('workspaces', {
-  connectionId: text('connection_id')
-    .primaryKey()
-    .references(() => connectionProfiles.id, { onDelete: 'cascade' }),
-  tabsJson: text('tabs_json').notNull(),
+  tabsJson: text('tabs_json'),
   activeTabId: text('active_tab_id'),
-  lastUpdated: integer('last_updated').notNull(),
+  lastUpdated: integer('last_updated')
 })
 
 export const savedQueries = sqliteTable(
@@ -29,17 +23,17 @@ export const savedQueries = sqliteTable(
     name: text('name').notNull(),
     content: text('content').notNull(),
     createdAt: integer('created_at').notNull(),
-    updatedAt: integer('updated_at').notNull(),
+    updatedAt: integer('updated_at').notNull()
   },
-  (table) => [primaryKey({ columns: [table.connectionId, table.id] })],
+  (table) => [primaryKey({ columns: [table.connectionId, table.id] })]
 )
 
 export const authKv = sqliteTable('auth_kv', {
   key: text('key').primaryKey(),
-  value: text('value').notNull(),
+  value: text('value').notNull()
 })
 
 export const appMeta = sqliteTable('app_meta', {
   key: text('key').primaryKey(),
-  value: text('value').notNull(),
+  value: text('value').notNull()
 })

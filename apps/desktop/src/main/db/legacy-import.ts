@@ -3,6 +3,10 @@ import { readFileSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import { getSqlite } from '@dbdesk/db'
 
+// TODO: Remove this file once live migrations are implemented.
+// This handles importing legacy JSON storage from pre-Drizzle versions.
+// Can be safely deleted after all users have migrated to the SQLite version.
+
 const LEGACY_FLAG = 'legacy_json_import_v1'
 
 function readJsonFile<T>(filename: string): T | null {
@@ -45,16 +49,15 @@ interface LegacyWorkspace {
 export function runLegacyImportIfNeeded(): void {
   const sqlite = getSqlite()
 
-  const existing = sqlite
-    .prepare('SELECT value FROM app_meta WHERE key = ?')
-    .get(LEGACY_FLAG) as { value: string } | undefined
+  const existing = sqlite.prepare('SELECT value FROM app_meta WHERE key = ?').get(LEGACY_FLAG) as
+    | { value: string }
+    | undefined
 
   if (existing) return
 
   console.log('[db] Running legacy JSON import...')
 
   const transaction = sqlite.transaction(() => {
-    // Import connection profiles
     const profiles = readJsonFile<LegacyProfile[]>('connections.json')
     if (profiles && Array.isArray(profiles)) {
       const stmt = sqlite.prepare(`
@@ -70,7 +73,7 @@ export function runLegacyImportIfNeeded(): void {
             JSON.stringify(p.options),
             new Date(p.createdAt).getTime(),
             new Date(p.updatedAt).getTime(),
-            p.lastConnectedAt ? new Date(p.lastConnectedAt).getTime() : null,
+            p.lastConnectedAt ? new Date(p.lastConnectedAt).getTime() : null
           )
         } catch (err) {
           console.warn(`[db] Failed to import profile ${p.id}:`, err)
@@ -79,41 +82,42 @@ export function runLegacyImportIfNeeded(): void {
       console.log(`[db] Imported ${profiles.length} connection profiles`)
     }
 
-    // Import workspaces
-    const workspaces = readJsonFile<Record<string, LegacyWorkspace>>('workspaces.json')
-    if (workspaces && typeof workspaces === 'object') {
+    const legacyWorkspaces = readJsonFile<Record<string, LegacyWorkspace>>('workspaces.json')
+    if (legacyWorkspaces && typeof legacyWorkspaces === 'object') {
       const stmt = sqlite.prepare(`
-        INSERT OR REPLACE INTO workspaces (connection_id, tabs_json, active_tab_id, last_updated)
-        VALUES (?, ?, ?, ?)
+        UPDATE connection_profiles SET tabs_json = ?, active_tab_id = ?, last_updated = ? WHERE id = ?
       `)
       let count = 0
-      for (const [connectionId, ws] of Object.entries(workspaces)) {
+      for (const [connectionId, ws] of Object.entries(legacyWorkspaces)) {
         try {
           stmt.run(
-            connectionId,
             JSON.stringify(ws.tabs || []),
             ws.activeTabId ?? null,
             new Date(ws.lastUpdated).getTime(),
+            connectionId
           )
           count++
         } catch (err) {
           console.warn(`[db] Failed to import workspace ${connectionId}:`, err)
         }
       }
-      console.log(`[db] Imported ${count} workspaces`)
+      console.log(`[db] Merged ${count} workspaces into connection_profiles`)
     }
 
-    // Import saved queries
-    const savedQueries = readJsonFile<
-      Record<string, Array<{ id: string; name: string; content: string; createdAt: string; updatedAt: string }>>
-    >('saved-queries.json')
-    if (savedQueries && typeof savedQueries === 'object') {
+    const savedQueriesData =
+      readJsonFile<
+        Record<
+          string,
+          Array<{ id: string; name: string; content: string; createdAt: string; updatedAt: string }>
+        >
+      >('saved-queries.json')
+    if (savedQueriesData && typeof savedQueriesData === 'object') {
       const stmt = sqlite.prepare(`
         INSERT OR REPLACE INTO saved_queries (connection_id, id, name, content, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?)
       `)
       let count = 0
-      for (const [connectionId, queries] of Object.entries(savedQueries)) {
+      for (const [connectionId, queries] of Object.entries(savedQueriesData)) {
         for (const q of queries) {
           try {
             stmt.run(
@@ -122,7 +126,7 @@ export function runLegacyImportIfNeeded(): void {
               q.name,
               q.content,
               new Date(q.createdAt).getTime(),
-              new Date(q.updatedAt).getTime(),
+              new Date(q.updatedAt).getTime()
             )
             count++
           } catch (err) {
@@ -133,7 +137,6 @@ export function runLegacyImportIfNeeded(): void {
       console.log(`[db] Imported ${count} saved queries`)
     }
 
-    // Import auth storage
     const authData = readJsonFile<Record<string, string>>('better-auth-storage.json')
     if (authData && typeof authData === 'object') {
       const stmt = sqlite.prepare(`
@@ -151,13 +154,13 @@ export function runLegacyImportIfNeeded(): void {
       console.log(`[db] Imported ${count} auth entries`)
     }
 
-    // Mark import as complete
-    sqlite.prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)').run(LEGACY_FLAG, 'done')
+    sqlite
+      .prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)')
+      .run(LEGACY_FLAG, 'done')
   })
 
   transaction()
 
-  // Backup old files
   backupFile('connections.json')
   backupFile('workspaces.json')
   backupFile('saved-queries.json')

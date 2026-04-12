@@ -1,55 +1,55 @@
 import type { ConnectionWorkspace, WorkspaceStorage } from '@dbdesk/shared/types'
-import { eq, getDb, workspaces } from '@dbdesk/db'
-
-const toWorkspace = (row: typeof workspaces.$inferSelect): ConnectionWorkspace => ({
-  connectionId: row.connectionId,
-  tabs: JSON.parse(row.tabsJson),
-  activeTabId: row.activeTabId,
-  lastUpdated: new Date(row.lastUpdated)
-})
+import { eq, getDb, connectionProfiles } from '@dbdesk/db'
 
 export const loadWorkspace = async (
   connectionId: string
 ): Promise<ConnectionWorkspace | undefined> => {
   const row = getDb()
     .select()
-    .from(workspaces)
-    .where(eq(workspaces.connectionId, connectionId))
+    .from(connectionProfiles)
+    .where(eq(connectionProfiles.id, connectionId))
     .get()
 
-  return row ? toWorkspace(row) : undefined
+  if (!row || !row.tabsJson) return undefined
+
+  return {
+    connectionId: row.id,
+    tabs: JSON.parse(row.tabsJson),
+    activeTabId: row.activeTabId ?? null
+  }
 }
 
 export const saveWorkspace = async (workspace: ConnectionWorkspace): Promise<void> => {
   getDb()
-    .insert(workspaces)
-    .values({
-      connectionId: workspace.connectionId,
+    .update(connectionProfiles)
+    .set({
       tabsJson: JSON.stringify(workspace.tabs),
-      activeTabId: workspace.activeTabId,
-      lastUpdated: workspace.lastUpdated.getTime()
+      activeTabId: workspace.activeTabId
     })
-    .onConflictDoUpdate({
-      target: workspaces.connectionId,
-      set: {
-        tabsJson: JSON.stringify(workspace.tabs),
-        activeTabId: workspace.activeTabId,
-        lastUpdated: workspace.lastUpdated.getTime()
-      }
-    })
+    .where(eq(connectionProfiles.id, workspace.connectionId))
     .run()
 }
 
 export const deleteWorkspace = async (connectionId: string): Promise<void> => {
-  getDb().delete(workspaces).where(eq(workspaces.connectionId, connectionId)).run()
+  getDb()
+    .update(connectionProfiles)
+    .set({ tabsJson: null, activeTabId: null })
+    .where(eq(connectionProfiles.id, connectionId))
+    .run()
 }
 
 export const loadAllWorkspaces = async (): Promise<WorkspaceStorage> => {
-  const rows = getDb().select().from(workspaces).all()
+  const rows = getDb().select().from(connectionProfiles).all()
   const result: WorkspaceStorage = {}
 
   for (const row of rows) {
-    result[row.connectionId] = toWorkspace(row)
+    if (row.tabsJson) {
+      result[row.id] = {
+        connectionId: row.id,
+        tabs: JSON.parse(row.tabsJson),
+        activeTabId: row.activeTabId ?? null
+      }
+    }
   }
 
   return result
