@@ -1,20 +1,19 @@
 import type { SavedQueriesStorage, SavedQuery } from '@dbdesk/shared/types'
-import { and, eq } from 'drizzle-orm'
-import { getDb, savedQueries } from '@dbdesk/db'
+import { and, eq, getDb, savedQueries } from '@dbdesk/db'
 
 const toSavedQuery = (row: typeof savedQueries.$inferSelect): SavedQuery => ({
   id: row.id,
   name: row.name,
   content: row.content,
   createdAt: new Date(row.createdAt),
-  updatedAt: new Date(row.updatedAt),
+  updatedAt: new Date(row.updatedAt)
 })
 
 export const saveQuery = async (
   connectionId: string,
   id: string,
   name: string,
-  content: string,
+  content: string
 ): Promise<SavedQuery> => {
   const now = new Date()
 
@@ -26,7 +25,7 @@ export const saveQuery = async (
       name,
       content,
       createdAt: now.getTime(),
-      updatedAt: now.getTime(),
+      updatedAt: now.getTime()
     })
     .run()
 
@@ -37,7 +36,7 @@ export const updateQuery = async (
   connectionId: string,
   queryId: string,
   name: string,
-  content: string,
+  content: string
 ): Promise<SavedQuery | undefined> => {
   const existing = getDb()
     .select()
@@ -60,7 +59,7 @@ export const updateQuery = async (
     name,
     content,
     createdAt: new Date(existing.createdAt),
-    updatedAt: now,
+    updatedAt: now
   }
 }
 

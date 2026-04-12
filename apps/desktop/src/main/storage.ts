@@ -1,6 +1,5 @@
 import type { ConnectionProfile } from '@dbdesk/shared/types'
-import { eq } from 'drizzle-orm'
-import { getDb, connectionProfiles } from '@dbdesk/db'
+import { eq, getDb, connectionProfiles } from '@dbdesk/db'
 
 const toProfile = (row: typeof connectionProfiles.$inferSelect): ConnectionProfile =>
   ({
@@ -10,7 +9,7 @@ const toProfile = (row: typeof connectionProfiles.$inferSelect): ConnectionProfi
     options: JSON.parse(row.optionsJson),
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
-    lastConnectedAt: row.lastConnectedAt ? new Date(row.lastConnectedAt) : undefined,
+    lastConnectedAt: row.lastConnectedAt ? new Date(row.lastConnectedAt) : undefined
   }) as ConnectionProfile
 
 export const loadProfiles = async (): Promise<ConnectionProfile[]> => {
@@ -38,7 +37,7 @@ export const saveProfile = async (profile: ConnectionProfile): Promise<void> => 
       optionsJson: JSON.stringify(profile.options),
       createdAt: profile.createdAt.getTime(),
       updatedAt: profile.updatedAt.getTime(),
-      lastConnectedAt: profile.lastConnectedAt?.getTime() ?? null,
+      lastConnectedAt: profile.lastConnectedAt?.getTime() ?? null
     })
     .onConflictDoUpdate({
       target: connectionProfiles.id,
@@ -47,8 +46,8 @@ export const saveProfile = async (profile: ConnectionProfile): Promise<void> => 
         type: profile.type,
         optionsJson: JSON.stringify(profile.options),
         updatedAt: profile.updatedAt.getTime(),
-        lastConnectedAt: profile.lastConnectedAt?.getTime() ?? null,
-      },
+        lastConnectedAt: profile.lastConnectedAt?.getTime() ?? null
+      }
     })
     .run()
 }

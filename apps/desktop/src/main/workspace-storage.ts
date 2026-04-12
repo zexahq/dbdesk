@@ -1,16 +1,15 @@
 import type { ConnectionWorkspace, WorkspaceStorage } from '@dbdesk/shared/types'
-import { eq } from 'drizzle-orm'
-import { getDb, workspaces } from '@dbdesk/db'
+import { eq, getDb, workspaces } from '@dbdesk/db'
 
 const toWorkspace = (row: typeof workspaces.$inferSelect): ConnectionWorkspace => ({
   connectionId: row.connectionId,
   tabs: JSON.parse(row.tabsJson),
   activeTabId: row.activeTabId,
-  lastUpdated: new Date(row.lastUpdated),
+  lastUpdated: new Date(row.lastUpdated)
 })
 
 export const loadWorkspace = async (
-  connectionId: string,
+  connectionId: string
 ): Promise<ConnectionWorkspace | undefined> => {
   const row = getDb()
     .select()
@@ -28,15 +27,15 @@ export const saveWorkspace = async (workspace: ConnectionWorkspace): Promise<voi
       connectionId: workspace.connectionId,
       tabsJson: JSON.stringify(workspace.tabs),
       activeTabId: workspace.activeTabId,
-      lastUpdated: workspace.lastUpdated.getTime(),
+      lastUpdated: workspace.lastUpdated.getTime()
     })
     .onConflictDoUpdate({
       target: workspaces.connectionId,
       set: {
         tabsJson: JSON.stringify(workspace.tabs),
         activeTabId: workspace.activeTabId,
-        lastUpdated: workspace.lastUpdated.getTime(),
-      },
+        lastUpdated: workspace.lastUpdated.getTime()
+      }
     })
     .run()
 }
