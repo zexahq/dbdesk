@@ -17,25 +17,25 @@ import { startDevDeepLinkServer, stopDevDeepLinkServer } from './lib/dev-deep-li
 let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
-   // Create the browser window.
-   mainWindow = new BrowserWindow({
-      width: 900,
-      height: 670,
-      show: false,
-      frame: false,
-      autoHideMenuBar: true,
-      ...(process.platform === 'linux' ? { icon } : {}),
-      webPreferences: {
-        preload: join(__dirname, '../preload/index.js'),
-        sandbox: false,
-        contextIsolation: true,
-        nodeIntegration: false
-      }
-    })
+  // Create the browser window.
+  mainWindow = new BrowserWindow({
+    width: 900,
+    height: 670,
+    show: false,
+    frame: false,
+    autoHideMenuBar: true,
+    ...(process.platform === 'linux' ? { icon } : {}),
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  })
 
-    mainWindow.on('ready-to-show', () => {
-      mainWindow?.show()
-    })
+  mainWindow.on('ready-to-show', () => {
+    mainWindow?.show()
+  })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -57,7 +57,7 @@ function createWindow() {
   }
 
   return mainWindow
-  }
+}
 
 // Register ALL custom schemes in a single call — Electron only allows
 // protocol.registerSchemesAsPrivileged to be called once before app ready.
@@ -136,6 +136,15 @@ const requestWorkspaceFlush = async (): Promise<void> => {
   } finally {
     workspaceFlushPromise = null
   }
+}
+
+// Override userData path to use a clean name instead of the scoped package name
+if (process.platform !== 'win32') {
+  const configDir =
+    process.platform === 'linux'
+      ? process.env.XDG_CONFIG_HOME || join(process.env.HOME || '', '.config')
+      : join(process.env.HOME || '', 'Library', 'Application Support')
+  app.setPath('userData', join(configDir, 'dbdesk'))
 }
 
 // This method will be called when Electron has finished
