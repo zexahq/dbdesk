@@ -3,6 +3,19 @@ import { Titlebar } from '@renderer/components/shell/titlebar'
 import { Toaster } from '@renderer/components/ui/sonner'
 import { requireAuth } from '@renderer/features/auth/lib/auth-session'
 import { MainSidebar } from '@renderer/components/shell/main-sidebar'
+import DbDeskLogo from '@renderer/assets/dbdesk-logo.svg'
+
+const SplashScreen = () => {
+  return (
+    <div className="h-screen flex flex-col items-center justify-center bg-background">
+      <img
+        src={DbDeskLogo}
+        alt="DBDesk"
+        className="h-12 w-12 animate-pulse"
+      />
+    </div>
+  )
+}
 
 const RootLayout = () => {
   const matches = useMatches()
@@ -30,6 +43,8 @@ export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
     await requireAuth(location.pathname)
   },
+  pendingComponent: SplashScreen,
+  pendingMs: 0,
   component: RootLayout,
   notFoundComponent: NotFound
 })
