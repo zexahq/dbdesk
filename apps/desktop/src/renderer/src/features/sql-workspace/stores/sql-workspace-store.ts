@@ -15,9 +15,15 @@ export const useSqlWorkspaceStore = create<SqlWorkspaceStore>((set) => ({
   schemasWithTables: [],
 
   setCurrentConnection: (connectionId) =>
-    set({
-      currentConnectionId: connectionId,
-      schemasWithTables: []
+    set((state) => {
+      if (state.currentConnectionId === connectionId) {
+        return state
+      }
+
+      return {
+        currentConnectionId: connectionId,
+        schemasWithTables: []
+      }
     }),
   setSchemasWithTables: (schemas) => set({ schemasWithTables: schemas }),
   reset: () =>

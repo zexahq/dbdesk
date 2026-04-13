@@ -87,6 +87,11 @@ function monacoSelectiveLanguageRegistration(): Plugin {
 export default defineConfig({
   main: {
     define: envDefines(),
+    resolve: {
+      alias: {
+        '@common': resolve('../../packages/shared/src')
+      }
+    },
     build: {
       externalizeDeps: false,
       rollupOptions: {
@@ -96,6 +101,11 @@ export default defineConfig({
   },
   preload: {
     define: envDefines(),
+    resolve: {
+      alias: {
+        '@common': resolve('../../packages/shared/src')
+      }
+    },
     build: {
       bytecode: true,
       externalizeDeps: false,
@@ -104,8 +114,13 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src')
-      }
+        '@renderer': resolve('src/renderer/src'),
+        '@common': resolve('../../packages/shared/src')
+      },
+      dedupe: ['react', 'react-dom']
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom']
     },
     plugins: [
       monacoSelectiveLanguageRegistration(),

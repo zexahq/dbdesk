@@ -20,6 +20,7 @@ import { WorkspaceTopbar } from './workspace-topbar'
 
 export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const setSchemasWithTables = useSqlWorkspaceStore((s) => s.setSchemasWithTables)
+  const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
   const activeTab = useTabStore((state) => {
     const { tabs, activeTabId } = state
     return tabs.find((t) => t.id === activeTabId)
@@ -29,6 +30,11 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
 
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
+
+  // Set current connection ID for sidebar dashboard button
+  useEffect(() => {
+    setCurrentConnection(profile.id)
+  }, [profile.id, setCurrentConnection])
 
   useEffect(() => {
     if (schemasWithTables) {

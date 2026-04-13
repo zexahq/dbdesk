@@ -22,6 +22,10 @@
     "typescript": "^5.9.2"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild"
+    ],
     "overrides": {
       "better-call": "1.3.2"
     }
