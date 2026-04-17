@@ -153,19 +153,25 @@ const getUserDataPath = (): string | undefined => {
   return undefined
 }
 
+// Capture the default userData path before overriding so the legacy import
+// can read JSON files from the old location when the path changes.
+const previousUserDataPath = app.getPath('userData')
+
 const userDataPath = getUserDataPath()
 if (userDataPath) {
   app.setPath('userData', userDataPath)
 }
 
+// Initialize the database early (before authManager.setup() above may
+// access auth storage) so that getSqlite()/getDb() are available immediately.
+initDatabase(join(app.getPath('userData'), 'dbdesk.sqlite'))
+runMigrations(join(__dirname, 'drizzle'))
+runLegacyImportIfNeeded(previousUserDataPath)
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // Initialize local SQLite database before anything else
-  initDatabase(join(app.getPath('userData'), 'dbdesk.sqlite'))
-  runMigrations(join(__dirname, 'drizzle'))
-  runLegacyImportIfNeeded()
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')

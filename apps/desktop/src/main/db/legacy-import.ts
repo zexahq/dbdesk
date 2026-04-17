@@ -9,8 +9,8 @@ import { getSqlite } from '@dbdesk/db'
 
 const LEGACY_FLAG = 'legacy_json_import_v1'
 
-function readJsonFile<T>(filename: string): T | null {
-  const filePath = join(app.getPath('userData'), filename)
+function readJsonFile<T>(basePath: string, filename: string): T | null {
+  const filePath = join(basePath, filename)
   try {
     const content = readFileSync(filePath, 'utf8').trim()
     if (!content) return null
@@ -20,8 +20,8 @@ function readJsonFile<T>(filename: string): T | null {
   }
 }
 
-function backupFile(filename: string): void {
-  const filePath = join(app.getPath('userData'), filename)
+function backupFile(basePath: string, filename: string): void {
+  const filePath = join(basePath, filename)
   try {
     renameSync(filePath, `${filePath}.bak`)
   } catch {
@@ -46,7 +46,7 @@ interface LegacyWorkspace {
   lastUpdated: string
 }
 
-export function runLegacyImportIfNeeded(): void {
+export function runLegacyImportIfNeeded(legacyDataPath?: string): void {
   const sqlite = getSqlite()
 
   const existing = sqlite.prepare('SELECT value FROM app_meta WHERE key = ?').get(LEGACY_FLAG) as
@@ -55,10 +55,16 @@ export function runLegacyImportIfNeeded(): void {
 
   if (existing) return
 
+  // Read legacy files from the previous userData directory (before the path
+  // override) so existing users' JSON data is found even if the path changed.
+  const basePath = legacyDataPath ?? app.getPath('userData')
+
   console.log('[db] Running legacy JSON import...')
 
+  let importedAny = false
+
   const transaction = sqlite.transaction(() => {
-    const profiles = readJsonFile<LegacyProfile[]>('connections.json')
+    const profiles = readJsonFile<LegacyProfile[]>(basePath, 'connections.json')
     if (profiles && Array.isArray(profiles)) {
       const stmt = sqlite.prepare(`
         INSERT OR REPLACE INTO connection_profiles (id, name, type, options_json, created_at, updated_at, last_connected_at)
@@ -80,9 +86,10 @@ export function runLegacyImportIfNeeded(): void {
         }
       }
       console.log(`[db] Imported ${profiles.length} connection profiles`)
+      importedAny = true
     }
 
-    const legacyWorkspaces = readJsonFile<Record<string, LegacyWorkspace>>('workspaces.json')
+    const legacyWorkspaces = readJsonFile<Record<string, LegacyWorkspace>>(basePath, 'workspaces.json')
     if (legacyWorkspaces && typeof legacyWorkspaces === 'object') {
       const stmt = sqlite.prepare(`
         UPDATE connection_profiles SET tabs_json = ?, active_tab_id = ?, last_updated = ? WHERE id = ?
@@ -102,6 +109,7 @@ export function runLegacyImportIfNeeded(): void {
         }
       }
       console.log(`[db] Merged ${count} workspaces into connection_profiles`)
+      if (count > 0) importedAny = true
     }
 
     const savedQueriesData =
@@ -110,7 +118,7 @@ export function runLegacyImportIfNeeded(): void {
           string,
           Array<{ id: string; name: string; content: string; createdAt: string; updatedAt: string }>
         >
-      >('saved-queries.json')
+      >(basePath, 'saved-queries.json')
     if (savedQueriesData && typeof savedQueriesData === 'object') {
       const stmt = sqlite.prepare(`
         INSERT OR REPLACE INTO saved_queries (connection_id, id, name, content, created_at, updated_at)
@@ -135,9 +143,10 @@ export function runLegacyImportIfNeeded(): void {
         }
       }
       console.log(`[db] Imported ${count} saved queries`)
+      if (count > 0) importedAny = true
     }
 
-    const authData = readJsonFile<Record<string, string>>('better-auth-storage.json')
+    const authData = readJsonFile<Record<string, string>>(basePath, 'better-auth-storage.json')
     if (authData && typeof authData === 'object') {
       const stmt = sqlite.prepare(`
         INSERT OR REPLACE INTO auth_kv (key, value) VALUES (?, ?)
@@ -152,19 +161,24 @@ export function runLegacyImportIfNeeded(): void {
         }
       }
       console.log(`[db] Imported ${count} auth entries`)
+      if (count > 0) importedAny = true
     }
 
-    sqlite
-      .prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)')
-      .run(LEGACY_FLAG, 'done')
+    if (importedAny) {
+      sqlite
+        .prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)')
+        .run(LEGACY_FLAG, 'done')
+    }
   })
 
   transaction()
 
-  backupFile('connections.json')
-  backupFile('workspaces.json')
-  backupFile('saved-queries.json')
-  backupFile('better-auth-storage.json')
+  if (importedAny) {
+    backupFile(basePath, 'connections.json')
+    backupFile(basePath, 'workspaces.json')
+    backupFile(basePath, 'saved-queries.json')
+    backupFile(basePath, 'better-auth-storage.json')
+  }
 
   console.log('[db] Legacy import complete')
 }

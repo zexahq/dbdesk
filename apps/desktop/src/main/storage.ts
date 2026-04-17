@@ -9,7 +9,7 @@ const toProfile = (row: typeof connectionProfiles.$inferSelect): ConnectionProfi
     options: JSON.parse(row.optionsJson),
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
-    lastConnectedAt: row.lastConnectedAt ? new Date(row.lastConnectedAt) : undefined
+    lastConnectedAt: row.lastConnectedAt !== null ? new Date(row.lastConnectedAt) : undefined
   }) as ConnectionProfile
 
 export const loadProfiles = async (): Promise<ConnectionProfile[]> => {

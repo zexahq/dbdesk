@@ -11,7 +11,7 @@ let _db: DbClient | null = null
 
 /**
  * Initialize the local SQLite database at the given file path.
- * Must be called once before importing `db`.
+ * Must be called once before using `getDb()` or `getSqlite()`.
  */
 export function initDatabase(dbPath: string): void {
   if (_db) return
