@@ -118,7 +118,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
         }
       }
 
-      const { [tabId]: _removedPosition, ...remainingPositions } = state.tabScrollPositions
+      const { [tabId]: _, ...remainingPositions } = state.tabScrollPositions
 
       return {
         tabs: newTabs,
