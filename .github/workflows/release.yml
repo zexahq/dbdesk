@@ -36,6 +36,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
+      - name: Enable swap
+        run: |
+          sudo fallocate -l 2G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - name: Install Linux tooling
         run: |
           sudo apt-get update
@@ -51,7 +58,7 @@ jobs:
           VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
         working-directory: apps/desktop
         run: |
-          pnpm exec electron-vite build
+          NODE_OPTIONS="--max-old-space-size=4096" pnpm exec electron-vite build
           pnpm exec electron-builder --linux --publish always
 
   build-windows:
@@ -80,6 +87,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
+      - name: Enable swap
+        run: |
+          sudo fallocate -l 2G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -90,7 +104,7 @@ jobs:
           VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
         working-directory: apps/desktop
         run: |
-          pnpm exec electron-vite build
+          NODE_OPTIONS="--max-old-space-size=4096" pnpm exec electron-vite build
           pnpm exec electron-builder --win --publish always
 
   build-mac:
@@ -119,6 +133,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
+      - name: Enable swap
+        run: |
+          sudo fallocate -l 2G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -130,5 +151,26 @@ jobs:
           VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
         working-directory: apps/desktop
         run: |
-          pnpm exec electron-vite build
+          NODE_OPTIONS="--max-old-space-size=4096" pnpm exec electron-vite build
           pnpm exec electron-builder --mac --publish always
+
+  release:
+    needs: [build-linux, build-windows, build-mac]
+    runs-on: ubuntu-latest
+    if: always() && needs.build-linux.result == 'success' && needs.build-windows.result == 'success' && needs.build-mac.result == 'success'
+    steps:
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          release_url="https://github.com/${{ github.repository }}//releases/tag/$tag"
+
+          echo "All builds succeeded! Ensuring release exists..."
+          curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{"tag_name":"$tag","generate_release_notes":true}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases"
+
+          echo "Release created: $release_url"
