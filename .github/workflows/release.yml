@@ -36,13 +36,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Enable swap
-        run: |
-          sudo fallocate -l 2G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-
       - name: Install Linux tooling
         run: |
           sudo apt-get update
@@ -54,11 +47,11 @@ jobs:
       - name: Build and publish for Linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
-          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
         working-directory: apps/desktop
         run: |
-          NODE_OPTIONS="--max-old-space-size=4096" pnpm exec electron-vite build
+          NODE_OPTIONS="--max-old-space-size=6144" pnpm exec electron-vite build
           pnpm exec electron-builder --linux --publish always
 
   build-windows:
@@ -87,28 +80,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Enable swap
-        run: |
-          sudo fallocate -l 2G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build and publish for Windows
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
-          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
         working-directory: apps/desktop
         run: |
-          NODE_OPTIONS="--max-old-space-size=4096" pnpm exec electron-vite build
+          NODE_OPTIONS="--max-old-space-size=6144" pnpm exec electron-vite build
           pnpm exec electron-builder --win --publish always
 
   build-mac:
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -133,13 +119,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Enable swap
-        run: |
-          sudo fallocate -l 2G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -147,11 +126,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
-          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
         working-directory: apps/desktop
         run: |
-          NODE_OPTIONS="--max-old-space-size=4096" pnpm exec electron-vite build
+          NODE_OPTIONS="--max-old-space-size=6144" pnpm exec electron-vite build
           pnpm exec electron-builder --mac --publish always
 
   release:
