@@ -90,7 +90,7 @@ jobs:
           VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
         working-directory: apps/desktop
         run: |
-          NODE_OPTIONS="--max-old-space-size=6144" pnpm exec electron-vite build
+          pnpm exec electron-vite build
           pnpm exec electron-builder --win --publish always
 
   build-mac:
