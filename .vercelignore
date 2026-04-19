@@ -7,7 +7,6 @@ dist
 out
 node_modules
 apps/desktop
-apps/web
 coverage
 *.log
 .env
