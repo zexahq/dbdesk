@@ -1,4 +1,4 @@
-import type { ConnectionWorkspace, WorkspaceStorage } from '@dbdesk/shared/types'
+import type { ConnectionWorkspace, SerializedTab, WorkspaceStorage } from '@dbdesk/shared/types'
 import { eq, getDb, connectionProfiles } from '@dbdesk/db'
 
 export const loadWorkspace = async (
@@ -12,9 +12,9 @@ export const loadWorkspace = async (
 
   if (!row || !row.tabsJson) return undefined
 
-  let tabs: unknown[] = []
+  let tabs: SerializedTab[] = []
   try {
-    tabs = JSON.parse(row.tabsJson)
+    tabs = JSON.parse(row.tabsJson) as SerializedTab[]
   } catch {
     console.warn(`[workspace] Failed to parse tabs for connection ${connectionId}`)
   }
@@ -51,9 +51,9 @@ export const loadAllWorkspaces = async (): Promise<WorkspaceStorage> => {
 
   for (const row of rows) {
     if (row.tabsJson) {
-      let tabs: unknown[] = []
+      let tabs: SerializedTab[] = []
       try {
-        tabs = JSON.parse(row.tabsJson)
+        tabs = JSON.parse(row.tabsJson) as SerializedTab[]
       } catch {
         console.warn(`[workspace] Failed to parse tabs for connection ${row.id}`)
       }
