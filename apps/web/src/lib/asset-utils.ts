@@ -61,11 +61,13 @@ export function organizeAssets(
   };
 
   assets.forEach((asset) => {
-    // Skip yml and source code files
+    // Skip updater metadata, source code, and updater-only artifacts
     if (
       asset.name.includes(".yml") ||
+      asset.name.includes(".blockmap") ||
       asset.name.includes("latest") ||
-      asset.name.includes("Source code")
+      asset.name.includes("Source code") ||
+      asset.name.endsWith("-mac.zip")
     ) {
       return;
     }

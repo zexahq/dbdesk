@@ -93,24 +93,64 @@ export function DownloadButton({ assets = [] }: DownloadButtonProps) {
 
   if (downloadUrl) {
     return (
-      <a
-        href={downloadUrl}
-        className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-fd-primary text-fd-primary-foreground font-medium hover:opacity-90 transition-opacity"
-      >
-        <ArrowDownToLine className="w-4 h-4" />
-        {buttonText}
-      </a>
+      <div className="flex flex-col items-center gap-4">
+        <a
+          href={downloadUrl}
+          className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-fd-primary text-fd-primary-foreground font-medium hover:opacity-90 transition-opacity"
+        >
+          <ArrowDownToLine className="w-4 h-4" />
+          {buttonText}
+        </a>
+
+        {detectedOS === "macos" && (
+          <div className="text-sm text-fd-muted-foreground max-w-md w-full">
+            <p className="mb-2 text-center text-xs">If macOS blocks the app, run in terminal:</p>
+            <code className="block bg-fd-secondary/50 border border-fd-border p-2 rounded-lg text-xs select-all text-center" style={{ fontFamily: 'var(--font-mono)' }}>
+              xattr -rd com.apple.quarantine /Applications/dbdesk.app
+            </code>
+          </div>
+        )}
+
+        {detectedOS === "linux" && (
+          <div className="text-sm text-fd-muted-foreground max-w-md w-full">
+            <p className="mb-2 text-center text-xs">For AppImage, make it executable:</p>
+            <code className="block bg-fd-secondary/50 border border-fd-border p-2 rounded-lg text-xs select-all text-center" style={{ fontFamily: 'var(--font-mono)' }}>
+              chmod +x dbdesk-*.AppImage && ./dbdesk-*.AppImage
+            </code>
+          </div>
+        )}
+      </div>
     );
   }
 
   // Fallback to /download page
   return (
-    <Link
-      href="/download"
-      className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-fd-primary text-fd-primary-foreground font-medium hover:opacity-90 transition-opacity"
-    >
-      <ArrowDownToLine className="w-4 h-4" />
-      {buttonText}
-    </Link>
+    <div className="flex flex-col items-center gap-4">
+      <Link
+        href="/download"
+        className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-fd-primary text-fd-primary-foreground font-medium hover:opacity-90 transition-opacity"
+      >
+        <ArrowDownToLine className="w-4 h-4" />
+        {buttonText}
+      </Link>
+      
+      {detectedOS === "macos" && (
+        <div className="text-sm text-fd-muted-foreground max-w-md w-full">
+          <p className="mb-2 text-center text-xs">If macOS blocks the app, run in terminal:</p>
+          <code className="block bg-fd-secondary/50 border border-fd-border p-2 rounded-lg text-xs select-all text-center" style={{ fontFamily: 'var(--font-mono)' }}>
+            xattr -rd com.apple.quarantine /Applications/dbdesk.app
+          </code>
+        </div>
+      )}
+
+      {detectedOS === "linux" && (
+        <div className="text-sm text-fd-muted-foreground max-w-md w-full">
+          <p className="mb-2 text-center text-xs">For AppImage, make it executable:</p>
+          <code className="block bg-fd-secondary/50 border border-fd-border p-2 rounded-lg text-xs select-all text-center" style={{ fontFamily: 'var(--font-mono)' }}>
+            chmod +x dbdesk-*.AppImage && ./dbdesk-*.AppImage
+          </code>
+        </div>
+      )}
+    </div>
   );
 }
