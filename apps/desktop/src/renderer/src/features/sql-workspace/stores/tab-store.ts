@@ -38,16 +38,22 @@ export interface QueryTab extends BaseTab {
 }
 
 export type Tab = TableTab | QueryTab
+type TabScrollPosition = {
+  left: number
+  top: number
+}
 
 interface TabStore {
   tabs: Tab[]
   activeTabId: string | null
+  tabScrollPositions: Record<string, TabScrollPosition>
 
   // Common actions
   removeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
   reset: () => void
   moveTab: (fromIndex: number, toIndex: number) => void
+  setTabScrollPosition: (tabId: string, position: TabScrollPosition) => void
 
   // Table-specific actions
   addTableTab: (schema: string, table: string) => string
@@ -94,6 +100,7 @@ const createDefaultQueryTab = (): QueryTab => ({
 export const useTabStore = create<TabStore>((set, get) => ({
   tabs: [],
   activeTabId: null,
+  tabScrollPositions: {},
 
   // Common actions
   removeTab: (tabId: string) => {
@@ -111,7 +118,13 @@ export const useTabStore = create<TabStore>((set, get) => ({
         }
       }
 
-      return { tabs: newTabs, activeTabId: newActiveTabId }
+      const { [tabId]: _, ...remainingPositions } = state.tabScrollPositions
+
+      return {
+        tabs: newTabs,
+        activeTabId: newActiveTabId,
+        tabScrollPositions: remainingPositions
+      }
     })
   },
 
@@ -123,7 +136,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
   },
 
   reset: () => {
-    set({ tabs: [], activeTabId: null })
+    set({ tabs: [], activeTabId: null, tabScrollPositions: {} })
   },
 
   moveTab: (fromIndex: number, toIndex: number) => {
@@ -133,6 +146,15 @@ export const useTabStore = create<TabStore>((set, get) => ({
       newTabs.splice(toIndex, 0, movedTab)
       return { tabs: newTabs }
     })
+  },
+
+  setTabScrollPosition: (tabId: string, position: TabScrollPosition) => {
+    set((state) => ({
+      tabScrollPositions: {
+        ...state.tabScrollPositions,
+        [tabId]: position
+      }
+    }))
   },
 
   // Table-specific actions
@@ -248,7 +270,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
       }
     })
 
-    set({ tabs, activeTabId })
+    set({ tabs, activeTabId, tabScrollPositions: {} })
   },
 
   serializeState: () => {

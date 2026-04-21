@@ -110,7 +110,7 @@ export function OSDetect({ assets = [] }: OSDetectProps) {
         </div>
 
         {/* Content */}
-        <div className="flex flex-col items-center md:items-start gap-6">
+        <div className="flex flex-col items-center md:items-start gap-6 flex-1">
           <div className="text-center md:text-left">
             <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-fd-foreground to-fd-muted-foreground mb-2">
               Download DBDesk
@@ -120,25 +120,31 @@ export function OSDetect({ assets = [] }: OSDetectProps) {
             </p>
           </div>
 
-          {downloadUrl ? (
-            <a
-              href={downloadUrl}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-fd-foreground text-fd-background font-medium hover:opacity-90 transition-opacity"
-            >
-              {config.label}
-              <ArrowDownToLine className="w-4 h-4" />
-            </a>
-          ) : (
-            <a
-              href="https://github.com/zexahq/dbdesk/releases"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-fd-foreground text-fd-background font-medium hover:opacity-90 transition-opacity"
-            >
-              View Releases
-              <ArrowDownToLine className="w-4 h-4" />
-            </a>
-          )}
+          <div className="flex flex-col gap-4 w-full md:max-w-md">
+            {downloadUrl ? (
+              <a
+                href={downloadUrl}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-fd-foreground text-fd-background font-medium hover:opacity-90 transition-opacity w-fit"
+              >
+                {config.label}
+                <ArrowDownToLine className="w-4 h-4" />
+              </a>
+            ) : (
+              <a
+                href="https://github.com/zexahq/dbdesk/releases"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-fd-foreground text-fd-background font-medium hover:opacity-90 transition-opacity w-fit"
+              >
+                View Releases
+                <ArrowDownToLine className="w-4 h-4" />
+              </a>
+            )}
+
+            <p className="text-xs text-fd-muted-foreground">
+              Post-install steps are shown below.
+            </p>
+          </div>
         </div>
       </div>
     </div>

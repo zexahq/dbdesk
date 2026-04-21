@@ -14,22 +14,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
 
       - name: Get pnpm store directory
         shell: bash
         run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -47,8 +47,9 @@ jobs:
       - name: Build and publish for Linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
-          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
           pnpm exec electron-vite build
@@ -58,22 +59,22 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
 
       - name: Get pnpm store directory
         shell: bash
         run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -86,8 +87,9 @@ jobs:
       - name: Build and publish for Windows
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
-          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
           pnpm exec electron-vite build
@@ -97,22 +99,22 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
 
       - name: Get pnpm store directory
         shell: bash
         run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -126,9 +128,31 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
-          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
           pnpm exec electron-vite build
           pnpm exec electron-builder --mac --publish always
+
+  release:
+    needs: [build-linux, build-windows, build-mac]
+    runs-on: ubuntu-latest
+    if: always() && needs.build-linux.result == 'success' && needs.build-windows.result == 'success' && needs.build-mac.result == 'success'
+    steps:
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          release_url="https://github.com/${{ github.repository }}//releases/tag/$tag"
+
+          echo "All builds succeeded! Ensuring release exists..."
+          curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{"tag_name":"$tag","generate_release_notes":true}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases"
+
+          echo "Release created: $release_url"

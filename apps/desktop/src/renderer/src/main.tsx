@@ -12,6 +12,7 @@ import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
 import { queryClient } from '@renderer/shared/lib/query-client'
 import { registerWorkspaceFlushListener } from '@renderer/features/sql-workspace/lib/workspace'
 import { routeTree } from './routeTree.gen'
+import DbDeskLogo from '@renderer/assets/dbdesk-logo.svg'
 
 import '@renderer/features/editor/monaco/workers'
 
@@ -92,9 +93,32 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Render the app
-const rootElement = document.getElementById('root')!
-if (!rootElement.innerHTML) {
+// Pre-load auth state before rendering to avoid async beforeLoad pending issues
+async function init() {
+  const rootElement = document.getElementById('root')!
+
+  // Show splash screen while checking auth
+  rootElement.innerHTML = `
+    <div id="splash" style="
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: oklch(0.185 0 0);
+    ">
+      <img src="${DbDeskLogo}" alt="DBDesk" style="width: 48px; height: 48px; animation: splash-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;" />
+    </div>
+    <style>
+      @keyframes splash-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: .5; }
+      }
+    </style>
+  `
+
+  // Refresh session once before rendering so beforeLoad can be synchronous
+  await useAuthStore.getState().refreshSession()
+
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
@@ -104,3 +128,5 @@ if (!rootElement.innerHTML) {
     </StrictMode>
   )
 }
+
+void init()

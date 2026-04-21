@@ -1,6 +1,6 @@
 {
   "name": "@dbdesk/desktop",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "description": "DBDesk — Electron desktop application",
   "homepage": "https://github.com/zexahq/dbdesk",
