@@ -49,9 +49,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
-          NODE_OPTIONS="--max-old-space-size=6144" pnpm exec electron-vite build
+          pnpm exec electron-vite build
           pnpm exec electron-builder --linux --publish always
 
   build-windows:
@@ -88,13 +89,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
           pnpm exec electron-vite build
           pnpm exec electron-builder --win --publish always
 
   build-mac:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -128,9 +130,10 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
-          NODE_OPTIONS="--max-old-space-size=6144" pnpm exec electron-vite build
+          pnpm exec electron-vite build
           pnpm exec electron-builder --mac --publish always
 
   release:
