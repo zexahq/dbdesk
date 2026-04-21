@@ -61,7 +61,7 @@ export function organizeAssets(
   };
 
   assets.forEach((asset) => {
-    // Skip updater metadata, source code, and updater-only artifacts
+    // Skip yml, blockmap, source code files, and updater-only artifacts
     if (
       asset.name.includes(".yml") ||
       asset.name.includes(".blockmap") ||

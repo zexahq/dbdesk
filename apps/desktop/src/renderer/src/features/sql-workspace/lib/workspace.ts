@@ -12,7 +12,6 @@ export async function saveCurrentWorkspace() {
   try {
     const workspace: ConnectionWorkspace = {
       connectionId: currentConnectionId,
-      lastUpdated: new Date(),
       tabs: tabState.tabs,
       activeTabId: tabState.activeTabId
     }

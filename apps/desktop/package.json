@@ -25,6 +25,7 @@
   "dependencies": {
     "@better-auth/electron": "^1.5.4",
     "@dbdesk/api-client": "workspace:*",
+    "@dbdesk/db": "workspace:*",
     "@dbdesk/shared": "workspace:*",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
@@ -62,6 +63,7 @@
     "@tanstack/react-router": "^1.168.2",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/router-plugin": "^1.167.3",
+
     "@types/node": "^25.2.2",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",
@@ -71,6 +73,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+
     "electron": "^38.8.2",
     "electron-builder": "^26.7.0",
     "electron-updater": "^6.7.3",
