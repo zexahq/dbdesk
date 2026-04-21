@@ -3,4 +3,4 @@ export type { DbClient } from './client'
 export { runMigrations } from './migrate'
 export * from './schema'
 
-export * from 'drizzle-orm'
+export { eq, and } from 'drizzle-orm'

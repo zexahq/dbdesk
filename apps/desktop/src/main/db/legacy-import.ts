@@ -164,11 +164,9 @@ export function runLegacyImportIfNeeded(legacyDataPath?: string): void {
       if (count > 0) importedAny = true
     }
 
-    if (importedAny) {
-      sqlite
-        .prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)')
-        .run(LEGACY_FLAG, 'done')
-    }
+    sqlite
+      .prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)')
+      .run(LEGACY_FLAG, 'done')
   })
 
   transaction()

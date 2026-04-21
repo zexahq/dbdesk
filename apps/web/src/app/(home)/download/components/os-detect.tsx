@@ -46,15 +46,20 @@ function subscribe() {
 function getDownloadUrl(assets: Asset[], os: OS): string | null {
   if (!assets.length || !os) return null;
 
+  // Skip updater-only artifacts
+  const installAssets = assets.filter(
+    (a) => !a.name.includes(".blockmap") && !a.name.endsWith("-mac.zip")
+  );
+
   const patterns: Record<string, RegExp[]> = {
-    macos: [/\.dmg$/i, /darwin/i, /macos/i, /mac.*\.zip$/i],
-    windows: [/\.exe$/i, /\.msi$/i, /windows/i, /win.*\.zip$/i],
+    macos: [/\.dmg$/i, /darwin/i, /macos/i],
+    windows: [/\.exe$/i, /\.msi$/i, /windows/i],
     linux: [/\.AppImage$/i, /\.deb$/i, /linux/i],
   };
 
   const osPatterns = patterns[os];
   for (const pattern of osPatterns) {
-    const asset = assets.find((a) => pattern.test(a.name));
+    const asset = installAssets.find((a) => pattern.test(a.name));
     if (asset) return asset.browser_download_url;
   }
   return null;

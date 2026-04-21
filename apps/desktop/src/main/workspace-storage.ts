@@ -12,9 +12,16 @@ export const loadWorkspace = async (
 
   if (!row || !row.tabsJson) return undefined
 
+  let tabs: unknown[] = []
+  try {
+    tabs = JSON.parse(row.tabsJson)
+  } catch {
+    console.warn(`[workspace] Failed to parse tabs for connection ${connectionId}`)
+  }
+
   return {
     connectionId: row.id,
-    tabs: JSON.parse(row.tabsJson),
+    tabs,
     activeTabId: row.activeTabId ?? null
   }
 }
@@ -44,9 +51,15 @@ export const loadAllWorkspaces = async (): Promise<WorkspaceStorage> => {
 
   for (const row of rows) {
     if (row.tabsJson) {
+      let tabs: unknown[] = []
+      try {
+        tabs = JSON.parse(row.tabsJson)
+      } catch {
+        console.warn(`[workspace] Failed to parse tabs for connection ${row.id}`)
+      }
       result[row.id] = {
         connectionId: row.id,
-        tabs: JSON.parse(row.tabsJson),
+        tabs,
         activeTabId: row.activeTabId ?? null
       }
     }

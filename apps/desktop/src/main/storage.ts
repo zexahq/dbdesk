@@ -1,16 +1,24 @@
 import type { ConnectionProfile } from '@dbdesk/shared/types'
 import { eq, getDb, connectionProfiles } from '@dbdesk/db'
 
-const toProfile = (row: typeof connectionProfiles.$inferSelect): ConnectionProfile =>
-  ({
+const toProfile = (row: typeof connectionProfiles.$inferSelect): ConnectionProfile => {
+  let options: unknown = {}
+  try {
+    options = JSON.parse(row.optionsJson)
+  } catch {
+    console.warn(`[storage] Failed to parse options for profile ${row.id}`)
+  }
+
+  return {
     id: row.id,
     name: row.name,
     type: row.type,
-    options: JSON.parse(row.optionsJson),
+    options,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
     lastConnectedAt: row.lastConnectedAt !== null ? new Date(row.lastConnectedAt) : undefined
-  }) as ConnectionProfile
+  } as ConnectionProfile
+}
 
 export const loadProfiles = async (): Promise<ConnectionProfile[]> => {
   const rows = getDb().select().from(connectionProfiles).all()
