@@ -2,8 +2,8 @@ import type { ConnectionProfile, DatabaseType } from '@dbdesk/shared/types'
 import { useConnections } from '@renderer/features/connections/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { Skeleton } from '@renderer/components/ui/skeleton'
-import { ChevronDown } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Plus } from 'lucide-react'
+import { useState } from 'react'
 import { ConnectionCard } from './connection-card'
 import { ConnectionDialog } from './connection-dialog'
 
@@ -12,30 +12,11 @@ export function ConnectionList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingConnection, setEditingConnection] = useState<ConnectionProfile | null>(null)
   const [selectedDatabaseType, setSelectedDatabaseType] = useState<DatabaseType | null>(null)
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false)
-      }
-    }
-
-    if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isDropdownOpen])
-
-  const handleNewConnection = (type: DatabaseType) => {
-    setSelectedDatabaseType(type)
+  const handleNewConnection = () => {
+    setSelectedDatabaseType('postgres')
     setEditingConnection(null)
     setIsModalOpen(true)
-    setIsDropdownOpen(false)
   }
 
   const handleEditConnection = (profile: ConnectionProfile) => {
@@ -64,25 +45,10 @@ export function ConnectionList() {
               Manage database profiles and establish connections.
             </p>
           </div>
-          <div className="relative" ref={dropdownRef}>
-            <Button className="cursor-pointer" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-              New Connection
-              <ChevronDown className="size-4" />
-            </Button>
-            {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 rounded-md border bg-popover shadow-md z-50">
-                <div className="p-1">
-                  <button
-                    className="w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                    onClick={() => handleNewConnection('postgres')}
-                  >
-                    PostgreSQL
-                  </button>
-
-                </div>
-              </div>
-            )}
-          </div>
+          <Button className="cursor-pointer" onClick={handleNewConnection}>
+            <Plus className="size-4" />
+            New Connection
+          </Button>
         </div>
       </header>
 
