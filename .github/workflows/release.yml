@@ -96,7 +96,7 @@ jobs:
           pnpm exec electron-builder --win --publish always
 
   build-mac:
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
