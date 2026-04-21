@@ -1,21 +1,9 @@
 import { createRootRoute, Navigate, Outlet, useMatches } from '@tanstack/react-router'
 import { Titlebar } from '@renderer/components/shell/titlebar'
 import { Toaster } from '@renderer/components/ui/sonner'
-import { requireAuth } from '@renderer/features/auth/lib/auth-session'
+import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
 import { MainSidebar } from '@renderer/components/shell/main-sidebar'
-import DbDeskLogo from '@renderer/assets/dbdesk-logo.svg'
-
-const SplashScreen = () => {
-  return (
-    <div className="h-screen flex flex-col items-center justify-center bg-background">
-      <img
-        src={DbDeskLogo}
-        alt="DBDesk"
-        className="h-12 w-12 animate-pulse"
-      />
-    </div>
-  )
-}
+import { redirect } from '@tanstack/react-router'
 
 const RootLayout = () => {
   const matches = useMatches()
@@ -40,11 +28,19 @@ const RootLayout = () => {
 const NotFound = () => <Navigate to="/" replace />
 
 export const Route = createRootRoute({
-  beforeLoad: async ({ location }) => {
-    await requireAuth(location.pathname)
+  beforeLoad: ({ location }) => {
+    const { isAuthenticated } = useAuthStore.getState()
+    const pathname = location.pathname ?? '/'
+    const isAuthRoute = pathname === '/auth'
+
+    if (!isAuthenticated && !isAuthRoute) {
+      throw redirect({ to: '/auth' })
+    }
+
+    if (isAuthenticated && isAuthRoute) {
+      throw redirect({ to: '/' })
+    }
   },
-  pendingComponent: SplashScreen,
-  pendingMs: 0,
   component: RootLayout,
   notFoundComponent: NotFound
 })
