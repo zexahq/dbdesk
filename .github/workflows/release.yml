@@ -16,13 +16,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 24
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
 
       - name: Get pnpm store directory
         shell: bash
@@ -61,13 +61,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 24
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
 
       - name: Get pnpm store directory
         shell: bash
@@ -101,13 +101,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 24
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
 
       - name: Get pnpm store directory
         shell: bash
