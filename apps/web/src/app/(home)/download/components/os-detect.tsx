@@ -46,15 +46,20 @@ function subscribe() {
 function getDownloadUrl(assets: Asset[], os: OS): string | null {
   if (!assets.length || !os) return null;
 
+  // Skip updater-only artifacts
+  const installAssets = assets.filter(
+    (a) => !a.name.includes(".blockmap") && !a.name.endsWith("-mac.zip")
+  );
+
   const patterns: Record<string, RegExp[]> = {
-    macos: [/\.dmg$/i, /darwin/i, /macos/i, /mac.*\.zip$/i],
-    windows: [/\.exe$/i, /\.msi$/i, /windows/i, /win.*\.zip$/i],
+    macos: [/\.dmg$/i, /darwin/i, /macos/i],
+    windows: [/\.exe$/i, /\.msi$/i, /windows/i],
     linux: [/\.AppImage$/i, /\.deb$/i, /linux/i],
   };
 
   const osPatterns = patterns[os];
   for (const pattern of osPatterns) {
-    const asset = assets.find((a) => pattern.test(a.name));
+    const asset = installAssets.find((a) => pattern.test(a.name));
     if (asset) return asset.browser_download_url;
   }
   return null;
@@ -105,7 +110,7 @@ export function OSDetect({ assets = [] }: OSDetectProps) {
         </div>
 
         {/* Content */}
-        <div className="flex flex-col items-center md:items-start gap-6">
+        <div className="flex flex-col items-center md:items-start gap-6 flex-1">
           <div className="text-center md:text-left">
             <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-fd-foreground to-fd-muted-foreground mb-2">
               Download DBDesk
@@ -115,25 +120,31 @@ export function OSDetect({ assets = [] }: OSDetectProps) {
             </p>
           </div>
 
-          {downloadUrl ? (
-            <a
-              href={downloadUrl}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-fd-foreground text-fd-background font-medium hover:opacity-90 transition-opacity"
-            >
-              {config.label}
-              <ArrowDownToLine className="w-4 h-4" />
-            </a>
-          ) : (
-            <a
-              href="https://github.com/zexahq/dbdesk/releases"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-fd-foreground text-fd-background font-medium hover:opacity-90 transition-opacity"
-            >
-              View Releases
-              <ArrowDownToLine className="w-4 h-4" />
-            </a>
-          )}
+          <div className="flex flex-col gap-4 w-full md:max-w-md">
+            {downloadUrl ? (
+              <a
+                href={downloadUrl}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-fd-foreground text-fd-background font-medium hover:opacity-90 transition-opacity w-fit"
+              >
+                {config.label}
+                <ArrowDownToLine className="w-4 h-4" />
+              </a>
+            ) : (
+              <a
+                href="https://github.com/zexahq/dbdesk/releases"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-fd-foreground text-fd-background font-medium hover:opacity-90 transition-opacity w-fit"
+              >
+                View Releases
+                <ArrowDownToLine className="w-4 h-4" />
+              </a>
+            )}
+
+            <p className="text-xs text-fd-muted-foreground">
+              Post-install steps are shown below.
+            </p>
+          </div>
         </div>
       </div>
     </div>

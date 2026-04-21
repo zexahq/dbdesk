@@ -3,9 +3,11 @@ import { Titlebar } from '@renderer/components/shell/titlebar'
 import { Toaster } from '@renderer/components/ui/sonner'
 import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
 import { MainSidebar } from '@renderer/components/shell/main-sidebar'
+import { useUpdateToast } from '@renderer/shared/hooks/use-update-toast'
 import { redirect } from '@tanstack/react-router'
 
 const RootLayout = () => {
+  useUpdateToast()
   const matches = useMatches()
   const isAuthRoute = matches.some((match) => match.routeId === '/auth')
 
