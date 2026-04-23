@@ -9,7 +9,7 @@ import type {
   DeleteTableRowsResult,
   ExportTableResult,
   InsertTableRowResult,
-  QueryResult,
+  QueryBatchResult,
   QueryResultRow,
   SavedQuery,
   SchemaWithTables,
@@ -17,7 +17,7 @@ import type {
   TableFilterCondition,
   TableInfo,
   TableSortRule,
-  UpdateTableCellResult,
+  UpdateTableCellResult
 } from '../types'
 
 // ── IPC Contract ──
@@ -68,8 +68,8 @@ export interface IpcContract {
 
   // -- Query --
   'query:run': {
-    payload: { connectionId: string; query: string; limit?: number; offset?: number }
-    result: QueryResult
+    payload: { connectionId: string; queries: string[]; limit?: number; offset?: number }
+    result: QueryBatchResult[]
   }
 
   // -- Schema --

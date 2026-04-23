@@ -7,6 +7,7 @@ import type {
   DeleteTableRowsResult,
   InsertTableRowOptions,
   InsertTableRowResult,
+  QueryBatchResult,
   QueryResult,
   RunQueryOptions,
   SQLAdapter,
@@ -107,7 +108,34 @@ export class PostgresAdapter implements SQLAdapter {
     this.pool = null
   }
 
-  public async runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult> {
+  public async runQuery(queries: string[], options?: RunQueryOptions): Promise<QueryBatchResult[]> {
+    const results: QueryBatchResult[] = []
+
+    for (const query of queries) {
+      const start = performance.now()
+      try {
+        const result = await this.executeSingleQuery(query, options)
+        results.push({
+          query,
+          result,
+          executionTime: performance.now() - start
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to execute query'
+        results.push({
+          query,
+          error: message,
+          executionTime: performance.now() - start
+        })
+        // Stop on first error (safer default)
+        break
+      }
+    }
+
+    return results
+  }
+
+  private async executeSingleQuery(query: string, options?: RunQueryOptions): Promise<QueryResult> {
     const pool = this.ensurePool()
     const start = performance.now()
 

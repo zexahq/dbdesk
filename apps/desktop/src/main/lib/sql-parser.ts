@@ -26,6 +26,23 @@ export const skipQuotedString = (text: string, start: number, quoteChar: string)
   return index
 }
 
+/**
+ * Skip a PostgreSQL dollar-quoted string starting at `start`.
+ * Returns the index just past the closing tag, or `start` if not a valid
+ * dollar-quoted string.
+ */
+export const skipDollarQuotedString = (text: string, start: number): number => {
+  if (text[start] !== '$') return start
+  const ahead = text.slice(start)
+  const m = /^\$(\w*)\$/.exec(ahead)
+  if (!m) return start
+  const tag = m[1]
+  const closing = `$${tag}$`
+  const closeIdx = ahead.indexOf(closing, m[0].length)
+  if (closeIdx === -1) return start
+  return start + closeIdx + closing.length
+}
+
 export const skipParenthesizedSection = (text: string, start: number): number => {
   let index = start
   if (text[index] !== '(') return start
@@ -39,6 +56,13 @@ export const skipParenthesizedSection = (text: string, start: number): number =>
       index = skipQuotedString(text, index, "'")
     } else if (char === '"') {
       index = skipQuotedString(text, index, '"')
+    } else if (char === '$') {
+      const nextIndex = skipDollarQuotedString(text, index)
+      if (nextIndex !== index) {
+        index = nextIndex
+      } else {
+        index++
+      }
     } else if (char === '(') {
       depth++
       index++
@@ -63,6 +87,13 @@ export const hasAdditionalStatements = (query: string): boolean => {
       index = skipQuotedString(query, index, "'")
     } else if (char === '"') {
       index = skipQuotedString(query, index, '"')
+    } else if (char === '$') {
+      const nextIndex = skipDollarQuotedString(query, index)
+      if (nextIndex !== index) {
+        index = nextIndex
+        continue
+      }
+      index++
     } else if (char === '(') {
       index = skipParenthesizedSection(query, index)
     } else if (char === ';') {

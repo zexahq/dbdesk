@@ -3,7 +3,14 @@
  */
 
 // Base adapter types
-export type { BaseAdapter, DBAdapter, QueryResult, QueryResultRow, RunQueryOptions } from './adapter'
+export type {
+  BaseAdapter,
+  DBAdapter,
+  QueryBatchResult,
+  QueryResult,
+  QueryResultRow,
+  RunQueryOptions
+} from './adapter'
 
 // SQL types
 export type {
@@ -17,6 +24,7 @@ export type {
   DeleteTableResult,
   DeleteTableRowsOptions,
   DeleteTableRowsResult,
+  EditorQueryBlock,
   ExportTableOptions,
   ExportTableResult,
   ForeignKeyInfo,
@@ -41,7 +49,7 @@ export type {
   TableInfo,
   TableSortRule,
   UpdateTableCellOptions,
-  UpdateTableCellResult,
+  UpdateTableCellResult
 } from './sql'
 
 // MongoDB types
@@ -49,7 +57,7 @@ export type {
   CollectionInfo,
   MongoDBAdapter,
   MongoDBConnectionOptions,
-  MongoDBIndexInfo,
+  MongoDBIndexInfo
 } from './mongodb'
 
 // Redis types
@@ -63,7 +71,7 @@ export type {
   MongoDBConnectionProfile,
   RedisConnectionProfile,
   SQLConnectionProfile,
-  SQLDatabaseType,
+  SQLDatabaseType
 } from './connection'
 
 // Workspace types
@@ -74,5 +82,5 @@ export type {
   SerializedQueryTab,
   SerializedTab,
   SerializedTableTab,
-  WorkspaceStorage,
+  WorkspaceStorage
 } from './workspace'

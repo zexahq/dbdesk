@@ -25,7 +25,7 @@ export const schemaIntrospectInputSchema = schemaInputSchema.extend({
 // ── Query Input ──
 
 export const queryInputSchema = connectionIdentifierSchema.extend({
-  query: z.string().min(1, 'query is required'),
+  queries: z.array(z.string()).min(1, 'At least one query is required'),
   limit: z.number().int().min(1).default(50).optional(),
   offset: z.number().int().min(0).default(0).optional(),
 })

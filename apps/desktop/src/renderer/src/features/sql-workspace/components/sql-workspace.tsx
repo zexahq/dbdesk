@@ -20,15 +20,22 @@ import { WorkspaceTopbar } from './workspace-topbar'
 
 export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const setSchemasWithTables = useSqlWorkspaceStore((s) => s.setSchemasWithTables)
-  const activeTab = useTabStore((state) => {
-    const { tabs, activeTabId } = state
-    return tabs.find((t) => t.id === activeTabId)
+  const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const activeTabKind = useTabStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId)
+    return tab?.kind ?? null
   })
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
 
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
+
+  // Set current connection ID for sidebar dashboard button
+  useEffect(() => {
+    setCurrentConnection(profile.id)
+  }, [profile.id, setCurrentConnection])
 
   useEffect(() => {
     if (schemasWithTables) {
@@ -55,24 +62,24 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
           <ResizablePanel>
             <SidebarInset className="flex h-full flex-col overflow-hidden">
               <WorkspaceTopbar
-                 profile={profile}
-                 isSidebarOpen={isSidebarOpen}
-                 onSidebarOpenChange={setIsSidebarOpen}
-                 requestCloseTab={requestCloseTab}
-               />
+                profile={profile}
+                isSidebarOpen={isSidebarOpen}
+                onSidebarOpenChange={setIsSidebarOpen}
+                requestCloseTab={requestCloseTab}
+              />
 
               {/* No tab open - empty state */}
-              {!activeTab ? (
+              {!activeTabId ? (
                 <div className="flex flex-1 items-center justify-center">
                   <div className="text-center text-muted-foreground">
                     <p className="text-lg font-medium">No tab open</p>
                     <p className="text-sm">Select a table from the sidebar or create a new query</p>
                   </div>
                 </div>
-              ) : activeTab?.kind === 'table' ? (
-                <TableView profile={profile} activeTab={activeTab} />
-              ) : activeTab?.kind === 'query' ? (
-                <QueryView profile={profile} activeTab={activeTab} />
+              ) : activeTabKind === 'table' ? (
+                <TableView profile={profile} tabId={activeTabId} />
+              ) : activeTabKind === 'query' ? (
+                <QueryView profile={profile} tabId={activeTabId} />
               ) : null}
             </SidebarInset>
           </ResizablePanel>

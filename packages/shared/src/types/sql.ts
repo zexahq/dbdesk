@@ -279,6 +279,19 @@ export interface SchemaWithTables {
 }
 
 /**
+ * A block of one or more SQL queries detected in the editor.
+ * Used for multi-query parsing and per-block execution.
+ */
+export interface EditorQueryBlock {
+  /** 1-based line number where the block starts */
+  startLineNumber: number
+  /** 1-based line number where the block ends */
+  endLineNumber: number
+  /** Individual statements within the block (split by semicolons) */
+  queries: string[]
+}
+
+/**
  * SQL adapter interface (PostgreSQL)
  */
 export interface SQLAdapter extends BaseAdapter {

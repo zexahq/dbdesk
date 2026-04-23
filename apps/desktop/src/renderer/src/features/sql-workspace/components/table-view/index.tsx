@@ -1,7 +1,6 @@
 import type { QueryResultRow, SQLConnectionProfile } from '@dbdesk/shared/types'
 import { useDeleteTableRows, useTableData, useUpdateTableCell } from '@renderer/features/sql-workspace/queries/schema'
 import { toast } from '@renderer/shared/lib/toast'
-import type { TableTab } from '@renderer/features/sql-workspace/stores/tab-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { queryClient } from '@renderer/shared/lib/query-client'
 import type { RowSelectionState } from '@tanstack/react-table'
@@ -13,10 +12,11 @@ import { SqlTopbar } from './sql-topbar'
 
 interface TableViewProps {
   profile: SQLConnectionProfile
-  activeTab: TableTab
+  tabId: string
 }
 
-export function TableView({ profile, activeTab }: TableViewProps) {
+export function TableView({ profile, tabId }: TableViewProps) {
+  const activeTab = useTabStore((s) => s.findTableTabById(tabId))
   const updateTableTab = useTabStore((s) => s.updateTableTab)
   const makeTabPermanent = useTabStore((s) => s.makeTabPermanent)
 
@@ -25,15 +25,16 @@ export function TableView({ profile, activeTab }: TableViewProps) {
   // Reset ephemeral state when tab changes
   useEffect(() => {
     setRowSelection({})
-  }, [activeTab.id])
+  }, [tabId])
+
   const {
     data: tableData,
     isLoading: isLoadingTableData,
     error: tableError
   } = useTableData(
     profile.id,
-    activeTab.schema,
-    activeTab.table,
+    activeTab?.schema,
+    activeTab?.table,
     activeTab
       ? {
           limit: activeTab.limit,
@@ -50,14 +51,15 @@ export function TableView({ profile, activeTab }: TableViewProps) {
   const { mutateAsync: updateCellMutation } = useUpdateTableCell(profile.id)
 
   const refreshTableData = useCallback(() => {
+    if (!activeTab) return
     queryClient.invalidateQueries({
       queryKey: ['table-data', profile.id, activeTab.schema, activeTab.table]
     })
-  }, [queryClient, profile.id, activeTab.schema, activeTab.table])
+  }, [queryClient, profile.id, activeTab?.schema, activeTab?.table])
 
   const handleCellUpdate = useCallback(
     async (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => {
-      if (!tableData) {
+      if (!activeTab || !tableData) {
         return
       }
 
@@ -74,11 +76,11 @@ export function TableView({ profile, activeTab }: TableViewProps) {
         row
       })
     },
-    [activeTab.schema, activeTab.table, tableData, updateCellMutation]
+    [activeTab?.schema, activeTab?.table, tableData, updateCellMutation]
   )
 
   const handleDeleteSelectedRows = useCallback(async () => {
-    if (!tableData) {
+    if (!activeTab || !tableData) {
       return
     }
 
@@ -115,31 +117,42 @@ export function TableView({ profile, activeTab }: TableViewProps) {
   }, [
     deleteRowsMutation,
     rowSelection,
-    activeTab.schema,
-    activeTab.table,
+    activeTab?.schema,
+    activeTab?.table,
     tableData,
     refreshTableData
   ])
 
   const handleLimitChange = useCallback(
     (limit: number) => {
+      if (!activeTab) return
       updateTableTab(activeTab.id, { limit, offset: 0 })
     },
-    [activeTab.id, updateTableTab]
+    [activeTab?.id, updateTableTab]
   )
 
   const handleOffsetChange = useCallback(
     (offset: number) => {
+      if (!activeTab) return
       updateTableTab(activeTab.id, { offset })
     },
-    [activeTab.id, updateTableTab]
+    [activeTab?.id, updateTableTab]
   )
 
   const handleTableInteract = useCallback(() => {
+    if (!activeTab) return
     if (activeTab.isTemporary) {
       makeTabPermanent(activeTab.id)
     }
-  }, [activeTab.id, activeTab.isTemporary, makeTabPermanent])
+  }, [activeTab?.id, activeTab?.isTemporary, makeTabPermanent])
+
+  if (!activeTab) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-muted-foreground">
+        Tab not found
+      </div>
+    )
+  }
 
   return (
     <>

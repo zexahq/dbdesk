@@ -10,15 +10,15 @@ const isDDLQuery = (query: string): boolean => {
 export function useRunQuery(connectionId: string) {
   return useMutation({
     mutationFn: ({
-      query,
+      queries,
       options
     }: {
-      query: string
-      options?: { limit?: number; offset?: number }
-    }) => dbdeskClient.runQuery(connectionId, query, options),
-    onSuccess: (_, variables, _ctx,  client) => {
-      // Invalidate schemas cache if DDL query (CREATE, DROP, ALTER, etc.)
-      if (isDDLQuery(variables.query)) {
+      queries: string[]
+      options?: { limit?: number; offset?: number; includeTotalRowCount?: boolean }
+    }) => dbdeskClient.runQuery(connectionId, queries, options),
+    onSuccess: (_, variables, _ctx, client) => {
+      // Invalidate schemas cache if any query is DDL
+      if (variables.queries.some((q) => isDDLQuery(q))) {
         client.client.invalidateQueries({
           queryKey: ['schemasWithTables', connectionId]
         })

@@ -12,17 +12,46 @@ interface SqlEditorProps {
   onChange: (value: string) => void
   language: SQLDatabaseType
   onExecute?: () => void
+  onEditorMount?: (editorInstance: editor.IStandaloneCodeEditor) => void
 }
 
-export default function SqlEditor({ value, onChange, onExecute }: SqlEditorProps) {
+export default function SqlEditor({ tabId, value, onChange, onExecute, onEditorMount, language }: SqlEditorProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const onExecuteRef = useRef(onExecute)
   const [height, setHeight] = useState('400px')
+  const [editorValue, setEditorValue] = useState(value)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const editorTheme = theme === 'dark' ? 'vs-dark' : 'vs'
-  const languageId = LanguageIdEnum.PG
+
+  const languageIdMap: Record<SQLDatabaseType, LanguageIdEnum> = {
+    postgres: LanguageIdEnum.PG
+  }
+  const languageId = languageIdMap[language] ?? LanguageIdEnum.PG
+
+  // Sync from prop when tab changes or external value changes
+  useEffect(() => {
+    setEditorValue(value)
+  }, [tabId, value])
+
+  // Auto-focus editor when switching tabs or creating a new tab
+  useEffect(() => {
+    // Focus immediately if editor is already mounted
+    if (editorRef.current) {
+      editorRef.current.focus()
+      return
+    }
+
+    // If editor isn't mounted yet, wait for next render cycle
+    // This handles the case when a new tab is created
+    const timer = setTimeout(() => {
+      editorRef.current?.focus()
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [tabId])
 
   // Keep onExecute ref updated
   useEffect(() => {
@@ -47,8 +76,22 @@ export default function SqlEditor({ value, onChange, onExecute }: SqlEditorProps
     }
   }, [])
 
+  const handleChange = (val: string) => {
+    setEditorValue(val)
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+    debounceRef.current = setTimeout(() => {
+      onChange(val)
+    }, 300)
+  }
+
   const handleEditorDidMount = (editorInstance: editor.IStandaloneCodeEditor) => {
     editorRef.current = editorInstance
+    onEditorMount?.(editorInstance)
+
+    // Focus the editor when it mounts (handles new tab creation)
+    editorInstance.focus()
 
     // Register Ctrl+Enter keybinding for query execution
     editorInstance.addAction({
@@ -67,8 +110,8 @@ export default function SqlEditor({ value, onChange, onExecute }: SqlEditorProps
         height={height}
         language={languageId}
         theme={editorTheme}
-        value={value}
-        onChange={(val) => onChange(val ?? '')}
+        value={editorValue}
+        onChange={(val) => handleChange(val ?? '')}
         onMount={handleEditorDidMount}
         options={{
           minimap: { enabled: false },

@@ -1,4 +1,5 @@
 import type {
+  QueryBatchResult,
   QueryResult,
   SerializedQueryTab,
   SerializedTab,
@@ -34,6 +35,8 @@ export interface QueryTab extends BaseTab {
   totalRowCount?: number
   lastSavedContent?: string
   queryResults?: QueryResult
+  batchResults?: QueryBatchResult[]
+  activeResultIndex?: number
   isDirty: boolean
 }
 
@@ -309,3 +312,5 @@ export const useTabStore = create<TabStore>((set, get) => ({
 // Custom hooks for idiomatic selector usage
 export const useActiveTab = () =>
   useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId) ?? null)
+
+export const useActiveTabId = () => useTabStore((s) => s.activeTabId)
