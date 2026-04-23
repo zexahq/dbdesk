@@ -108,26 +108,39 @@ export class PostgresAdapter implements SQLAdapter {
     this.pool = null
   }
 
-  public async runQuery(queries: string[], options?: RunQueryOptions): Promise<QueryBatchResult[]> {
+  public async runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult> {
+    const normalizedQuery = normalizeQuery(query)
+
+    return this.executeNormalizedQuery(normalizedQuery, options)
+  }
+
+  public async runManyQueries(
+    queries: string[],
+    options?: RunQueryOptions
+  ): Promise<QueryBatchResult[]> {
     const results: QueryBatchResult[] = []
 
     for (const query of queries) {
+      const normalizedQuery = normalizeQuery(query).trim()
+      if (!normalizedQuery) {
+        continue
+      }
+
       const start = performance.now()
+
       try {
-        const result = await this.executeSingleQuery(query, options)
+        const result = await this.executeNormalizedQuery(normalizedQuery, options, start)
         results.push({
-          query,
+          query: normalizedQuery,
           result,
-          executionTime: performance.now() - start
+          executionTime: result.executionTime ?? performance.now() - start
         })
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to execute query'
         results.push({
-          query,
-          error: message,
+          query: normalizedQuery,
+          error: error instanceof Error ? error.message : 'Failed to execute query',
           executionTime: performance.now() - start
         })
-        // Stop on first error (safer default)
         break
       }
     }
@@ -135,11 +148,12 @@ export class PostgresAdapter implements SQLAdapter {
     return results
   }
 
-  private async executeSingleQuery(query: string, options?: RunQueryOptions): Promise<QueryResult> {
+  private async executeNormalizedQuery(
+    normalizedQuery: string,
+    options?: RunQueryOptions,
+    start = performance.now()
+  ): Promise<QueryResult> {
     const pool = this.ensurePool()
-    const start = performance.now()
-
-    const normalizedQuery = normalizeQuery(query)
 
     // Check if this is a SELECT query that can be paginated
     if (options && isSelectableQuery(normalizedQuery)) {

@@ -34,12 +34,19 @@ export const dbdeskAPI = {
     typedInvoke('connections:delete', { connectionId }),
 
   // ── Query ──
-  runQuery: (
+  runQuery: (connectionId: string, query: string, options?: { limit?: number; offset?: number }) =>
+    typedInvoke('query:run', {
+      connectionId,
+      query,
+      limit: options?.limit,
+      offset: options?.offset,
+    }),
+  runManyQueries: (
     connectionId: string,
     queries: string[],
-    options?: { limit?: number; offset?: number }
+    options?: { limit?: number; offset?: number },
   ) =>
-    typedInvoke('query:run', {
+    typedInvoke('query:runMany', {
       connectionId,
       queries,
       limit: options?.limit,

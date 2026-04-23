@@ -6,6 +6,83 @@ export const normalizeQuery = (query: string): string => {
   return query.replace(/;+\s*$/, '')
 }
 
+const DOLLAR_QUOTE_TAG_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+const getDollarQuoteTag = (text: string, start: number): string | null => {
+  if (text[start] !== '$') {
+    return null
+  }
+
+  let index = start + 1
+  while (index < text.length && /[A-Za-z0-9_]/.test(text[index])) {
+    index++
+  }
+
+  if (index >= text.length || text[index] !== '$') {
+    return null
+  }
+
+  const tagBody = text.slice(start + 1, index)
+  if (tagBody !== '' && !DOLLAR_QUOTE_TAG_PATTERN.test(tagBody)) {
+    return null
+  }
+
+  return text.slice(start, index + 1)
+}
+
+export const skipDollarQuotedString = (text: string, start: number): number => {
+  const tag = getDollarQuoteTag(text, start)
+  if (!tag) {
+    return start
+  }
+
+  const closingIndex = text.indexOf(tag, start + tag.length)
+  return closingIndex === -1 ? text.length : closingIndex + tag.length
+}
+
+export const skipLineComment = (text: string, start: number): number => {
+  if (text[start] !== '-' || text[start + 1] !== '-') {
+    return start
+  }
+
+  let index = start + 2
+  while (index < text.length && text[index] !== '\n') {
+    index++
+  }
+
+  return index
+}
+
+export const skipBlockComment = (text: string, start: number): number => {
+  if (text[start] !== '/' || text[start + 1] !== '*') {
+    return start
+  }
+
+  let index = start + 2
+  let depth = 1
+
+  while (index < text.length && depth > 0) {
+    if (text[index] === '/' && text[index + 1] === '*') {
+      depth++
+      index += 2
+    } else if (text[index] === '*' && text[index + 1] === '/') {
+      depth--
+      index += 2
+    } else if (text[index] === "'") {
+      index = skipQuotedString(text, index, "'")
+    } else if (text[index] === '"') {
+      index = skipQuotedString(text, index, '"')
+    } else if (text[index] === '$') {
+      const nextIndex = skipDollarQuotedString(text, index)
+      index = nextIndex === index ? index + 1 : nextIndex
+    } else {
+      index++
+    }
+  }
+
+  return index
+}
+
 export const skipQuotedString = (text: string, start: number, quoteChar: string): number => {
   let index = start
   if (text[index] !== quoteChar) return start
@@ -26,23 +103,6 @@ export const skipQuotedString = (text: string, start: number, quoteChar: string)
   return index
 }
 
-/**
- * Skip a PostgreSQL dollar-quoted string starting at `start`.
- * Returns the index just past the closing tag, or `start` if not a valid
- * dollar-quoted string.
- */
-export const skipDollarQuotedString = (text: string, start: number): number => {
-  if (text[start] !== '$') return start
-  const ahead = text.slice(start)
-  const m = /^\$(\w*)\$/.exec(ahead)
-  if (!m) return start
-  const tag = m[1]
-  const closing = `$${tag}$`
-  const closeIdx = ahead.indexOf(closing, m[0].length)
-  if (closeIdx === -1) return start
-  return start + closeIdx + closing.length
-}
-
 export const skipParenthesizedSection = (text: string, start: number): number => {
   let index = start
   if (text[index] !== '(') return start
@@ -58,11 +118,11 @@ export const skipParenthesizedSection = (text: string, start: number): number =>
       index = skipQuotedString(text, index, '"')
     } else if (char === '$') {
       const nextIndex = skipDollarQuotedString(text, index)
-      if (nextIndex !== index) {
-        index = nextIndex
-      } else {
-        index++
-      }
+      index = nextIndex === index ? index + 1 : nextIndex
+    } else if (char === '-' && text[index + 1] === '-') {
+      index = skipLineComment(text, index)
+    } else if (char === '/' && text[index + 1] === '*') {
+      index = skipBlockComment(text, index)
     } else if (char === '(') {
       depth++
       index++
@@ -89,11 +149,11 @@ export const hasAdditionalStatements = (query: string): boolean => {
       index = skipQuotedString(query, index, '"')
     } else if (char === '$') {
       const nextIndex = skipDollarQuotedString(query, index)
-      if (nextIndex !== index) {
-        index = nextIndex
-        continue
-      }
-      index++
+      index = nextIndex === index ? index + 1 : nextIndex
+    } else if (char === '-' && query[index + 1] === '-') {
+      index = skipLineComment(query, index)
+    } else if (char === '/' && query[index + 1] === '*') {
+      index = skipBlockComment(query, index)
     } else if (char === '(') {
       index = skipParenthesizedSection(query, index)
     } else if (char === ';') {
@@ -112,14 +172,29 @@ export const getInitialStatementKeyword = (query: string): string | null => {
   let index = 0
   const length = query.length
 
-  const skipWhitespace = () => {
-    while (index < length && /\s/.test(query[index])) {
-      index++
+  const skipIgnorable = () => {
+    while (index < length) {
+      if (/\s/.test(query[index])) {
+        index++
+        continue
+      }
+
+      if (query[index] === '-' && query[index + 1] === '-') {
+        index = skipLineComment(query, index)
+        continue
+      }
+
+      if (query[index] === '/' && query[index + 1] === '*') {
+        index = skipBlockComment(query, index)
+        continue
+      }
+
+      break
     }
   }
 
   const readWord = (): string => {
-    skipWhitespace()
+    skipIgnorable()
     let word = ''
     while (index < length && /[a-zA-Z_]/.test(query[index])) {
       word += query[index]
@@ -128,55 +203,77 @@ export const getInitialStatementKeyword = (query: string): string | null => {
     return word
   }
 
+  const readWordLower = () => readWord().toLowerCase()
+
+  const tryReadWord = (expected: string): boolean => {
+    const start = index
+    const word = readWordLower()
+    if (word === expected) {
+      return true
+    }
+
+    index = start
+    return false
+  }
+
   // Handle WITH clauses (CTEs)
-  skipWhitespace()
-  const firstWord = readWord().toLowerCase()
+  skipIgnorable()
+  const firstWord = readWordLower()
   if (firstWord !== 'with') {
     return firstWord || null
   }
 
+  tryReadWord('recursive')
+
   // Skip the CTE definitions
   while (index < length) {
-    skipWhitespace()
+    skipIgnorable()
     if (index >= length) break
 
     // Read the CTE name
     const cteName = readWord()
     if (!cteName) break
 
-    skipWhitespace()
-    if (index >= length || query[index] !== '(') {
-      return null
+    skipIgnorable()
+    if (index < length && query[index] === '(') {
+      index = skipParenthesizedSection(query, index)
     }
 
-    index = skipParenthesizedSection(query, index)
-    skipWhitespace()
+    skipIgnorable()
 
     // Check for AS keyword
-    const asWord = readWord().toLowerCase()
-    if (asWord !== 'as') {
-      return asWord || null
+    if (!tryReadWord('as')) {
+      return null
     }
 
-    skipWhitespace()
+    skipIgnorable()
+    if (tryReadWord('not')) {
+      if (!tryReadWord('materialized')) {
+        return null
+      }
+    } else {
+      tryReadWord('materialized')
+    }
+
+    skipIgnorable()
     if (index >= length || query[index] !== '(') {
       return null
     }
 
     index = skipParenthesizedSection(query, index)
-    skipWhitespace()
+    skipIgnorable()
 
     if (index < length && query[index] === ',') {
       index += 1
-      skipWhitespace()
+      skipIgnorable()
       continue
     }
 
     break
   }
 
-  skipWhitespace()
-  const mainKeyword = readWord().toLowerCase()
+  skipIgnorable()
+  const mainKeyword = readWordLower()
   return mainKeyword || null
 }
 

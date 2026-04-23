@@ -10,30 +10,24 @@ import {
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
-interface BatchInfo {
-  totalQueries: number
-  activeIndex: number
-  hasErrors: boolean
-}
-
 interface QueryBottombarProps {
+  resultLabel?: string
   totalRows: number
   executionTime?: number
   limit: number
   offset: number
   isPaginationEnabled?: boolean
-  batchInfo?: BatchInfo
   onLimitChange: (limit: number) => void
   onOffsetChange: (offset: number) => void
 }
 
 export const QueryBottombar = ({
+  resultLabel,
   totalRows,
   executionTime,
   limit,
   offset,
   isPaginationEnabled = true,
-  batchInfo,
   onLimitChange,
   onOffsetChange
 }: QueryBottombarProps) => {
@@ -144,21 +138,13 @@ export const QueryBottombar = ({
         )}
 
         <div className="flex items-center gap-2">
-          {batchInfo ? (
+          {resultLabel ? (
             <>
-              <span className="text-sm text-muted-foreground">
-                Query {batchInfo.activeIndex + 1} of {batchInfo.totalQueries}
-              </span>
-              {batchInfo.hasErrors && (
-                <>
-                  <span className="text-sm text-muted-foreground">•</span>
-                  <span className="text-sm text-destructive">Errors detected</span>
-                </>
-              )}
+              <span className="text-sm text-muted-foreground">{resultLabel}</span>
+              <span className="text-sm text-muted-foreground">•</span>
             </>
-          ) : (
-            <span className="text-sm text-muted-foreground">{totalRows} records</span>
-          )}
+          ) : null}
+          <span className="text-sm text-muted-foreground">{totalRows} rows</span>
           {executionTime !== undefined && (
             <>
               <span className="text-sm text-muted-foreground">•</span>

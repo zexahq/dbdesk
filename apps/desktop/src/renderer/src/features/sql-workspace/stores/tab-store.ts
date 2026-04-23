@@ -34,9 +34,10 @@ export interface QueryTab extends BaseTab {
   offset: number
   totalRowCount?: number
   lastSavedContent?: string
+  lastExecutedQuery?: string
   queryResults?: QueryResult
   batchResults?: QueryBatchResult[]
-  activeResultIndex?: number
+  activeResultIndex: number
   isDirty: boolean
 }
 
@@ -96,6 +97,9 @@ const createDefaultQueryTab = (): QueryTab => ({
   limit: 50,
   offset: 0,
   queryResults: undefined,
+  batchResults: undefined,
+  activeResultIndex: 0,
+  lastExecutedQuery: undefined,
   lastSavedContent: undefined,
   isDirty: false
 })
@@ -267,7 +271,10 @@ export const useTabStore = create<TabStore>((set, get) => ({
           ...serializedTab,
           limit: 50,
           offset: 0,
+          lastExecutedQuery: undefined,
           queryResults: undefined,
+          batchResults: undefined,
+          activeResultIndex: 0,
           isDirty
         } as QueryTab
       }
@@ -312,5 +319,3 @@ export const useTabStore = create<TabStore>((set, get) => ({
 // Custom hooks for idiomatic selector usage
 export const useActiveTab = () =>
   useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId) ?? null)
-
-export const useActiveTabId = () => useTabStore((s) => s.activeTabId)

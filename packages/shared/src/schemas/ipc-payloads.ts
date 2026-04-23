@@ -25,7 +25,13 @@ export const schemaIntrospectInputSchema = schemaInputSchema.extend({
 // ── Query Input ──
 
 export const queryInputSchema = connectionIdentifierSchema.extend({
-  queries: z.array(z.string()).min(1, 'At least one query is required'),
+  query: z.string().min(1, 'query is required'),
+  limit: z.number().int().min(1).default(50).optional(),
+  offset: z.number().int().min(0).default(0).optional(),
+})
+
+export const queryBatchInputSchema = connectionIdentifierSchema.extend({
+  queries: z.array(z.string().min(1, 'query is required')).min(1, 'queries are required'),
   limit: z.number().int().min(1).default(50).optional(),
   offset: z.number().int().min(0).default(0).optional(),
 })
@@ -120,6 +126,7 @@ export type ConnectionIdentifierInput = z.infer<typeof connectionIdentifierSchem
 export type SchemaInput = z.infer<typeof schemaInputSchema>
 export type SchemaIntrospectInput = z.infer<typeof schemaIntrospectInputSchema>
 export type QueryInput = z.infer<typeof queryInputSchema>
+export type QueryBatchInput = z.infer<typeof queryBatchInputSchema>
 export type TableDataInput = z.infer<typeof tableDataInputSchema>
 export type DeleteRowsInput = z.infer<typeof deleteRowsInputSchema>
 export type UpdateCellInput = z.infer<typeof updateCellInputSchema>

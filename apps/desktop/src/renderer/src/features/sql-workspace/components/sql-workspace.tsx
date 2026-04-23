@@ -8,6 +8,7 @@ import {
 } from '@renderer/components/ui/resizable'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import { cn } from '@renderer/shared/lib/utils'
+import { dbdeskClient } from '@renderer/shared/api/client'
 import { useTabCloseHandler } from '@renderer/features/sql-workspace/hooks/use-tab-close-handler'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
@@ -20,6 +21,7 @@ import { WorkspaceTopbar } from './workspace-topbar'
 
 export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const setSchemasWithTables = useSqlWorkspaceStore((s) => s.setSchemasWithTables)
+  const setTableColumns = useSqlWorkspaceStore((s) => s.setTableColumns)
   const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
   const activeTabId = useTabStore((s) => s.activeTabId)
   const activeTabKind = useTabStore((s) => {
@@ -44,6 +46,37 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
       setSchemasWithTables([])
     }
   }, [schemasWithTables, setSchemasWithTables])
+
+  useEffect(() => {
+    if (!schemasWithTables?.length) {
+      return
+    }
+
+    let cancelled = false
+
+    void Promise.all(
+      schemasWithTables.flatMap(({ schema, tables }) =>
+        tables.map(async (table) => {
+          if (useSqlWorkspaceStore.getState().getTableColumns(schema, table)) {
+            return
+          }
+
+          try {
+            const tableInfo = await dbdeskClient.introspectTable(profile.id, schema, table)
+            if (!cancelled) {
+              setTableColumns(schema, table, tableInfo.columns)
+            }
+          } catch (error) {
+            console.error(`Failed to load columns for ${schema}.${table}`, error)
+          }
+        })
+      )
+    )
+
+    return () => {
+      cancelled = true
+    }
+  }, [profile.id, schemasWithTables, setTableColumns])
 
   return (
     <>

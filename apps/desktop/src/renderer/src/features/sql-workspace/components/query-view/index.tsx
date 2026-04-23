@@ -1,7 +1,9 @@
-import type { SQLConnectionProfile } from '@dbdesk/shared/types'
-import { useRunQuery } from '@renderer/features/sql-workspace/queries/query'
+import type { QueryBatchResult, QueryResult, SQLConnectionProfile } from '@dbdesk/shared/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
+import { DangerousQueryDialog } from '@renderer/features/sql-workspace/components/dialogs/dangerous-query-dialog'
 import SqlEditor from '@renderer/features/editor/components/sql-editor'
+import { getEditorQueries, hasDangerousSqlKeywords } from '@renderer/features/editor/lib/sql-parser'
+import { useRunManyQueries, useRunQuery } from '@renderer/features/sql-workspace/queries/query'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -10,9 +12,7 @@ import {
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { toast } from '@renderer/shared/lib/toast'
-import type { editor } from 'monaco-editor'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { getEditorQueries, hasDangerousSqlKeywords } from '@renderer/features/editor/lib/sql-parser'
+import { useEffect, useState } from 'react'
 import { QueryBottombar } from './query-bottombar'
 import { QueryResults } from './query-results'
 
@@ -21,59 +21,87 @@ interface QueryViewProps {
   tabId: string
 }
 
+type PendingExecution = {
+  queries: string[]
+  limit: number
+  offset: number
+}
+
 export function QueryView({ profile, tabId }: QueryViewProps) {
   const activeTab = useTabStore((s) => s.findQueryTabById(tabId))
   const queries = useSavedQueriesStore((s) => s.queries)
   const saveQuery = useSavedQueriesStore((s) => s.saveQuery)
   const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
-  const editorInstanceRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+  const [pendingExecution, setPendingExecution] = useState<PendingExecution | null>(null)
 
   const {
     mutateAsync: runQueryMutation,
-    isPending: isExecuting,
-    error: executionError
+    isPending: isRunningSingleQuery,
+    error: singleQueryError
   } = useRunQuery(profile.id)
+  const {
+    mutateAsync: runManyQueriesMutation,
+    isPending: isRunningBatchQuery,
+    error: batchQueryError
+  } = useRunManyQueries(profile.id)
 
-  const isQueryTabSaved = activeTab ? queries.some((q) => q.id === activeTab.id) : false
+  const isExecuting = isRunningSingleQuery || isRunningBatchQuery
+  const executionError = batchQueryError ?? singleQueryError
+
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
-
-  // Refs to avoid re-registering the global keydown listener on every render
-  const activeTabRef = useRef(activeTab)
-  activeTabRef.current = activeTab
-  const isQueryTabSavedRef = useRef(isQueryTabSaved)
-  isQueryTabSavedRef.current = isQueryTabSaved
-
-  const handleUpdateQuery = async () => {
-    const tab = activeTabRef.current
-    if (!tab) return
-    const savedQuery = queries.find((q) => q.id === tab.id)
-    if (!savedQuery) return
-
-    try {
-      await updateQuery(profile.id, tab.id, savedQuery.name, tab.editorContent)
-      updateQueryTab(tab.id, { lastSavedContent: tab.editorContent })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save query')
-    }
+  if (!activeTab) {
+    return null
   }
 
-  const handleUpdateQueryRef = useRef(handleUpdateQuery)
-  handleUpdateQueryRef.current = handleUpdateQuery
+  const isQueryTabSaved = queries.some((q) => q.id === activeTab.id)
+  const activeBatchResult = activeTab.batchResults?.[activeTab.activeResultIndex ?? 0]
+
+  const updateSingleQueryResult = (query: string, result: QueryResult) => {
+    updateQueryTab(activeTab.id, {
+      queryResults: result,
+      batchResults: undefined,
+      activeResultIndex: 0,
+      lastExecutedQuery: query,
+      limit: result.limit ?? activeTab.limit,
+      offset: result.offset ?? activeTab.offset,
+      totalRowCount: result.totalRowCount
+    })
+  }
+
+  const updateBatchQueryResult = (results: QueryBatchResult[], limit: number, offset: number) => {
+    updateQueryTab(activeTab.id, {
+      queryResults: undefined,
+      batchResults: results,
+      activeResultIndex: 0,
+      lastExecutedQuery: undefined,
+      limit,
+      offset,
+      totalRowCount: undefined
+    })
+  }
+
+  const clearQueryResults = () => {
+    updateQueryTab(activeTab.id, {
+      queryResults: undefined,
+      batchResults: undefined,
+      activeResultIndex: 0,
+      lastExecutedQuery: undefined,
+      totalRowCount: undefined
+    })
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        const tab = activeTabRef.current
-        if (!tab) return
-        if (!tab.editorContent.trim()) {
+        if (!activeTab.editorContent.trim()) {
           toast.error('Query cannot be empty')
           return
         }
 
-        if (isQueryTabSavedRef.current) {
-          void handleUpdateQueryRef.current()
+        if (isQueryTabSaved) {
+          void handleUpdateQuery()
         } else {
           setSaveDialogOpen(true)
         }
@@ -82,93 +110,147 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [activeTab, isQueryTabSaved])
 
-  const executeQueries = useCallback(
-    async (queriesToRun: string[], limit: number, offset: number) => {
-      if (!activeTab) return
-      try {
-        const results = await runQueryMutation({
-          queries: queriesToRun,
-          options: { limit, offset }
-        })
-        updateQueryTab(activeTab.id, {
-          queryResults: undefined,
-          batchResults: results,
-          activeResultIndex: 0,
-          limit,
-          offset
-        })
-      } catch {
-        updateQueryTab(activeTab.id, {
-          queryResults: undefined,
-          batchResults: undefined,
-          activeResultIndex: undefined
-        })
-      }
-    },
-    [activeTab?.id, runQueryMutation, updateQueryTab]
-  )
-
-  const handleRunQuery = async (targetQuery?: string) => {
-    if (!activeTab) return
-    const rawQuery = targetQuery ?? activeTab.editorContent.trim()
-    if (!rawQuery) {
+  const executeQueries = async (queriesToRun: string[], limit: number, offset: number) => {
+    if (queriesToRun.length === 0) {
       toast.error('Query cannot be empty')
       return
     }
 
-    const blocks = getEditorQueries(rawQuery)
-    const totalQueries = blocks.flatMap((b) => b.queries)
-
-    if (totalQueries.length === 0) {
-      toast.error('No valid queries found')
+    if (queriesToRun.length === 1) {
+      try {
+        const result = await runQueryMutation({
+          query: queriesToRun[0],
+          options: { limit, offset }
+        })
+        updateSingleQueryResult(queriesToRun[0], result)
+      } catch {
+        clearQueryResults()
+      }
       return
     }
 
-    // Dangerous query warning
-    const hasDangerous = totalQueries.some((q) => hasDangerousSqlKeywords(q))
-    if (hasDangerous) {
-      const confirmed = window.confirm(
-        'This query contains potentially destructive operations (DELETE, UPDATE, DROP, etc.). Are you sure you want to execute it?'
-      )
-      if (!confirmed) return
+    try {
+      const results = await runManyQueriesMutation({
+        queries: queriesToRun,
+        options: { limit, offset }
+      })
+      updateBatchQueryResult(results, limit, offset)
+    } catch {
+      clearQueryResults()
+    }
+  }
+
+  const queueDangerousExecution = async (queriesToRun: string[], limit: number, offset: number) => {
+    if (queriesToRun.some((query) => hasDangerousSqlKeywords(query))) {
+      setPendingExecution({ queries: queriesToRun, limit, offset })
+      return
+    }
+
+    await executeQueries(queriesToRun, limit, offset)
+  }
+
+  const handleRunQuery = async (cursorLine?: number) => {
+    const blocks = getEditorQueries(activeTab.editorContent)
+    if (blocks.length === 0) {
+      toast.error('Query cannot be empty')
+      return
     }
 
     const limit = activeTab.limit ?? 50
     const offset = 0
-    await executeQueries(totalQueries, limit, offset)
+    const blockAtCursor =
+      cursorLine === undefined
+        ? null
+        : blocks.find(
+            (block) =>
+              cursorLine >= block.startLineNumber && cursorLine <= block.endLineNumber
+          )
+
+    if (cursorLine !== undefined && !blockAtCursor) {
+      toast.error('No query found at cursor')
+      return
+    }
+
+    const queriesToRun = (blockAtCursor ? blockAtCursor.queries : blocks.flatMap((block) => block.queries)).filter(Boolean)
+
+    await queueDangerousExecution(queriesToRun, limit, offset)
+  }
+
+  const executeSingleQueryWithPagination = async (query: string, limit: number, offset: number) => {
+    try {
+      const result = await runQueryMutation({ query, options: { limit, offset } })
+      updateSingleQueryResult(query, result)
+    } catch {
+      clearQueryResults()
+    }
+  }
+
+  const executeBatchResultWithPagination = async (limit: number, offset: number) => {
+    const batchResults = activeTab.batchResults
+    const activeResultIndex = activeTab.activeResultIndex ?? 0
+    const resultToUpdate = batchResults?.[activeResultIndex]
+    if (!batchResults || !resultToUpdate) {
+      return
+    }
+
+    try {
+      const result = await runQueryMutation({
+        query: resultToUpdate.query,
+        options: { limit, offset }
+      })
+
+      const nextBatchResults = batchResults.map((batchResult, index) =>
+        index === activeResultIndex
+          ? {
+              query: batchResult.query,
+              result,
+              executionTime: result.executionTime ?? batchResult.executionTime
+            }
+          : batchResult
+      )
+
+      updateQueryTab(activeTab.id, {
+        batchResults: nextBatchResults,
+        limit: result.limit ?? limit,
+        offset: result.offset ?? offset,
+        totalRowCount: undefined
+      })
+    } catch (error) {
+      const nextBatchResults = batchResults.map((batchResult, index) =>
+        index === activeResultIndex
+          ? {
+              query: batchResult.query,
+              error: error instanceof Error ? error.message : 'Failed to execute query',
+              executionTime: batchResult.executionTime
+            }
+          : batchResult
+      )
+
+      updateQueryTab(activeTab.id, { batchResults: nextBatchResults })
+    }
+  }
+
+  const handleUpdateQuery = async () => {
+    const savedQuery = queries.find((q) => q.id === activeTab.id)
+    if (!savedQuery) return
+
+    try {
+      await updateQuery(profile.id, activeTab.id, savedQuery.name, activeTab.editorContent)
+      updateQueryTab(activeTab.id, { lastSavedContent: activeTab.editorContent })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save query')
+    }
   }
 
   const handleSaveQuery = async (name: string) => {
-    if (!activeTab) return
     try {
       await saveQuery(profile.id, activeTab.id, name, activeTab.editorContent)
       updateQueryTab(activeTab.id, { name, lastSavedContent: activeTab.editorContent })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save query')
     }
-  }
-
-  // Derive the active result for display (always from batch results)
-  const activeBatchResult =
-    activeTab?.batchResults && activeTab.activeResultIndex !== undefined
-      ? activeTab.batchResults[activeTab.activeResultIndex]
-      : undefined
-
-  const displayedBatchResult = activeTab?.batchResults ? activeBatchResult : undefined
-  const displayedError = activeBatchResult?.error ?? executionError?.message
-  const displayedTotalRows = activeBatchResult
-    ? (activeBatchResult.result?.totalRowCount ?? activeBatchResult.result?.rowCount ?? 0)
-    : 0
-  const displayedExecutionTime = activeBatchResult?.executionTime
-
-  if (!activeTab) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        Tab not found
-      </div>
-    )
   }
 
   return (
@@ -181,46 +263,73 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
               value={activeTab.editorContent}
               onChange={(value) => updateQueryTab(activeTab.id, { editorContent: value })}
               language={profile.type}
-              onExecute={() => void handleRunQuery()}
-              onEditorMount={(instance) => {
-                editorInstanceRef.current = instance
-              }}
+              onExecute={handleRunQuery}
             />
           </div>
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel defaultSize={50} minSize={30}>
           <QueryResults
-            batchResult={displayedBatchResult}
+            queryResults={activeTab.queryResults}
             batchResults={activeTab.batchResults}
             activeResultIndex={activeTab.activeResultIndex}
-            onActiveResultChange={(index) =>
-              updateQueryTab(activeTab.id, { activeResultIndex: index })
-            }
             isLoading={isExecuting}
-            error={displayedError}
-            onRun={() => void handleRunQuery()}
+            error={executionError}
+            onRun={handleRunQuery}
+            onResultSelect={(index) => {
+              const result = activeTab.batchResults?.[index]?.result
+              updateQueryTab(activeTab.id, {
+                activeResultIndex: index,
+                limit: result?.limit ?? activeTab.limit,
+                offset: result?.offset ?? 0
+              })
+            }}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {activeTab.batchResults && (
+      {(activeTab.queryResults || activeBatchResult) && (
         <QueryBottombar
-          totalRows={displayedTotalRows}
-          executionTime={displayedExecutionTime}
+          resultLabel={
+            activeTab.batchResults
+              ? `Query ${(activeTab.activeResultIndex ?? 0) + 1} of ${activeTab.batchResults.length}`
+              : undefined
+          }
+          totalRows={
+            activeBatchResult?.result
+              ? activeBatchResult.result.totalRowCount ?? activeBatchResult.result.rowCount
+              : activeTab.queryResults
+                ? activeTab.totalRowCount ?? activeTab.queryResults.rowCount
+                : 0
+          }
+          executionTime={
+            activeBatchResult?.result?.executionTime ??
+            activeBatchResult?.executionTime ??
+            activeTab.queryResults?.executionTime
+          }
           limit={activeTab.limit}
           offset={activeTab.offset}
-          isPaginationEnabled={false}
-          batchInfo={{
-            totalQueries: activeTab.batchResults.length,
-            activeIndex: activeTab.activeResultIndex ?? 0,
-            hasErrors: activeTab.batchResults.some((r) => r.error)
+          isPaginationEnabled={
+            activeBatchResult?.result?.totalRowCount !== undefined ||
+            activeTab.totalRowCount !== undefined
+          }
+          onLimitChange={async (limit) => {
+            if (activeTab.batchResults) {
+              await executeBatchResultWithPagination(limit, 0)
+              return
+            }
+
+            const query = activeTab.lastExecutedQuery ?? activeTab.editorContent.trim()
+            await executeSingleQueryWithPagination(query, limit, 0)
           }}
-          onLimitChange={async () => {
-            // No pagination for batch queries
-          }}
-          onOffsetChange={async () => {
-            // No pagination for batch queries
+          onOffsetChange={async (offset) => {
+            if (activeTab.batchResults) {
+              await executeBatchResultWithPagination(activeTab.limit, offset)
+              return
+            }
+
+            const query = activeTab.lastExecutedQuery ?? activeTab.editorContent.trim()
+            await executeSingleQueryWithPagination(query, activeTab.limit, offset)
           }}
         />
       )}
@@ -229,6 +338,25 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
         open={saveDialogOpen}
         onOpenChange={setSaveDialogOpen}
         onSave={handleSaveQuery}
+      />
+
+      <DangerousQueryDialog
+        open={pendingExecution !== null}
+        queryCount={pendingExecution?.queries.length ?? 0}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingExecution(null)
+          }
+        }}
+        onConfirm={() => {
+          const execution = pendingExecution
+          setPendingExecution(null)
+          if (!execution) {
+            return
+          }
+
+          void executeQueries(execution.queries, execution.limit, execution.offset)
+        }}
       />
     </>
   )

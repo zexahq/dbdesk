@@ -25,9 +25,6 @@ export interface QueryResult {
   offset?: number
 }
 
-/**
- * Result of a single query within a batch execution.
- */
 export interface QueryBatchResult {
   query: string
   result?: QueryResult
@@ -41,7 +38,8 @@ export interface QueryBatchResult {
 export interface BaseAdapter {
   connect(): Promise<void>
   disconnect(): Promise<void>
-  runQuery(queries: string[], options?: RunQueryOptions): Promise<QueryBatchResult[]>
+  runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult>
+  runManyQueries(queries: string[], options?: RunQueryOptions): Promise<QueryBatchResult[]>
 }
 
 /**

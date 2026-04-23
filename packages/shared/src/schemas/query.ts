@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 export const runQueryOptionsSchema = z.object({
   limit: z.number().int().min(1).optional(),
-  offset: z.number().int().min(0).optional()
+  offset: z.number().int().min(0).optional(),
 })
 
 export const queryResultSchema = z.object({
@@ -14,14 +14,14 @@ export const queryResultSchema = z.object({
   executionTime: z.number().optional(),
   totalRowCount: z.number().int().optional(),
   limit: z.number().int().optional(),
-  offset: z.number().int().optional()
+  offset: z.number().int().optional(),
 })
 
 export const queryBatchResultSchema = z.object({
   query: z.string(),
   result: queryResultSchema.optional(),
   error: z.string().optional(),
-  executionTime: z.number()
+  executionTime: z.number(),
 })
 
 export type RunQueryOptionsSchema = z.infer<typeof runQueryOptionsSchema>

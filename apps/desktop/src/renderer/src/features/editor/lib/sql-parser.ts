@@ -1,455 +1,410 @@
-/**
- * SQL parsing utilities for the renderer process.
- *
- * Handles:
- *   - Single-line comments (--)
- *   - Multi-line C-style comments
- *   - Dollar-quoted strings ($tag$...$tag$)
- *   - Standard quoted strings (' ', " ") with escapes
- *
- * Inspired by patterns used in similar database tools to reliably split
- * semicolon-separated statements while respecting PostgreSQL-specific syntax.
- */
-
 import type { EditorQueryBlock } from '@dbdesk/shared/types'
 
-/** Regex that detects the start of a dollar-quoted string: $tag$ */
-const DOLLAR_QUOTE_START_REGEX = /\$(\w*)\$/g
-
-interface DollarQuoteMatch {
-  tag: string
-  index: number
+type StatementSpan = {
+  query: string
+  startLineNumber: number
+  endLineNumber: number
 }
 
-/**
- * Find all dollar-quote starts in a line and return them sorted by position.
- */
-function findDollarQuoteStarts(line: string): DollarQuoteMatch[] {
-  const matches: DollarQuoteMatch[] = []
-  let m: RegExpExecArray | null
-  DOLLAR_QUOTE_START_REGEX.lastIndex = 0
-  while ((m = DOLLAR_QUOTE_START_REGEX.exec(line)) !== null) {
-    matches.push({ tag: m[1], index: m.index })
+const DANGEROUS_SQL_KEYWORDS = ['DELETE', 'UPDATE', 'INSERT', 'DROP', 'TRUNCATE', 'ALTER', 'RENAME']
+const DOLLAR_QUOTE_TAG_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+const readDollarQuoteTag = (text: string, start: number): string | null => {
+  if (text[start] !== '$') {
+    return null
   }
-  return matches
+
+  let index = start + 1
+  while (index < text.length && /[A-Za-z0-9_]/.test(text[index])) {
+    index++
+  }
+
+  if (index >= text.length || text[index] !== '$') {
+    return null
+  }
+
+  const tagBody = text.slice(start + 1, index)
+  if (tagBody !== '' && !DOLLAR_QUOTE_TAG_PATTERN.test(tagBody)) {
+    return null
+  }
+
+  return text.slice(start, index + 1)
 }
 
-/**
- * Split a single logical query string into individual statements by semicolons,
- * while respecting dollar-quoted strings.
- */
-export function splitQueryBySemicolons(query: string): string[] {
-  const statements: string[] = []
-  let current = ''
-  let i = 0
-  const length = query.length
+const extractStatementSpans = (sql: string): StatementSpan[] => {
+  const statements: StatementSpan[] = []
+  let currentQuery = ''
+  let statementStartLine: number | null = null
+  let statementEndLine = 1
+  let lineNumber = 1
+  let lineComment = false
+  let blockCommentDepth = 0
+  let singleQuote = false
+  let doubleQuote = false
+  let dollarQuoteTag: string | null = null
 
-  while (i < length) {
-    const char = query[i]
+  const appendText = (text: string, marksStatement = true) => {
+    if (marksStatement && statementStartLine === null && text.trim()) {
+      statementStartLine = lineNumber
+    }
+
+    currentQuery += text
+
+    if (marksStatement && text.trim()) {
+      statementEndLine = lineNumber
+    }
+  }
+
+  const appendSpace = () => {
+    if (currentQuery.length > 0 && !/\s$/.test(currentQuery)) {
+      currentQuery += ' '
+    }
+  }
+
+  const appendNewline = () => {
+    if (currentQuery.length > 0 && !currentQuery.endsWith('\n')) {
+      currentQuery += '\n'
+    }
+  }
+
+  const flushStatement = () => {
+    const query = currentQuery.trim()
+    if (query && statementStartLine !== null) {
+      statements.push({
+        query,
+        startLineNumber: statementStartLine,
+        endLineNumber: statementEndLine
+      })
+    }
+
+    currentQuery = ''
+    statementStartLine = null
+    statementEndLine = lineNumber
+  }
+
+  for (let index = 0; index < sql.length; index++) {
+    const char = sql[index]
+    const nextChar = sql[index + 1]
+
+    if (lineComment) {
+      if (char === '\n') {
+        lineComment = false
+        appendNewline()
+        lineNumber++
+      }
+      continue
+    }
+
+    if (blockCommentDepth > 0) {
+      if (char === '/' && nextChar === '*') {
+        blockCommentDepth++
+        index++
+        continue
+      }
+
+      if (char === '*' && nextChar === '/') {
+        blockCommentDepth--
+        index++
+        continue
+      }
+
+      if (char === '\n') {
+        appendNewline()
+        lineNumber++
+      }
+      continue
+    }
+
+    if (dollarQuoteTag) {
+      if (sql.startsWith(dollarQuoteTag, index)) {
+        appendText(dollarQuoteTag)
+        index += dollarQuoteTag.length - 1
+        dollarQuoteTag = null
+        continue
+      }
+
+      appendText(char)
+      if (char === '\n') {
+        lineNumber++
+      }
+      continue
+    }
+
+    if (singleQuote) {
+      appendText(char)
+      if (char === "'") {
+        if (nextChar === "'") {
+          appendText(nextChar)
+          index++
+        } else {
+          singleQuote = false
+        }
+      } else if (char === '\n') {
+        lineNumber++
+      }
+      continue
+    }
+
+    if (doubleQuote) {
+      appendText(char)
+      if (char === '"') {
+        if (nextChar === '"') {
+          appendText(nextChar)
+          index++
+        } else {
+          doubleQuote = false
+        }
+      } else if (char === '\n') {
+        lineNumber++
+      }
+      continue
+    }
+
+    if (char === '-' && nextChar === '-') {
+      appendSpace()
+      lineComment = true
+      index++
+      continue
+    }
+
+    if (char === '/' && nextChar === '*') {
+      appendSpace()
+      blockCommentDepth = 1
+      index++
+      continue
+    }
 
     if (char === "'") {
-      // Single-quoted string
-      const end = skipQuotedString(query, i, "'")
-      current += query.slice(i, end)
-      i = end
+      singleQuote = true
+      appendText(char)
       continue
     }
 
     if (char === '"') {
-      // Double-quoted identifier
-      const end = skipQuotedString(query, i, '"')
-      current += query.slice(i, end)
-      i = end
+      doubleQuote = true
+      appendText(char)
       continue
     }
 
     if (char === '$') {
-      // Potential dollar-quoted string
-      const ahead = query.slice(i)
-      const m = /^\$(\w*)\$/.exec(ahead)
-      if (m) {
-        const tag = m[1]
-        const closing = `$${tag}$`
-        const startLen = m[0].length
-        const closeIdx = ahead.indexOf(closing, startLen)
-        if (closeIdx !== -1) {
-          current += query.slice(i, i + closeIdx + closing.length)
-          i += closeIdx + closing.length
-          continue
-        }
+      const tag = readDollarQuoteTag(sql, index)
+      if (tag) {
+        dollarQuoteTag = tag
+        appendText(tag)
+        index += tag.length - 1
+        continue
       }
     }
 
     if (char === ';') {
-      statements.push(current.trim())
-      current = ''
-      i++
+      flushStatement()
       continue
     }
 
-    current += char
-    i++
+    if (char === '\n') {
+      appendNewline()
+      lineNumber++
+      continue
+    }
+
+    if (currentQuery.length === 0 && /\s/.test(char)) {
+      continue
+    }
+
+    appendText(char)
   }
 
-  const last = current.trim()
-  if (last.length > 0) {
-    statements.push(last)
-  }
+  flushStatement()
 
-  return statements.filter((s) => s.length > 0)
+  return statements
 }
 
-/**
- * Skip a quoted string starting at `start` with quote character `quoteChar`.
- * Handles escaped quotes (doubled quotes in SQL).
- * Returns the index just past the closing quote.
- */
-function skipQuotedString(text: string, start: number, quoteChar: string): number {
-  let index = start
-  if (text[index] !== quoteChar) return start
+const expandBlockStartLine = (lines: string[], startLineNumber: number): number => {
+  let index = startLineNumber - 1
 
-  index++ // skip opening quote
-  while (index < text.length) {
-    if (text[index] === quoteChar) {
-      index++
-      if (index >= text.length || text[index] !== quoteChar) {
-        break // End of string/identifier
-      }
-      // Escaped quote, skip both
-      index++
-    } else {
-      index++
+  while (index > 0 && lines[index - 1]?.trim() !== '') {
+    index--
+  }
+
+  return index + 1
+}
+
+const expandBlockEndLine = (lines: string[], endLineNumber: number): number => {
+  let index = endLineNumber - 1
+
+  while (index < lines.length - 1 && lines[index + 1]?.trim() !== '') {
+    index++
+  }
+
+  return index + 1
+}
+
+const hasBlankSeparator = (lines: string[], fromLineNumber: number, toLineNumber: number): boolean => {
+  for (let lineIndex = fromLineNumber; lineIndex < toLineNumber - 1; lineIndex++) {
+    if (lines[lineIndex]?.trim() === '') {
+      return true
     }
   }
-  return index
+
+  return false
 }
 
-/**
- * Parse raw SQL editor content into query blocks.
- *
- * Each block represents one or more semicolon-separated statements that were
- * typed contiguously (i.e. not separated by blank lines or comments).
- * Dollar-quoted strings, multi-line comments, and standard quotes are all
- * respected so semicolons inside them do NOT split statements.
- */
-export function getEditorQueries(sql: string): EditorQueryBlock[] {
-  const lines = sql.split('\n')
+const stripQuotedAndCommentedSql = (sql: string): string => {
+  let sanitized = ''
+  let lineComment = false
+  let blockCommentDepth = 0
+  let singleQuote = false
+  let doubleQuote = false
+  let dollarQuoteTag: string | null = null
+
+  for (let index = 0; index < sql.length; index++) {
+    const char = sql[index]
+    const nextChar = sql[index + 1]
+
+    if (lineComment) {
+      if (char === '\n') {
+        lineComment = false
+        sanitized += '\n'
+      }
+      continue
+    }
+
+    if (blockCommentDepth > 0) {
+      if (char === '/' && nextChar === '*') {
+        blockCommentDepth++
+        index++
+        continue
+      }
+
+      if (char === '*' && nextChar === '/') {
+        blockCommentDepth--
+        index++
+        continue
+      }
+
+      if (char === '\n') {
+        sanitized += '\n'
+      }
+      continue
+    }
+
+    if (dollarQuoteTag) {
+      if (sql.startsWith(dollarQuoteTag, index)) {
+        index += dollarQuoteTag.length - 1
+        dollarQuoteTag = null
+      }
+      continue
+    }
+
+    if (singleQuote) {
+      if (char === "'") {
+        if (nextChar === "'") {
+          index++
+        } else {
+          singleQuote = false
+        }
+      } else if (char === '\n') {
+        sanitized += '\n'
+      }
+      continue
+    }
+
+    if (doubleQuote) {
+      if (char === '"') {
+        if (nextChar === '"') {
+          index++
+        } else {
+          doubleQuote = false
+        }
+      } else if (char === '\n') {
+        sanitized += '\n'
+      }
+      continue
+    }
+
+    if (char === '-' && nextChar === '-') {
+      lineComment = true
+      index++
+      continue
+    }
+
+    if (char === '/' && nextChar === '*') {
+      blockCommentDepth = 1
+      index++
+      continue
+    }
+
+    if (char === "'") {
+      singleQuote = true
+      continue
+    }
+
+    if (char === '"') {
+      doubleQuote = true
+      continue
+    }
+
+    if (char === '$') {
+      const tag = readDollarQuoteTag(sql, index)
+      if (tag) {
+        dollarQuoteTag = tag
+        index += tag.length - 1
+        continue
+      }
+    }
+
+    sanitized += char
+  }
+
+  return sanitized
+}
+
+export const splitQueryBySemicolons = (sql: string): string[] => {
+  return extractStatementSpans(sql).map((statement) => statement.query)
+}
+
+export const getEditorQueries = (sql: string): EditorQueryBlock[] => {
+  const statements = extractStatementSpans(sql)
+  if (statements.length === 0) {
+    return []
+  }
+
+  const lines = sql.split(/\r?\n/)
   const blocks: EditorQueryBlock[] = []
+  let currentQueries = [statements[0].query]
+  let currentStartLine = statements[0].startLineNumber
+  let currentEndLine = statements[0].endLineNumber
 
-  let currentBlockLines: string[] = []
-  let currentBlockStartLine = 1 // 1-based
+  for (let index = 1; index < statements.length; index++) {
+    const statement = statements[index]
+    if (hasBlankSeparator(lines, currentEndLine, statement.startLineNumber)) {
+      blocks.push({
+        startLineNumber: expandBlockStartLine(lines, currentStartLine),
+        endLineNumber: expandBlockEndLine(lines, currentEndLine),
+        queries: currentQueries
+      })
 
-  let insideMultiLineComment = false
-  let insideDollarQuoteTag: string | null = null
-
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    const rawLine = lines[lineIndex]
-    const lineNumber = lineIndex + 1 // 1-based
-
-    // If we are inside a multi-line comment, look for its end
-    if (insideMultiLineComment) {
-      const endIdx = rawLine.indexOf('*/')
-      if (endIdx !== -1) {
-        insideMultiLineComment = false
-        // Append the remainder of the line (after comment end) for further processing
-        const afterComment = rawLine.slice(endIdx + 2)
-        processLine(afterComment, lineNumber)
-      }
-      // If comment didn't end, skip the whole line
+      currentQueries = [statement.query]
+      currentStartLine = statement.startLineNumber
+      currentEndLine = statement.endLineNumber
       continue
     }
 
-    processLine(rawLine, lineNumber)
+    currentQueries.push(statement.query)
+    currentEndLine = statement.endLineNumber
   }
 
-  // Flush any remaining lines into a block
-  flushBlock(lines.length)
+  blocks.push({
+    startLineNumber: expandBlockStartLine(lines, currentStartLine),
+    endLineNumber: expandBlockEndLine(lines, currentEndLine),
+    queries: currentQueries
+  })
 
   return blocks
-
-  function processLine(rawLine: string, lineNumber: number) {
-    let line = rawLine
-
-    // Strip single-line comments, but respect dollar quotes
-    const commentIdx = findUnquotedCommentIndex(line)
-    if (commentIdx !== -1) {
-      line = line.slice(0, commentIdx)
-    }
-
-    // Check for multi-line comment start
-    const mlStart = findUnquotedMultiLineCommentStart(line)
-    if (mlStart !== -1) {
-      const beforeComment = line.slice(0, mlStart)
-      const afterCommentStart = line.slice(mlStart)
-      const endIdx = afterCommentStart.indexOf('*/')
-      if (endIdx !== -1) {
-        // Comment ends on same line
-        line = beforeComment + afterCommentStart.slice(endIdx + 2)
-      } else {
-        // Comment spans multiple lines
-        insideMultiLineComment = true
-        line = beforeComment
-      }
-    }
-
-    // Handle dollar-quoted strings that may span lines
-    if (insideDollarQuoteTag !== null) {
-      const closing = `$${insideDollarQuoteTag}$`
-      const closeIdx = line.indexOf(closing)
-      if (closeIdx !== -1) {
-        // Dollar quote ends on this line
-        currentBlockLines.push(line.slice(0, closeIdx + closing.length))
-        insideDollarQuoteTag = null
-        const remainder = line.slice(closeIdx + closing.length)
-        if (remainder.trim().length > 0) {
-          // Process remainder as a new line segment
-          processSegment(remainder, lineNumber)
-        }
-        return
-      } else {
-        // Still inside dollar quote; append whole line
-        currentBlockLines.push(line)
-        return
-      }
-    }
-
-    processSegment(line, lineNumber)
-  }
-
-  function processSegment(segment: string, lineNumber: number) {
-    let remaining = segment
-
-    while (remaining.length > 0) {
-      // Search for the next event: semicolon, dollar-quote start, or multi-line comment start
-      let nextEventIdx = remaining.length
-      let eventType: 'semi' | 'dollar' | 'mlcomment' | null = null
-      const eventData: { tag?: string } = {}
-
-      // Check for semicolon
-      const semiIdx = findUnquotedSemicolon(remaining)
-      if (semiIdx !== -1 && semiIdx < nextEventIdx) {
-        nextEventIdx = semiIdx
-        eventType = 'semi'
-      }
-
-      // Check for dollar-quote start
-      const dollarStarts = findDollarQuoteStarts(remaining)
-      for (const ds of dollarStarts) {
-        if (ds.index < nextEventIdx) {
-          nextEventIdx = ds.index
-          eventType = 'dollar'
-          eventData.tag = ds.tag
-          break
-        }
-      }
-
-      // Check for multi-line comment start
-      const mlIdx = findUnquotedMultiLineCommentStart(remaining)
-      if (mlIdx !== -1 && mlIdx < nextEventIdx) {
-        nextEventIdx = mlIdx
-        eventType = 'mlcomment'
-      }
-
-      if (eventType === null) {
-        // No more events on this segment
-        if (remaining.trim().length > 0) {
-          if (currentBlockLines.length === 0) {
-            currentBlockStartLine = lineNumber
-          }
-          currentBlockLines.push(remaining)
-        }
-        return
-      }
-
-      // Append text before the event
-      const beforeEvent = remaining.slice(0, nextEventIdx)
-      if (beforeEvent.length > 0 || currentBlockLines.length > 0) {
-        if (currentBlockLines.length === 0) {
-          currentBlockStartLine = lineNumber
-        }
-        currentBlockLines.push(beforeEvent)
-      }
-
-      if (eventType === 'semi') {
-        // Statement terminator
-        flushBlock(lineNumber)
-        remaining = remaining.slice(nextEventIdx + 1)
-      } else if (eventType === 'dollar') {
-        const tag = eventData.tag!
-        const closing = `$${tag}$`
-        const startIdx = nextEventIdx
-        const startLen = closing.length
-        const closeIdx = remaining.indexOf(closing, startIdx + startLen)
-        if (closeIdx !== -1) {
-          // Dollar quote starts and ends within this segment
-          const dqContent = remaining.slice(startIdx, closeIdx + closing.length)
-          if (currentBlockLines.length === 0) {
-            currentBlockStartLine = lineNumber
-          }
-          currentBlockLines.push(dqContent)
-          remaining = remaining.slice(closeIdx + closing.length)
-        } else {
-          // Dollar quote spans multiple lines
-          insideDollarQuoteTag = tag
-          if (currentBlockLines.length === 0) {
-            currentBlockStartLine = lineNumber
-          }
-          currentBlockLines.push(remaining.slice(startIdx))
-          return
-        }
-      } else if (eventType === 'mlcomment') {
-        const afterMl = remaining.slice(nextEventIdx)
-        const endIdx = afterMl.indexOf('*/')
-        if (endIdx !== -1) {
-          // Same-line comment; skip it
-          remaining = afterMl.slice(endIdx + 2)
-        } else {
-          // Multi-line comment starts here
-          insideMultiLineComment = true
-          remaining = remaining.slice(0, nextEventIdx)
-          if (remaining.trim().length > 0) {
-            if (currentBlockLines.length === 0) {
-              currentBlockStartLine = lineNumber
-            }
-            currentBlockLines.push(remaining)
-          }
-          return
-        }
-      }
-    }
-  }
-
-  function flushBlock(endLineNumber: number) {
-    if (currentBlockLines.length === 0) return
-    const blockText = currentBlockLines.join('\n').trim()
-    if (blockText.length === 0) {
-      currentBlockLines = []
-      return
-    }
-    const queries = splitQueryBySemicolons(blockText)
-    if (queries.length > 0) {
-      blocks.push({
-        startLineNumber: currentBlockStartLine,
-        endLineNumber: endLineNumber,
-        queries
-      })
-    }
-    currentBlockLines = []
-  }
-
-  /** Find index of `--` that is not inside a quoted string in `text`. */
-  function findUnquotedCommentIndex(text: string): number {
-    for (let i = 0; i < text.length - 1; i++) {
-      const char = text[i]
-      if (char === "'") {
-        i = skipQuotedString(text, i, "'") - 1
-        continue
-      }
-      if (char === '"') {
-        i = skipQuotedString(text, i, '"') - 1
-        continue
-      }
-      if (char === '$') {
-        const m = /^\$(\w*)\$/.exec(text.slice(i))
-        if (m) {
-          const tag = m[1]
-          const closing = `$${tag}$`
-          const closeIdx = text.indexOf(closing, i + closing.length)
-          if (closeIdx !== -1) {
-            i = closeIdx + closing.length - 1
-            continue
-          }
-        }
-      }
-      if (char === '-' && text[i + 1] === '-') {
-        return i
-      }
-    }
-    return -1
-  }
-
-  /** Find index of `/*` that is not inside a quoted string in `text`. */
-  function findUnquotedMultiLineCommentStart(text: string): number {
-    for (let i = 0; i < text.length - 1; i++) {
-      const char = text[i]
-      if (char === "'") {
-        i = skipQuotedString(text, i, "'") - 1
-        continue
-      }
-      if (char === '"') {
-        i = skipQuotedString(text, i, '"') - 1
-        continue
-      }
-      if (char === '$') {
-        const m = /^\$(\w*)\$/.exec(text.slice(i))
-        if (m) {
-          const tag = m[1]
-          const closing = `$${tag}$`
-          const closeIdx = text.indexOf(closing, i + closing.length)
-          if (closeIdx !== -1) {
-            i = closeIdx + closing.length - 1
-            continue
-          }
-        }
-      }
-      if (char === '/' && text[i + 1] === '*') {
-        return i
-      }
-    }
-    return -1
-  }
-
-  /** Find index of `;` that is not inside a quoted string in `text`. */
-  function findUnquotedSemicolon(text: string): number {
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i]
-      if (char === "'") {
-        i = skipQuotedString(text, i, "'") - 1
-        continue
-      }
-      if (char === '"') {
-        i = skipQuotedString(text, i, '"') - 1
-        continue
-      }
-      if (char === '$') {
-        const m = /^\$(\w*)\$/.exec(text.slice(i))
-        if (m) {
-          const tag = m[1]
-          const closing = `$${tag}$`
-          const closeIdx = text.indexOf(closing, i + closing.length)
-          if (closeIdx !== -1) {
-            i = closeIdx + closing.length - 1
-            continue
-          }
-        }
-      }
-      if (char === ';') {
-        return i
-      }
-    }
-    return -1
-  }
 }
 
-/**
- * Given a list of parsed query blocks and a 1-based line number, return the
- * block that contains the given line, or undefined if none.
- */
-export function findQueryBlockAtLine(
-  blocks: EditorQueryBlock[],
-  lineNumber: number
-): EditorQueryBlock | undefined {
-  return blocks.find(
-    (b) => b.startLineNumber <= lineNumber && b.endLineNumber >= lineNumber
-  )
-}
-
-/**
- * Detect whether a query string contains dangerous / destructive SQL keywords.
- * Used to show a confirmation dialog before execution.
- */
-export function hasDangerousSqlKeywords(query: string): boolean {
-  const dangerous = ['DELETE', 'UPDATE', 'INSERT', 'DROP', 'TRUNCATE', 'ALTER', 'RENAME']
-  const upper = query.toUpperCase()
-  return dangerous.some((kw) => new RegExp(`\\b${kw}\\b`).test(upper))
+export const hasDangerousSqlKeywords = (query: string): boolean => {
+  const sanitizedQuery = stripQuotedAndCommentedSql(query)
+  const dangerousKeywordPattern = new RegExp(`\\b(?:${DANGEROUS_SQL_KEYWORDS.join('|')})\\b`, 'i')
+  return dangerousKeywordPattern.test(sanitizedQuery)
 }
