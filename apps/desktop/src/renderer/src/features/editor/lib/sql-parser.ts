@@ -23,7 +23,7 @@ function skipDollarQuotedString(text: string, start: number): number {
   tagEnd++ // skip closing '$' of opening tag
 
   // Search for the matching closing tag
-  let idx = tagEnd
+  const idx = tagEnd
   while (idx < text.length) {
     const pos = text.indexOf(tag, idx)
     if (pos === -1) return text.length // unterminated — consume rest
