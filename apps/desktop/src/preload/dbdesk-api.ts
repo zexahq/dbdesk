@@ -41,6 +41,13 @@ export const dbdeskAPI = {
       limit: options?.limit,
       offset: options?.offset,
     }),
+  runManyQueries: (connectionId: string, queries: string[], options?: { limit?: number; offset?: number }) =>
+    typedInvoke('query:runMany', {
+      connectionId,
+      queries,
+      limit: options?.limit,
+      offset: options?.offset,
+    }),
 
   // ── Schema ──
   listSchemas: (connectionId: string) =>

@@ -7,6 +7,7 @@ import type {
   DeleteTableRowsResult,
   InsertTableRowOptions,
   InsertTableRowResult,
+  QueryBatchResult,
   QueryResult,
   RunQueryOptions,
   SQLAdapter,
@@ -142,6 +143,34 @@ export class PostgresAdapter implements SQLAdapter {
     const executionTime = performance.now() - start
 
     return this.transformResult(result, executionTime)
+  }
+
+  public async runManyQueries(
+    queries: string[],
+    options?: RunQueryOptions
+  ): Promise<QueryBatchResult[]> {
+    const results: QueryBatchResult[] = []
+
+    for (const query of queries) {
+      const start = performance.now()
+      try {
+        const result = await this.runQuery(query, options)
+        results.push({
+          query,
+          result,
+          executionTime: performance.now() - start
+        })
+      } catch (error) {
+        results.push({
+          query,
+          error: error instanceof Error ? error.message : 'Failed to execute query',
+          executionTime: performance.now() - start
+        })
+        break // Stop on first error
+      }
+    }
+
+    return results
   }
 
   public async listSchemas(): Promise<string[]> {

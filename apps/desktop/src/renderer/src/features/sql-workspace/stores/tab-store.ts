@@ -1,4 +1,5 @@
 import type {
+  QueryBatchResult,
   QueryResult,
   SerializedQueryTab,
   SerializedTab,
@@ -34,6 +35,8 @@ export interface QueryTab extends BaseTab {
   totalRowCount?: number
   lastSavedContent?: string
   queryResults?: QueryResult
+  batchResults?: QueryBatchResult[]
+  activeResultIndex?: number
   isDirty: boolean
 }
 

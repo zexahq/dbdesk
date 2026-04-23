@@ -26,3 +26,22 @@ export function useRunQuery(connectionId: string) {
     }
   })
 }
+
+export function useRunManyQueries(connectionId: string) {
+  return useMutation({
+    mutationFn: ({
+      queries,
+      options
+    }: {
+      queries: string[]
+      options?: { limit?: number; offset?: number }
+    }) => dbdeskClient.runManyQueries(connectionId, queries, options),
+    onSuccess: (_, variables, _ctx, client) => {
+      if (variables.queries.some(isDDLQuery)) {
+        client.client.invalidateQueries({
+          queryKey: ['schemasWithTables', connectionId]
+        })
+      }
+    }
+  })
+}

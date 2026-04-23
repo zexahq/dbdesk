@@ -11,7 +11,8 @@ import { cn } from '@renderer/shared/lib/utils'
 import { useTabCloseHandler } from '@renderer/features/sql-workspace/hooks/use-tab-close-handler'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
-import { useEffect, useState } from 'react'
+import { dbdeskClient } from '@renderer/shared/api/client'
+import { useEffect, useRef, useState } from 'react'
 import { QueryView } from './query-view'
 import { TableView } from './table-view'
 import { TabNavigation } from './table-view/tab-navigation'
@@ -20,6 +21,7 @@ import { WorkspaceTopbar } from './workspace-topbar'
 
 export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const setSchemasWithTables = useSqlWorkspaceStore((s) => s.setSchemasWithTables)
+  const setTableColumns = useSqlWorkspaceStore((s) => s.setTableColumns)
   const activeTab = useTabStore((state) => {
     const { tabs, activeTabId } = state
     return tabs.find((t) => t.id === activeTabId)
@@ -27,6 +29,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
+  const columnsFetchedRef = useRef(false)
 
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
 
@@ -37,6 +40,25 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
       setSchemasWithTables([])
     }
   }, [schemasWithTables, setSchemasWithTables])
+
+  // Eager column fetching for autocompletion
+  useEffect(() => {
+    if (!schemasWithTables || columnsFetchedRef.current) return
+    columnsFetchedRef.current = true
+
+    for (const { schema, tables } of schemasWithTables) {
+      for (const table of tables) {
+        dbdeskClient
+          .introspectTable(profile.id, schema, table)
+          .then((info) => {
+            setTableColumns(schema, table, info.columns)
+          })
+          .catch(() => {
+            // Silently ignore column fetch failures
+          })
+      }
+    }
+  }, [schemasWithTables, profile.id, setTableColumns])
 
   return (
     <>

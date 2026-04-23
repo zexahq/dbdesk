@@ -16,6 +16,7 @@ interface QueryBottombarProps {
   limit: number
   offset: number
   isPaginationEnabled?: boolean
+  batchInfo?: { current: number; total: number }
   onLimitChange: (limit: number) => void
   onOffsetChange: (offset: number) => void
 }
@@ -26,6 +27,7 @@ export const QueryBottombar = ({
   limit,
   offset,
   isPaginationEnabled = true,
+  batchInfo,
   onLimitChange,
   onOffsetChange
 }: QueryBottombarProps) => {
@@ -136,6 +138,14 @@ export const QueryBottombar = ({
         )}
 
         <div className="flex items-center gap-2">
+          {batchInfo && (
+            <>
+              <span className="text-sm text-muted-foreground">
+                Query {batchInfo.current} of {batchInfo.total}
+              </span>
+              <span className="text-sm text-muted-foreground">•</span>
+            </>
+          )}
           <span className="text-sm text-muted-foreground">{totalRows} records</span>
           {executionTime !== undefined && (
             <>

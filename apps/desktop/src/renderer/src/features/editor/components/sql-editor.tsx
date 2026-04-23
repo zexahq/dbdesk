@@ -6,15 +6,24 @@ import { KeyCode, KeyMod } from 'monaco-editor'
 import { LanguageIdEnum } from 'monaco-sql-languages'
 import { useEffect, useRef, useState } from 'react'
 
+const LANGUAGE_MAP: Record<SQLDatabaseType, LanguageIdEnum> = {
+  postgres: LanguageIdEnum.PG,
+}
+
+function getLanguageId(type: SQLDatabaseType): LanguageIdEnum {
+  return LANGUAGE_MAP[type] ?? LanguageIdEnum.PG
+}
+
 interface SqlEditorProps {
   tabId: string
   value: string
   onChange: (value: string) => void
   language: SQLDatabaseType
   onExecute?: () => void
+  onEditorMount?: (editorInstance: editor.IStandaloneCodeEditor) => void
 }
 
-export default function SqlEditor({ value, onChange, onExecute }: SqlEditorProps) {
+export default function SqlEditor({ value, onChange, language, onExecute, onEditorMount }: SqlEditorProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
@@ -22,7 +31,7 @@ export default function SqlEditor({ value, onChange, onExecute }: SqlEditorProps
   const [height, setHeight] = useState('400px')
 
   const editorTheme = theme === 'dark' ? 'vs-dark' : 'vs'
-  const languageId = LanguageIdEnum.PG
+  const languageId = getLanguageId(language)
 
   // Keep onExecute ref updated
   useEffect(() => {
@@ -59,6 +68,8 @@ export default function SqlEditor({ value, onChange, onExecute }: SqlEditorProps
         onExecuteRef.current?.()
       }
     })
+
+    onEditorMount?.(editorInstance)
   }
 
   return (

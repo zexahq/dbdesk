@@ -26,6 +26,24 @@ export const skipQuotedString = (text: string, start: number, quoteChar: string)
   return index
 }
 
+export const skipDollarQuotedString = (text: string, start: number): number => {
+  let tagEnd = start + 1
+  while (tagEnd < text.length && text[tagEnd] !== '$') {
+    if (!/[a-zA-Z0-9_]/.test(text[tagEnd])) {
+      return start + 1 // not a valid dollar-quote tag
+    }
+    tagEnd++
+  }
+  if (tagEnd >= text.length) return start + 1
+
+  const tag = text.slice(start, tagEnd + 1)
+  tagEnd++
+
+  const pos = text.indexOf(tag, tagEnd)
+  if (pos === -1) return text.length
+  return pos + tag.length
+}
+
 export const skipParenthesizedSection = (text: string, start: number): number => {
   let index = start
   if (text[index] !== '(') return start
@@ -39,6 +57,8 @@ export const skipParenthesizedSection = (text: string, start: number): number =>
       index = skipQuotedString(text, index, "'")
     } else if (char === '"') {
       index = skipQuotedString(text, index, '"')
+    } else if (char === '$') {
+      index = skipDollarQuotedString(text, index)
     } else if (char === '(') {
       depth++
       index++
@@ -63,6 +83,8 @@ export const hasAdditionalStatements = (query: string): boolean => {
       index = skipQuotedString(query, index, "'")
     } else if (char === '"') {
       index = skipQuotedString(query, index, '"')
+    } else if (char === '$') {
+      index = skipDollarQuotedString(query, index)
     } else if (char === '(') {
       index = skipParenthesizedSection(query, index)
     } else if (char === ';') {

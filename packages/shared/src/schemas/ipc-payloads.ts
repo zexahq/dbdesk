@@ -30,6 +30,12 @@ export const queryInputSchema = connectionIdentifierSchema.extend({
   offset: z.number().int().min(0).default(0).optional(),
 })
 
+export const queryManyInputSchema = connectionIdentifierSchema.extend({
+  queries: z.array(z.string().min(1)).min(1, 'queries must be a non-empty array'),
+  limit: z.number().int().min(1).default(50).optional(),
+  offset: z.number().int().min(0).default(0).optional(),
+})
+
 // ── Table Data Input ──
 
 export const tableDataInputSchema = schemaIntrospectInputSchema.extend({

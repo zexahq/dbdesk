@@ -9,6 +9,7 @@ import type {
   DeleteTableRowsResult,
   ExportTableResult,
   InsertTableRowResult,
+  QueryBatchResult,
   QueryResult,
   QueryResultRow,
   SavedQuery,
@@ -70,6 +71,10 @@ export interface IpcContract {
   'query:run': {
     payload: { connectionId: string; query: string; limit?: number; offset?: number }
     result: QueryResult
+  }
+  'query:runMany': {
+    payload: { connectionId: string; queries: string[]; limit?: number; offset?: number }
+    result: QueryBatchResult[]
   }
 
   // -- Schema --

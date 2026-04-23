@@ -26,12 +26,23 @@ export interface QueryResult {
 }
 
 /**
+ * Result for a single statement in a batch execution
+ */
+export interface QueryBatchResult {
+  query: string
+  result?: QueryResult
+  error?: string
+  executionTime: number
+}
+
+/**
  * Base adapter interface with common methods for all database adapters
  */
 export interface BaseAdapter {
   connect(): Promise<void>
   disconnect(): Promise<void>
   runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult>
+  runManyQueries(queries: string[], options?: RunQueryOptions): Promise<QueryBatchResult[]>
 }
 
 /**

@@ -1,6 +1,16 @@
 import type { BaseAdapter, QueryResultRow } from './adapter'
 
 /**
+ * Represents a contiguous block of SQL from the editor,
+ * tracking which lines it spans and the individual statements within it.
+ */
+export interface EditorQueryBlock {
+  startLineNumber: number
+  endLineNumber: number
+  queries: string[]
+}
+
+/**
  * PostgreSQL SSL mode
  */
 export type PostgreSQLSslMode =
