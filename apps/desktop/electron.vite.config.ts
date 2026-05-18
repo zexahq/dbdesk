@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'electron-vite'
 import { config as loadDotenv } from 'dotenv'
 import { resolve } from 'path'
+import { cpSync } from 'fs'
 import type { Plugin } from 'vite'
 
 // Load .env files at config time so `define` replacements work.
@@ -92,10 +93,21 @@ export default defineConfig({
         '@common': resolve('../../packages/shared/src')
       }
     },
+    plugins: [
+      {
+        name: 'copy-drizzle-migrations',
+        writeBundle(options) {
+          const outDir = options.dir || resolve('out/main')
+          cpSync(resolve('../../packages/db/drizzle'), resolve(outDir, 'drizzle'), {
+            recursive: true,
+          })
+        },
+      },
+    ],
     build: {
       externalizeDeps: false,
       rollupOptions: {
-        external: ['pg-native'],
+        external: ['pg-native', 'better-sqlite3'],
       },
     },
   },

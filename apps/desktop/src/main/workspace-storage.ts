@@ -1,98 +1,69 @@
-import type { ConnectionWorkspace, WorkspaceStorage } from '@dbdesk/shared/types'
-import { app } from 'electron'
-import { promises as fs } from 'node:fs'
-import { dirname, join } from 'node:path'
-
-const WORKSPACE_FILENAME = 'workspaces.json'
-
-type StoredWorkspace = Omit<ConnectionWorkspace, 'lastUpdated'> & {
-  lastUpdated: string
-}
-
-type StoredWorkspaceStorage = {
-  [connectionId: string]: StoredWorkspace
-}
-
-const getWorkspaceStoragePath = (): string => join(app.getPath('userData'), WORKSPACE_FILENAME)
-
-const serializeWorkspace = (workspace: ConnectionWorkspace): StoredWorkspace => ({
-  ...workspace,
-  lastUpdated: workspace.lastUpdated.toISOString()
-})
-
-const deserializeWorkspace = (stored: StoredWorkspace): ConnectionWorkspace => ({
-  ...stored,
-  lastUpdated: new Date(stored.lastUpdated)
-})
-
-const readWorkspacesFromDisk = async (): Promise<StoredWorkspaceStorage> => {
-  const filePath = getWorkspaceStoragePath()
-
-  try {
-    const content = await fs.readFile(filePath, 'utf8')
-    if (content.trim() === '') {
-      return {}
-    }
-
-    return JSON.parse(content) as StoredWorkspaceStorage
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return {}
-    }
-
-    if (error instanceof SyntaxError) {
-      console.warn(`Workspace storage file is corrupted, resetting: ${error.message}`)
-      return {}
-    }
-
-    throw error
-  }
-}
-
-const writeWorkspacesToDisk = async (workspaces: StoredWorkspaceStorage): Promise<void> => {
-  const filePath = getWorkspaceStoragePath()
-  await fs.mkdir(dirname(filePath), { recursive: true }).catch(() => {})
-  await fs.writeFile(filePath, JSON.stringify(workspaces, null, 2), 'utf8')
-}
+import type { ConnectionWorkspace, SerializedTab, WorkspaceStorage } from '@dbdesk/shared/types'
+import { eq, getDb, connectionProfiles } from '@dbdesk/db'
 
 export const loadWorkspace = async (
   connectionId: string
 ): Promise<ConnectionWorkspace | undefined> => {
-  const workspaces = await readWorkspacesFromDisk()
-  const storedWorkspace = workspaces[connectionId]
+  const row = getDb()
+    .select()
+    .from(connectionProfiles)
+    .where(eq(connectionProfiles.id, connectionId))
+    .get()
 
-  if (!storedWorkspace) {
-    return undefined
+  if (!row || !row.tabsJson) return undefined
+
+  let tabs: SerializedTab[] = []
+  try {
+    tabs = JSON.parse(row.tabsJson) as SerializedTab[]
+  } catch {
+    console.warn(`[workspace] Failed to parse tabs for connection ${connectionId}`)
   }
 
-  return deserializeWorkspace(storedWorkspace)
+  return {
+    connectionId: row.id,
+    tabs,
+    activeTabId: row.activeTabId ?? null
+  }
 }
 
 export const saveWorkspace = async (workspace: ConnectionWorkspace): Promise<void> => {
-  const workspaces = await readWorkspacesFromDisk()
-  const serializedWorkspace = serializeWorkspace(workspace)
-
-  workspaces[workspace.connectionId] = serializedWorkspace
-
-  await writeWorkspacesToDisk(workspaces)
+  getDb()
+    .update(connectionProfiles)
+    .set({
+      tabsJson: JSON.stringify(workspace.tabs),
+      activeTabId: workspace.activeTabId
+    })
+    .where(eq(connectionProfiles.id, workspace.connectionId))
+    .run()
 }
 
 export const deleteWorkspace = async (connectionId: string): Promise<void> => {
-  const workspaces = await readWorkspacesFromDisk()
-
-  if (workspaces[connectionId]) {
-    delete workspaces[connectionId]
-    await writeWorkspacesToDisk(workspaces)
-  }
+  getDb()
+    .update(connectionProfiles)
+    .set({ tabsJson: null, activeTabId: null })
+    .where(eq(connectionProfiles.id, connectionId))
+    .run()
 }
 
 export const loadAllWorkspaces = async (): Promise<WorkspaceStorage> => {
-  const storedWorkspaces = await readWorkspacesFromDisk()
-  const workspaces: WorkspaceStorage = {}
+  const rows = getDb().select().from(connectionProfiles).all()
+  const result: WorkspaceStorage = {}
 
-  for (const [connectionId, storedWorkspace] of Object.entries(storedWorkspaces)) {
-    workspaces[connectionId] = deserializeWorkspace(storedWorkspace)
+  for (const row of rows) {
+    if (row.tabsJson) {
+      let tabs: SerializedTab[] = []
+      try {
+        tabs = JSON.parse(row.tabsJson) as SerializedTab[]
+      } catch {
+        console.warn(`[workspace] Failed to parse tabs for connection ${row.id}`)
+      }
+      result[row.id] = {
+        connectionId: row.id,
+        tabs,
+        activeTabId: row.activeTabId ?? null
+      }
+    }
   }
 
-  return workspaces
+  return result
 }

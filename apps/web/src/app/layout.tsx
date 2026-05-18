@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans, Viaoda_Libre } from 'next/font/google'
+import { JetBrains_Mono, Plus_Jakarta_Sans, Viaoda_Libre } from 'next/font/google'
 import type { ReactNode } from 'react'
 import { RootProvider } from 'fumadocs-ui/provider/next'
 
@@ -19,6 +19,11 @@ const jakarta = Plus_Jakarta_Sans({
 const playfair = Viaoda_Libre({
   weight: ['400'],
   variable: '--font-playfair'
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono'
 })
 
 // Site metadata
@@ -119,7 +124,7 @@ export default function Layout({ children }: RootLayoutProps) {
   return (
     <html
       lang="en"
-      className={`${jakarta.variable} ${playfair.variable} dark`}
+      className={`${jakarta.variable} ${playfair.variable} ${jetbrainsMono.variable} dark`}
       suppressHydrationWarning
     >
       <head>

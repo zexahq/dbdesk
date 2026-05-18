@@ -11,7 +11,9 @@ import {
 import type { QueryResultRow } from '@dbdesk/shared/types'
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@renderer/components/ui/table'
 import { useDataTable } from '@renderer/features/data-table/hooks/use-data-table'
+import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { cn } from '@renderer/shared/lib/utils'
+import { useEffect } from 'react'
 import { ColumnResizer } from './column-resizer'
 import { DataTableCell } from './data-table-cell'
 import { DataTableKeyboardShortcuts } from './data-table-keyboard-shortcuts'
@@ -24,6 +26,7 @@ interface DataTableProps<TData, TValue> {
   rowSelection: RowSelectionState
   onRowSelectionChange: OnChangeFn<RowSelectionState>
   sortRules?: TableSortRule[]
+  tabId?: string
 }
 
 export function DataTable<TData, TValue>({
@@ -33,8 +36,10 @@ export function DataTable<TData, TValue>({
   onTableInteract,
   rowSelection,
   onRowSelectionChange,
-  sortRules
+  sortRules,
+  tabId
 }: DataTableProps<TData, TValue>) {
+  const setTabScrollPosition = useTabStore((s) => s.setTabScrollPosition)
   const {
     table,
     tableContainerRef,
@@ -58,6 +63,45 @@ export function DataTable<TData, TValue>({
   const rowModel = table.getRowModel()
   const rows = rowModel.rows
   const hasRows = rows.length > 0
+
+  useEffect(() => {
+    if (!tabId) {
+      return
+    }
+
+    const container = tableContainerRef.current
+    const savedPosition = useTabStore.getState().tabScrollPositions[tabId]
+    if (!container || !savedPosition) {
+      return
+    }
+
+    container.scrollLeft = savedPosition.left
+    container.scrollTop = savedPosition.top
+  }, [tabId, tableContainerRef, columns.length, data.length])
+
+  useEffect(() => {
+    if (!tabId) {
+      return
+    }
+
+    const container = tableContainerRef.current
+    if (!container) {
+      return
+    }
+
+    const handleScroll = () => {
+      setTabScrollPosition(tabId, {
+        left: container.scrollLeft,
+        top: container.scrollTop
+      })
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [tabId, tableContainerRef, setTabScrollPosition])
 
   return (
     <>

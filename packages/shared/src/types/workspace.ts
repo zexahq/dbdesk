@@ -28,13 +28,10 @@ export interface SavedQuery {
   id: string
   name: string
   content: string
-  createdAt: Date
-  updatedAt: Date
 }
 
 export interface ConnectionWorkspace {
   connectionId: string
-  lastUpdated: Date
   tabs: SerializedTab[]
   activeTabId: string | null
 }

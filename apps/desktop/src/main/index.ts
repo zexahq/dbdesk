@@ -5,6 +5,8 @@ import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import './adapters'
 import { connectionManager } from './connectionManager'
+import { initDatabase, closeDatabase, runMigrations } from '@dbdesk/db'
+import { runLegacyImportIfNeeded } from './db/legacy-import'
 import { registerAllIpcHandlers } from './ipc'
 import { authManager } from './lib/auth-manager'
 import { initDashboardStorage, persistAllDashboards } from './dashboard-yaml-storage'
@@ -16,25 +18,25 @@ import { startDevDeepLinkServer, stopDevDeepLinkServer } from './lib/dev-deep-li
 let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
-   // Create the browser window.
-   mainWindow = new BrowserWindow({
-      width: 900,
-      height: 670,
-      show: false,
-      frame: false,
-      autoHideMenuBar: true,
-      ...(process.platform === 'linux' ? { icon } : {}),
-      webPreferences: {
-        preload: join(__dirname, '../preload/index.js'),
-        sandbox: false,
-        contextIsolation: true,
-        nodeIntegration: false
-      }
-    })
+  // Create the browser window.
+  mainWindow = new BrowserWindow({
+    width: 900,
+    height: 670,
+    show: false,
+    frame: false,
+    autoHideMenuBar: true,
+    ...(process.platform === 'linux' ? { icon } : {}),
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  })
 
-    mainWindow.on('ready-to-show', () => {
-      mainWindow?.show()
-    })
+  mainWindow.on('ready-to-show', () => {
+    mainWindow?.show()
+  })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -56,7 +58,7 @@ function createWindow() {
   }
 
   return mainWindow
-  }
+}
 
 // Register ALL custom schemes in a single call — Electron only allows
 // protocol.registerSchemesAsPrivileged to be called once before app ready.
@@ -136,6 +138,36 @@ const requestWorkspaceFlush = async (): Promise<void> => {
     workspaceFlushPromise = null
   }
 }
+
+// Override userData path to use a clean name instead of the scoped package name
+const getUserDataPath = (): string | undefined => {
+  if (process.platform === 'linux') {
+    const xdgConfig = process.env.XDG_CONFIG_HOME || join(process.env.HOME || '', '.config')
+    return join(xdgConfig, 'dbdesk')
+  }
+  if (process.platform === 'darwin') {
+    return join(process.env.HOME || '', 'Library', 'Application Support', 'dbdesk')
+  }
+  if (process.platform === 'win32') {
+    return join(process.env.APPDATA || '', 'dbdesk')
+  }
+  return undefined
+}
+
+// Capture the default userData path before overriding so the legacy import
+// can read JSON files from the old location when the path changes.
+const previousUserDataPath = app.getPath('userData')
+
+const userDataPath = getUserDataPath()
+if (userDataPath) {
+  app.setPath('userData', userDataPath)
+}
+
+// Initialize the database early (before authManager.setup() above may
+// access auth storage) so that getSqlite()/getDb() are available immediately.
+initDatabase(join(app.getPath('userData'), 'dbdesk.sqlite'))
+runMigrations(join(__dirname, 'drizzle'))
+runLegacyImportIfNeeded(previousUserDataPath)
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -305,6 +337,7 @@ app.on('before-quit', (event) => {
     }
 
     await connectionManager.closeAll()
+    closeDatabase()
     stopDevDeepLinkServer()
 
     // Remove this handler to avoid recursion and quit again

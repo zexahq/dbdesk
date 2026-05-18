@@ -69,6 +69,7 @@ export const SqlTable = ({
           rowSelection={rowSelection}
           onRowSelectionChange={onRowSelectionChange}
           sortRules={sortRules}
+          tabId={tabId}
         />
       </div>
     </div>
