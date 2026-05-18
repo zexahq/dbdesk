@@ -21,19 +21,57 @@ interface UseWidgetDataOptions {
 }
 
 /**
- * Check if a query is a SELECT/projection query that returns data
+ * Check if a query is a SELECT/projection query that returns data.
+ *
+ * Note: this is a client-side UX guard only — the main process is the
+ * authoritative boundary for query execution. CTEs (`WITH ...`) are
+ * inspected because PostgreSQL allows data-modifying CTEs like
+ * `WITH x AS (...) DELETE FROM ...`.
  */
 function isSelectQuery(query: string): boolean {
-  const normalized = query.trim().toLowerCase()
-  // Allow SELECT, WITH (CTE), SHOW, DESCRIBE, EXPLAIN queries
-  return (
-    normalized.startsWith('select') ||
-    normalized.startsWith('with') ||
-    normalized.startsWith('show') ||
-    normalized.startsWith('describe') ||
-    normalized.startsWith('explain') ||
-    normalized.startsWith('table') // PostgreSQL TABLE command
-  )
+  // Strip line + block comments and leading whitespace so leading
+  // comments don't fool the prefix check.
+  const stripped = query
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/--.*$/gm, '')
+    .trim()
+    .toLowerCase()
+
+  if (
+    stripped.startsWith('select') ||
+    stripped.startsWith('show') ||
+    stripped.startsWith('describe') ||
+    stripped.startsWith('explain') ||
+    stripped.startsWith('table')
+  ) {
+    return true
+  }
+
+  // CTEs are only safe if they terminate in SELECT — reject WITH that
+  // contains INSERT/UPDATE/DELETE/MERGE/TRUNCATE as the final statement.
+  if (stripped.startsWith('with')) {
+    return !/\b(insert|update|delete|merge|truncate|drop|alter|create)\b\s+(into\s+|from\s+|table\s+)?[a-z_"]/i.test(
+      stripped
+    )
+  }
+
+  return false
+}
+
+/**
+ * Stable, cheap hash for a SQL string so the TanStack Query cache key
+ * doesn't embed the entire query text (which bloats devtools and
+ * comparisons for large widget queries).
+ */
+function hashQueryContent(content: string | null): string {
+  if (!content) return ''
+  // FNV-1a 32-bit
+  let h = 0x811c9dc5
+  for (let i = 0; i < content.length; i++) {
+    h ^= content.charCodeAt(i)
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0
+  }
+  return `${content.length}:${h.toString(16)}`
 }
 
 export function useWidgetData(
@@ -75,10 +113,14 @@ export function useWidgetData(
   // Determine if we can run the widget query
   const canRunQuery = externalEnabled && !!connectionId && !!resolvedQueryContent
 
+  // Hash the query content so the cache key stays small even for large SQL.
+  const queryHash = useMemo(() => hashQueryContent(resolvedQueryContent), [resolvedQueryContent])
+
   const queryResult = useQuery({
-    // Use widget.id in key to ensure each widget has its own cache entry
-    // Include resolvedQueryContent hash to re-run when query changes
-    queryKey: ['widget-data', widget.id, connectionId, resolvedQueryContent, limit],
+    // Use widget.id in key to ensure each widget has its own cache entry.
+    // Include a hash of the query content to invalidate when the SQL changes
+    // without bloating the cache key with the full query text.
+    queryKey: ['widget-data', widget.id, connectionId, queryHash, limit],
     queryFn: async () => {
       if (!resolvedQueryContent) {
         return null
@@ -87,7 +129,7 @@ export function useWidgetData(
       // Validate that it's a SELECT query
       if (!isSelectQuery(resolvedQueryContent)) {
         throw new Error(
-          'Only SELECT queries are allowed for widgets. INSERT, UPDATE, DELETE, and other data modification queries cannot be used.'
+          'Only read-only queries (SELECT / read-only CTE / SHOW / EXPLAIN) are allowed for widgets. Data-modifying queries cannot be used.'
         )
       }
 

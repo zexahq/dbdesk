@@ -82,6 +82,9 @@ const DotGrid: React.FC<DotGridProps> = ({
   const baseRgb = useMemo(() => hexToRgb(baseColor), [baseColor]);
   const activeRgb = useMemo(() => hexToRgb(activeColor), [activeColor]);
 
+  // Stable handle used by event listeners to wake the draw loop when needed.
+  const requestDrawRef = useRef<() => void>(() => {});
+
   const circlePath = useMemo(() => {
     if (typeof window === 'undefined' || !window.Path2D) return null;
 
@@ -132,10 +135,11 @@ const DotGrid: React.FC<DotGridProps> = ({
   useEffect(() => {
     if (!circlePath) return;
 
-    let rafId: number;
+    let rafId: number | null = null;
     const proxSq = proximity * proximity;
 
     const draw = () => {
+      rafId = null;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
@@ -143,6 +147,7 @@ const DotGrid: React.FC<DotGridProps> = ({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const { x: px, y: py } = pointerRef.current;
+      let needsAnotherFrame = false;
 
       for (const dot of dotsRef.current) {
         const ox = dot.cx + dot.xOffset;
@@ -161,6 +166,11 @@ const DotGrid: React.FC<DotGridProps> = ({
           style = `rgb(${r},${g},${b})`;
         }
 
+        // Keep animating while GSAP is still tweening this dot's offsets.
+        if (dot.xOffset !== 0 || dot.yOffset !== 0 || dot._inertiaApplied) {
+          needsAnotherFrame = true;
+        }
+
         ctx.save();
         ctx.translate(ox, oy);
         ctx.fillStyle = style;
@@ -168,25 +178,43 @@ const DotGrid: React.FC<DotGridProps> = ({
         ctx.restore();
       }
 
+      if (needsAnotherFrame) {
+        rafId = requestAnimationFrame(draw);
+      }
+    };
+
+    const requestDraw = () => {
+      if (rafId !== null) return;
       rafId = requestAnimationFrame(draw);
     };
 
-    draw();
-    return () => cancelAnimationFrame(rafId);
+    requestDrawRef.current = requestDraw;
+    // Paint initial frame
+    requestDraw();
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      requestDrawRef.current = () => {};
+    };
   }, [proximity, baseColor, activeRgb, baseRgb, circlePath]);
 
   useEffect(() => {
     buildGrid();
+    requestDrawRef.current();
     let ro: ResizeObserver | null = null;
+    const handleResize = () => {
+      buildGrid();
+      requestDrawRef.current();
+    };
     if ('ResizeObserver' in window) {
-      ro = new ResizeObserver(buildGrid);
+      ro = new ResizeObserver(handleResize);
       wrapperRef.current && ro.observe(wrapperRef.current);
     } else {
-      (window as Window).addEventListener('resize', buildGrid);
+      (window as Window).addEventListener('resize', handleResize);
     }
     return () => {
       if (ro) ro.disconnect();
-      else window.removeEventListener('resize', buildGrid);
+      else window.removeEventListener('resize', handleResize);
     };
   }, [buildGrid]);
 
@@ -217,6 +245,9 @@ const DotGrid: React.FC<DotGridProps> = ({
       pr.x = e.clientX - rect.left;
       pr.y = e.clientY - rect.top;
 
+      // Pointer moved — wake the draw loop so proximity highlights update.
+      requestDrawRef.current();
+
       for (const dot of dotsRef.current) {
         const dist = Math.hypot(dot.cx - pr.x, dot.cy - pr.y);
         if (speed > speedTrigger && dist < proximity && !dot._inertiaApplied) {
@@ -244,6 +275,7 @@ const DotGrid: React.FC<DotGridProps> = ({
       const rect = canvasRef.current!.getBoundingClientRect();
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
+      requestDrawRef.current();
       for (const dot of dotsRef.current) {
         const dist = Math.hypot(dot.cx - cx, dot.cy - cy);
         if (dist < shockRadius && !dot._inertiaApplied) {

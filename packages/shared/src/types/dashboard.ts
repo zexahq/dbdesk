@@ -11,7 +11,7 @@ export type WidgetType =
   | 'lineChart'
   | 'pieChart'
   | 'scatterChart'
-  | 'markdown'
+  | 'savedQueries'
 
 // Base position/sizing for react-grid-layout
 export interface WidgetPosition {
@@ -64,8 +64,8 @@ export interface PieChartWidgetSettings {
   colors?: string[]
 }
 
-// Markdown/Saved Queries widget specific settings
-export interface MarkdownWidgetSettings {
+// Saved Queries widget specific settings
+export interface SavedQueriesWidgetSettings {
   content: string
 }
 
@@ -85,7 +85,7 @@ export type WidgetSettings =
   | ChartWidgetSettings
   | PieChartWidgetSettings
   | ScatterWidgetSettings
-  | MarkdownWidgetSettings
+  | SavedQueriesWidgetSettings
 
 // Base widget interface
 export interface Widget<T extends WidgetSettings = WidgetSettings> {

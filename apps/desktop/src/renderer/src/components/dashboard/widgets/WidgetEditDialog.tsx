@@ -343,8 +343,8 @@ function WidgetTypeSettings({ type, settings, columns, numericColumns, onUpdate,
       return <ScatterChartSettings settings={settings} numericColumns={numericColumns} onUpdate={onUpdate} inputClassName={inputClassName} disabled={disabled} />
     case 'pieChart':
       return <PieChartSettings settings={settings} columns={columns} onUpdate={onUpdate} inputClassName={inputClassName} disabled={disabled} />
-    case 'markdown':
-      return <MarkdownSettings settings={settings} onUpdate={onUpdate} />
+    case 'savedQueries':
+      return <SavedQueriesSettings settings={settings} onUpdate={onUpdate} />
     default:
       return null
   }
@@ -725,8 +725,8 @@ function PieChartSettings({
   )
 }
 
-// Markdown Settings
-function MarkdownSettings({
+// Saved Queries Settings
+function SavedQueriesSettings({
   settings,
   onUpdate
 }: {
@@ -736,12 +736,12 @@ function MarkdownSettings({
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Label>Content</Label>
+        <Label>Description</Label>
         <textarea
           className="w-full min-h-32 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-foreground/50"
           value={(settings.content as string) ?? ''}
           onChange={(e) => onUpdate('content', e.target.value)}
-          placeholder="Enter markdown content..."
+          placeholder="Optional description for this saved queries widget..."
         />
       </div>
     </div>

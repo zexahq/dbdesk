@@ -15,6 +15,7 @@ import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import { dirname, join } from 'node:path'
 import * as yaml from 'js-yaml'
+import { dashboardConfigSchema } from '@dbdesk/shared/schemas'
 import type { DashboardConfig, Widget, WidgetSettings } from '@common/types'
 
 // ============================================================================
@@ -115,16 +116,31 @@ const serializeDashboard = (dashboard: DashboardConfig): StoredDashboard => ({
     : dashboard.updatedAt
 })
 
-const deserializeDashboard = (stored: StoredDashboard): DashboardConfig => ({
-  dashboardId: stored.dashboardId,
-  connectionId: stored.connectionId,
-  name: stored.name,
-  description: stored.description,
-  layout: stored.layout,
-  widgets: stored.widgets as Widget[],
-  createdAt: new Date(stored.createdAt),
-  updatedAt: new Date(stored.updatedAt)
-})
+const deserializeDashboard = (stored: StoredDashboard): DashboardConfig => {
+  // Runtime-validate the on-disk shape. Disk-corrupted entries throw
+  // here and are skipped by the caller, rather than crashing the renderer.
+  const parsed = dashboardConfigSchema.parse({
+    dashboardId: stored.dashboardId,
+    connectionId: stored.connectionId,
+    name: stored.name,
+    description: stored.description,
+    layout: stored.layout,
+    widgets: stored.widgets,
+    createdAt: stored.createdAt,
+    updatedAt: stored.updatedAt
+  })
+
+  return {
+    dashboardId: parsed.dashboardId,
+    connectionId: parsed.connectionId,
+    name: parsed.name,
+    description: parsed.description,
+    layout: parsed.layout,
+    widgets: parsed.widgets as Widget[],
+    createdAt: new Date(parsed.createdAt),
+    updatedAt: new Date(parsed.updatedAt)
+  } satisfies DashboardConfig
+}
 
 // ============================================================================
 // FILE OPERATIONS
@@ -142,7 +158,9 @@ const readFromDisk = async (): Promise<DashboardsYamlFile> => {
       return createEmptyFile()
     }
 
-    const parsed = yaml.load(content) as DashboardsYamlFile
+    // Use JSON_SCHEMA to disallow custom tags (e.g. !!js/function) that
+    // could execute arbitrary JavaScript when parsing untrusted YAML.
+    const parsed = yaml.load(content, { schema: yaml.JSON_SCHEMA }) as DashboardsYamlFile
 
     // Validate structure
     if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.dashboards)) {
@@ -212,7 +230,7 @@ const tryRecoverFromBackup = async (): Promise<DashboardsYamlFile> => {
 
   try {
     const content = await fs.readFile(backupPath, 'utf8')
-    const parsed = yaml.load(content) as DashboardsYamlFile
+    const parsed = yaml.load(content, { schema: yaml.JSON_SCHEMA }) as DashboardsYamlFile
 
     if (parsed && Array.isArray(parsed.dashboards)) {
       console.log('Successfully recovered from backup')

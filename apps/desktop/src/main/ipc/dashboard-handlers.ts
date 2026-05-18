@@ -1,5 +1,4 @@
 import type { DashboardConfig } from '@dbdesk/shared/types'
-import { ipcMain } from 'electron'
 import {
   deleteDashboard,
   exportDashboards,
@@ -10,90 +9,43 @@ import {
   persistDashboard,
   saveDashboard
 } from '../dashboard-yaml-storage'
-import { sanitizeError, ValidationError } from '../utils/errors'
-
-function safeHandle<Payload = unknown, Result = unknown>(
-  channel: string,
-  handler: (payload: Payload) => Promise<Result> | Result
-) {
-  ipcMain.handle(channel, async (_event, payload: Payload) => {
-    try {
-      return await handler(payload)
-    } catch (error) {
-      console.error(`[IPC:${channel}]`, error)
-      const sanitized = sanitizeError(error)
-      const err = new Error(sanitized.message)
-      err.name = sanitized.name
-      throw err
-    }
-  })
-}
+import { typedHandle } from './typed-handle'
 
 export function registerDashboardHandlers() {
-  safeHandle('dashboards:load', async ({ connectionId }: { connectionId: string }) => {
-    if (!connectionId) throw new ValidationError('connectionId is required')
+  typedHandle('dashboards:load', async ({ connectionId }) => {
     return loadDashboards(connectionId)
   })
 
-  safeHandle(
-    'dashboards:get',
-    async ({ connectionId, dashboardId }: { connectionId: string; dashboardId: string }) => {
-      if (!connectionId) throw new ValidationError('connectionId is required')
-      if (!dashboardId) throw new ValidationError('dashboardId is required')
-      return getDashboard(connectionId, dashboardId)
-    }
-  )
-
-  safeHandle('dashboards:save', async (dashboard: DashboardConfig) => {
-    if (!dashboard || typeof dashboard !== 'object') {
-      throw new ValidationError('Dashboard data is required')
-    }
-    if (!dashboard.dashboardId) throw new ValidationError('dashboardId is required')
-    if (!dashboard.connectionId) throw new ValidationError('connectionId is required')
-    if (!dashboard.name) throw new ValidationError('name is required')
-
-    return saveDashboard({
-      ...dashboard,
-      createdAt: dashboard.createdAt ? new Date(dashboard.createdAt) : new Date(),
-      updatedAt: dashboard.updatedAt ? new Date(dashboard.updatedAt) : new Date()
-    })
+  typedHandle('dashboards:get', async ({ connectionId, dashboardId }) => {
+    return getDashboard(connectionId, dashboardId)
   })
 
-  safeHandle(
-    'dashboards:delete',
-    async ({ connectionId, dashboardId }: { connectionId: string; dashboardId: string }) => {
-      if (!connectionId) throw new ValidationError('connectionId is required')
-      if (!dashboardId) throw new ValidationError('dashboardId is required')
-      return deleteDashboard(connectionId, dashboardId)
+  typedHandle('dashboards:save', async (dashboard) => {
+    const normalized: DashboardConfig = {
+      ...(dashboard as DashboardConfig),
+      createdAt: dashboard.createdAt ? new Date(dashboard.createdAt) : new Date(),
+      updatedAt: dashboard.updatedAt ? new Date(dashboard.updatedAt) : new Date()
     }
-  )
+    return saveDashboard(normalized)
+  })
 
-  safeHandle('dashboards:persist', async ({ dashboardId }: { dashboardId: string }) => {
-    if (!dashboardId) throw new ValidationError('dashboardId is required')
+  typedHandle('dashboards:delete', async ({ connectionId, dashboardId }) => {
+    return deleteDashboard(connectionId, dashboardId)
+  })
+
+  typedHandle('dashboards:persist', async ({ dashboardId }) => {
     await persistDashboard(dashboardId)
   })
 
-  safeHandle('dashboards:persist-all', async () => {
+  typedHandle('dashboards:persist-all', async () => {
     await persistAllDashboards()
   })
 
-  safeHandle('dashboards:export', async ({ connectionId }: { connectionId?: string } = {}) => {
-    return exportDashboards(connectionId)
+  typedHandle('dashboards:export', async (payload) => {
+    return exportDashboards(payload?.connectionId)
   })
 
-  safeHandle(
-    'dashboards:import',
-    async ({
-      dashboards,
-      overwrite
-    }: {
-      dashboards: DashboardConfig[]
-      overwrite?: boolean
-    }) => {
-      if (!Array.isArray(dashboards)) {
-        throw new ValidationError('dashboards must be an array')
-      }
-      return importDashboards(dashboards, overwrite ?? false)
-    }
-  )
+  typedHandle('dashboards:import', async ({ dashboards, overwrite }) => {
+    return importDashboards(dashboards as DashboardConfig[], overwrite ?? false)
+  })
 }

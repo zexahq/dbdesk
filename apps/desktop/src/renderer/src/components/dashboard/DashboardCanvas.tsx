@@ -643,7 +643,7 @@ const widgetDescriptions: Record<WidgetType, string> = {
   lineChart: 'Show trends over time or continuous data',
   pieChart: 'Display proportional data as segments',
   scatterChart: 'Plot relationships between two numeric variables',
-  markdown: 'View and manage your saved queries'
+  savedQueries: 'View and manage your saved queries'
 }
 
 // Sheet-based widget picker with previews
@@ -668,7 +668,7 @@ const WidgetPreview = memo(function WidgetPreview({ type }: { type: WidgetType }
       return <PieChartPlaceholder {...previewSize} />
     case 'scatterChart':
       return <ScatterChartPlaceholder {...previewSize} />
-    case 'markdown':
+    case 'savedQueries':
       return <SavedQueriesPlaceholder compact />
     default:
       return null

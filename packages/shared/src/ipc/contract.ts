@@ -3,6 +3,8 @@ import type {
   ConnectionProfile,
   ConnectionWorkspace,
   CreateTableResult,
+  DashboardConfig,
+  DashboardExport,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableResult,
@@ -226,6 +228,40 @@ export interface IpcContract {
   'update:get-version': {
     payload: void
     result: { version: string }
+  }
+
+  // -- Dashboards --
+  'dashboards:load': {
+    payload: { connectionId: string }
+    result: DashboardConfig[]
+  }
+  'dashboards:get': {
+    payload: { connectionId: string; dashboardId: string }
+    result: DashboardConfig | undefined
+  }
+  'dashboards:save': {
+    payload: DashboardConfig
+    result: DashboardConfig
+  }
+  'dashboards:delete': {
+    payload: { connectionId: string; dashboardId: string }
+    result: boolean
+  }
+  'dashboards:persist': {
+    payload: { dashboardId: string }
+    result: void
+  }
+  'dashboards:persist-all': {
+    payload: void
+    result: void
+  }
+  'dashboards:export': {
+    payload: { connectionId?: string } | undefined
+    result: DashboardExport
+  }
+  'dashboards:import': {
+    payload: { dashboards: DashboardConfig[]; overwrite?: boolean }
+    result: { imported: number; skipped: number }
   }
 }
 

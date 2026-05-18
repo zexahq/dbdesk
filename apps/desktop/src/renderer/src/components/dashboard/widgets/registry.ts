@@ -88,7 +88,7 @@ export const WidgetRegistry: Record<WidgetType, WidgetRegistryEntry> = {
     label: 'Scatter Chart',
     icon: 'scatter-chart'
   },
-  markdown: {
+  savedQueries: {
     component: SavedQueriesWidget,
     defaultSettings: {
       content: ''

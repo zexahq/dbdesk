@@ -18,7 +18,7 @@ import {
   DialogTitle
 } from '@renderer/components/ui/dialog'
 import { createId } from '@renderer/lib/utils'
-import type { MarkdownWidgetSettings, SavedQuery } from '@common/types'
+import type { SavedQueriesWidgetSettings, SavedQuery } from '@common/types'
 import type { WidgetComponentProps } from '@renderer/types/dashboard'
 import { WidgetWrapper } from './WidgetWrapper'
 
@@ -155,7 +155,7 @@ export function SavedQueriesWidget({
   onEdit,
   onDelete,
   onRefresh
-}: WidgetComponentProps<MarkdownWidgetSettings>) {
+}: WidgetComponentProps<SavedQueriesWidgetSettings>) {
   const { title } = widget
   const queryClient = useQueryClient()
   const [previewQuery, setPreviewQuery] = useState<SavedQuery | null>(null)

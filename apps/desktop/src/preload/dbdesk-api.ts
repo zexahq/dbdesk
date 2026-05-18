@@ -121,29 +121,19 @@ export const dbdeskAPI = {
 
   // ── Dashboards ──
   loadDashboards: (connectionId: string) =>
-    ipcRenderer.invoke('dashboards:load', { connectionId }) as Promise<DashboardConfig[]>,
+    typedInvoke('dashboards:load', { connectionId }),
   getDashboard: (connectionId: string, dashboardId: string) =>
-    ipcRenderer.invoke('dashboards:get', { connectionId, dashboardId }) as Promise<
-      DashboardConfig | undefined
-    >,
-  saveDashboard: (dashboard: DashboardConfig) =>
-    ipcRenderer.invoke('dashboards:save', dashboard) as Promise<DashboardConfig>,
+    typedInvoke('dashboards:get', { connectionId, dashboardId }),
+  saveDashboard: (dashboard: DashboardConfig) => typedInvoke('dashboards:save', dashboard),
   deleteDashboard: (connectionId: string, dashboardId: string) =>
-    ipcRenderer.invoke('dashboards:delete', { connectionId, dashboardId }) as Promise<boolean>,
+    typedInvoke('dashboards:delete', { connectionId, dashboardId }),
   persistDashboard: (dashboardId: string) =>
-    ipcRenderer.invoke('dashboards:persist', { dashboardId }) as Promise<void>,
-  persistAllDashboards: () => ipcRenderer.invoke('dashboards:persist-all') as Promise<void>,
+    typedInvoke('dashboards:persist', { dashboardId }),
+  persistAllDashboards: () => typedInvoke('dashboards:persist-all'),
   exportDashboards: (connectionId?: string) =>
-    ipcRenderer.invoke('dashboards:export', { connectionId }) as Promise<{
-      version: string
-      exportedAt: string
-      dashboards: DashboardConfig[]
-    }>,
+    typedInvoke('dashboards:export', { connectionId }),
   importDashboards: (dashboards: DashboardConfig[], overwrite?: boolean) =>
-    ipcRenderer.invoke('dashboards:import', { dashboards, overwrite }) as Promise<{
-      imported: number
-      skipped: number
-    }>,
+    typedInvoke('dashboards:import', { dashboards, overwrite }),
 
   // ── Auth ──
   getSession: () => typedInvoke('auth:get-session'),

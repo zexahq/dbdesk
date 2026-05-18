@@ -4,8 +4,7 @@
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
-    "src/preload/*.d.ts",
-    "../../src/renderer/src/components/dashboard/**/*"
+    "src/preload/*.d.ts"
   ],
   "compilerOptions": {
     "composite": true,
