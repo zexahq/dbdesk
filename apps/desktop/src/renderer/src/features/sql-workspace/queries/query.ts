@@ -14,7 +14,7 @@ export function useRunQuery(connectionId: string) {
       options
     }: {
       query: string
-      options?: { limit?: number; offset?: number }
+      options?: { limit?: number; offset?: number; queryId?: string }
     }) => dbdeskClient.runQuery(connectionId, query, options),
     onSuccess: (_, variables, _ctx,  client) => {
       // Invalidate schemas cache if DDL query (CREATE, DROP, ALTER, etc.)
@@ -24,5 +24,11 @@ export function useRunQuery(connectionId: string) {
         })
       }
     }
+  })
+}
+
+export function useCancelQuery(connectionId: string) {
+  return useMutation({
+    mutationFn: (queryId: string) => dbdeskClient.cancelQuery(connectionId, queryId)
   })
 }

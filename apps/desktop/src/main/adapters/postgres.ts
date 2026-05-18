@@ -63,6 +63,8 @@ function getSslConfig(sslMode?: PostgreSQLSslMode): boolean | object {
 
 export class PostgresAdapter implements SQLAdapter {
   private pool: Pool | null = null
+  /** queryId → backend PID for in-flight queries (used by cancelQuery). */
+  private readonly activeQueries = new Map<string, number>()
 
   constructor(private readonly options: SQLConnectionOptions) {}
 
@@ -112,52 +114,84 @@ export class PostgresAdapter implements SQLAdapter {
     const start = performance.now()
 
     const normalizedQuery = normalizeQuery(query)
+    const queryId = options?.queryId
 
-    // Check if this is a SELECT query that can be paginated
-    if (options && isSelectableQuery(normalizedQuery)) {
-      const limit = options.limit ?? 50
-      const offset = options.offset ?? 0
+    // Check out a dedicated client for this run so we can resolve its
+    // backend PID up-front and later cancel via pg_cancel_backend().
+    const client = await pool.connect()
+    let registeredQueryId: string | undefined
 
-      const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${limit} OFFSET ${offset}`
+    try {
+      if (queryId) {
+        const pidResult = await client.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        const pid = pidResult.rows[0]?.pid
+        if (typeof pid === 'number') {
+          this.activeQueries.set(queryId, pid)
+          registeredQueryId = queryId
+        }
+      }
 
-      if (options.includeTotalRowCount) {
-        // Execute count query and paginated query in parallel
-        const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
+      // Check if this is a SELECT query that can be paginated
+      if (options && isSelectableQuery(normalizedQuery)) {
+        const limit = options.limit ?? 50
+        const offset = options.offset ?? 0
 
-        const [countResult, pageResult] = await Promise.all([
-          pool.query<{ total: number }>(countQuery),
-          pool.query<QueryResultRow>(paginatedQuery)
-        ])
+        const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${limit} OFFSET ${offset}`
 
+        if (options.includeTotalRowCount) {
+          // Run sequentially on the same client so a cancel aborts both.
+          const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
+          const countResult = await client.query<{ total: number }>(countQuery)
+          const pageResult = await client.query<QueryResultRow>(paginatedQuery)
+
+          const executionTime = performance.now() - start
+          const totalRow = countResult.rows[0]?.total
+          const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
+
+          const transformedResult = this.transformResult(pageResult, executionTime)
+          return {
+            ...transformedResult,
+            totalRowCount,
+            limit,
+            offset
+          }
+        }
+
+        const pageResult = await client.query<QueryResultRow>(paginatedQuery)
         const executionTime = performance.now() - start
-        const totalRow = countResult.rows[0]?.total
-        const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
 
         const transformedResult = this.transformResult(pageResult, executionTime)
         return {
           ...transformedResult,
-          totalRowCount,
           limit,
           offset
         }
       }
 
-      const pageResult = await pool.query<QueryResultRow>(paginatedQuery)
+      // For non-SELECT queries or when no pagination options provided
+      const result = await client.query(normalizedQuery)
       const executionTime = performance.now() - start
 
-      const transformedResult = this.transformResult(pageResult, executionTime)
-      return {
-        ...transformedResult,
-        limit,
-        offset
+      return this.transformResult(result, executionTime)
+    } finally {
+      if (registeredQueryId) {
+        this.activeQueries.delete(registeredQueryId)
       }
+      client.release()
     }
+  }
 
-    // For non-SELECT queries or when no pagination options provided
-    const result = await pool.query(normalizedQuery)
-    const executionTime = performance.now() - start
+  /**
+   * Cancel an in-flight query by issuing pg_cancel_backend() on a
+   * side connection from the pool. Returns true if the PID was known.
+   */
+  public async cancelQuery(queryId: string): Promise<boolean> {
+    const pid = this.activeQueries.get(queryId)
+    if (typeof pid !== 'number') return false
 
-    return this.transformResult(result, executionTime)
+    const pool = this.ensurePool()
+    await pool.query('SELECT pg_cancel_backend($1)', [pid])
+    return true
   }
 
   public async listSchemas(): Promise<string[]> {

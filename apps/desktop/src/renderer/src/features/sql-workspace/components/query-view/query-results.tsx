@@ -1,7 +1,7 @@
 import type { QueryResult } from '@dbdesk/shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { cleanErrorMessage } from '@renderer/shared/lib/utils'
-import { Play } from 'lucide-react'
+import { Play, Square } from 'lucide-react'
 import { SimpleTable } from './simple-table'
 
 interface QueryResultsProps {
@@ -9,12 +9,24 @@ interface QueryResultsProps {
   isLoading?: boolean
   error?: Error | null
   onRun: () => void
+  onCancel?: () => void
 }
 
-export function QueryResults({ queryResults, isLoading, error, onRun }: QueryResultsProps) {
+export function QueryResults({ queryResults, isLoading, error, onRun, onCancel }: QueryResultsProps) {
   return (
     <div className="flex h-full w-full flex-col border-t">
-      <div className="flex items-center justify-end border-b p-2">
+      <div className="flex items-center justify-end gap-2 border-b p-2">
+        {isLoading && onCancel && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs cursor-pointer"
+            onClick={onCancel}
+          >
+            <Square className="size-3.5" />
+            STOP
+          </Button>
+        )}
         <Button
           size="sm"
           className="h-8 text-xs cursor-pointer"

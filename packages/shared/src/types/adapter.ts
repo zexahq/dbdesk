@@ -15,6 +15,11 @@ export interface RunQueryOptions {
    * Defaults to false to avoid expensive COUNT(*) subqueries.
    */
   includeTotalRowCount?: boolean
+  /**
+   * Opaque identifier supplied by the renderer so an in-flight query
+   * can later be cancelled via `cancelQuery(queryId)`.
+   */
+  queryId?: string
 }
 
 /**
@@ -37,6 +42,12 @@ export interface BaseAdapter {
   connect(): Promise<void>
   disconnect(): Promise<void>
   runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult>
+  /**
+   * Cancel an in-flight query previously started with the given `queryId`.
+   * Returns true when a cancel was actually issued. Optional — adapters
+   * that do not support cancellation simply omit it.
+   */
+  cancelQuery?(queryId: string): Promise<boolean>
 }
 
 /**

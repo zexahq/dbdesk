@@ -70,8 +70,18 @@ export interface IpcContract {
 
   // -- Query --
   'query:run': {
-    payload: { connectionId: string; query: string; limit?: number; offset?: number }
+    payload: {
+      connectionId: string
+      query: string
+      limit?: number
+      offset?: number
+      queryId?: string
+    }
     result: QueryResult
+  }
+  'query:cancel': {
+    payload: { connectionId: string; queryId: string }
+    result: { cancelled: boolean }
   }
 
   // -- Schema --

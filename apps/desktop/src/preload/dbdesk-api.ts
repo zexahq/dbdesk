@@ -35,13 +35,20 @@ export const dbdeskAPI = {
     typedInvoke('connections:delete', { connectionId }),
 
   // ── Query ──
-  runQuery: (connectionId: string, query: string, options?: { limit?: number; offset?: number }) =>
+  runQuery: (
+    connectionId: string,
+    query: string,
+    options?: { limit?: number; offset?: number; queryId?: string },
+  ) =>
     typedInvoke('query:run', {
       connectionId,
       query,
       limit: options?.limit,
       offset: options?.offset,
+      queryId: options?.queryId,
     }),
+  cancelQuery: (connectionId: string, queryId: string) =>
+    typedInvoke('query:cancel', { connectionId, queryId }),
 
   // ── Schema ──
   listSchemas: (connectionId: string) =>
