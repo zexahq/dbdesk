@@ -37,3 +37,16 @@ export const appMeta = sqliteTable('app_meta', {
   key: text('key').primaryKey(),
   value: text('value').notNull()
 })
+
+export const dashboards = sqliteTable('dashboards', {
+  dashboardId: text('dashboard_id').primaryKey(),
+  connectionId: text('connection_id')
+    .notNull()
+    .references(() => connectionProfiles.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  layoutJson: text('layout_json').notNull(),
+  widgetsJson: text('widgets_json').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull()
+})

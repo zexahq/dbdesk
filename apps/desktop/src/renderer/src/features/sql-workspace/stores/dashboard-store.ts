@@ -42,7 +42,7 @@ interface DashboardStore {
   saveDashboard: (dashboard: DashboardConfig) => Promise<DashboardConfig>
   deleteDashboard: (connectionId: string, dashboardId: string) => Promise<boolean>
 
-  // YAML file persistence (for app close/quit)
+  // Persistence compatibility hooks (used during app close/quit flows)
   persistDashboard: (dashboardId: string) => Promise<void>
   persistAllDashboards: () => Promise<void>
 
@@ -147,7 +147,7 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
     }
   },
 
-  // YAML file persistence
+  // Persistence compatibility hooks
   persistDashboard: async (dashboardId: string) => {
     await dbdeskClient.persistDashboard(dashboardId)
   },

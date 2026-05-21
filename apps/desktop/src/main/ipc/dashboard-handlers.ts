@@ -8,7 +8,7 @@ import {
   persistAllDashboards,
   persistDashboard,
   saveDashboard
-} from '../dashboard-yaml-storage'
+} from '../dashboard-storage'
 import { typedHandle } from './typed-handle'
 
 export function registerDashboardHandlers() {

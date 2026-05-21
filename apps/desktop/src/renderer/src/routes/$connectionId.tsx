@@ -51,7 +51,7 @@ function ConnectionPage() {
   const handleCloseDashboard = async () => {
     if (activeDashboard) {
       try {
-        // Persist dashboard to YAML file before closing
+        // Persist dashboard state before closing
         await persistDashboard(activeDashboard.dashboardId)
         console.log('Dashboard persisted successfully:', activeDashboard.dashboardId)
       } catch (error) {

@@ -8,6 +8,13 @@
       "when": 1775989697431,
       "tag": "0000_wooden_jamie_braddock",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1779341747945,
+      "tag": "0001_swift_cobalt_man",
+      "breakpoints": true
     }
   ]
 }
