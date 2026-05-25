@@ -55,4 +55,3 @@ deb:
   artifactName: ${productName}_${version}_${arch}.${ext}
 appImage:
   artifactName: ${productName}-${version}.${ext}
-npmRebuild: false
