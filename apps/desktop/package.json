@@ -31,6 +31,8 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "better-auth": "^1.5.4",
+    "better-sqlite3": "^12.8.0",
+    "bindings": "^1.5.0",
     "monaco-sql-languages": "^0.15.1",
     "pg": "^8.20.0"
   },
