@@ -25,8 +25,12 @@ export function Titlebar() {
           isMac ? 'pl-20' : 'pl-4'
         }`}
       >
-        <img src={dbdeskLogo} alt="DBDesk" className="w-5 h-5 brightness-0 dark:brightness-100" />
-        <span className="font-medium">DBDesk</span>
+        {!isMac && (
+          <>
+            <img src={dbdeskLogo} alt="DBDesk" className="w-5 h-5 brightness-0 dark:brightness-100" />
+            <span className="font-medium">DBDesk</span>
+          </>
+        )}
       </div>
 
       <div className="flex-1 flex justify-center">
