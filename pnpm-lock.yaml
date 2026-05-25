@@ -80,6 +80,12 @@ importers:
       better-auth:
         specifier: ^1.5.4
         version: 1.5.4(71c947a64ec44db8fad6499dbf02dad4)
+      better-sqlite3:
+        specifier: ^12.8.0
+        version: 12.8.0
+      bindings:
+        specifier: ^1.5.0
+        version: 1.5.0
       gsap:
         specifier: ^3.14.2
         version: 3.14.2
