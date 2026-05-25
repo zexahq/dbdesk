@@ -71,6 +71,7 @@ export type {
   ConnectionWorkspace,
   SavedQueriesStorage,
   SavedQuery,
+  SerializedDashboardTab,
   SerializedQueryTab,
   SerializedTab,
   SerializedTableTab,

@@ -1,5 +1,6 @@
 import type {
   QueryResult,
+  SerializedDashboardTab,
   SerializedQueryTab,
   SerializedTab,
   SerializedTableTab,
@@ -10,7 +11,7 @@ import { create } from 'zustand'
 
 export interface BaseTab {
   id: string
-  kind: 'table' | 'query'
+  kind: 'table' | 'query' | 'dashboard'
 }
 
 export interface TableTab extends BaseTab {
@@ -37,7 +38,13 @@ export interface QueryTab extends BaseTab {
   isDirty: boolean
 }
 
-export type Tab = TableTab | QueryTab
+export interface DashboardTab extends BaseTab {
+  kind: 'dashboard'
+  dashboardId: string
+  name: string
+}
+
+export type Tab = TableTab | QueryTab | DashboardTab
 type TabScrollPosition = {
   left: number
   top: number
@@ -66,6 +73,10 @@ interface TabStore {
   addQueryTab: () => string
   updateQueryTab: (tabId: string, updates: Partial<Omit<QueryTab, 'kind'>>) => void
   findQueryTabById: (tabId: string) => QueryTab | undefined
+
+  // Dashboard-specific actions
+  addDashboardTab: (dashboardId: string, name: string) => string
+  findDashboardTabById: (dashboardId: string) => DashboardTab | undefined
 
   // Persistence
   loadFromSerialized: (tabs: SerializedTab[], activeTabId: string | null) => void
@@ -246,6 +257,28 @@ export const useTabStore = create<TabStore>((set, get) => ({
     return tab?.kind === 'query' ? tab : undefined
   },
 
+  // Dashboard-specific actions
+  addDashboardTab: (dashboardId: string, name: string) => {
+    const existingTab = get().tabs.find((t) => t.kind === 'dashboard' && t.dashboardId === dashboardId)
+    if (existingTab) {
+      set({ activeTabId: existingTab.id })
+      return existingTab.id
+    }
+
+    const id = crypto.randomUUID()
+    const newTab: DashboardTab = { id, kind: 'dashboard', dashboardId, name }
+    set((state) => ({
+      tabs: [...state.tabs, newTab],
+      activeTabId: id
+    }))
+    return id
+  },
+
+  findDashboardTabById: (dashboardId: string) => {
+    const tab = get().tabs.find((t) => t.kind === 'dashboard' && t.dashboardId === dashboardId)
+    return tab?.kind === 'dashboard' ? tab : undefined
+  },
+
   // Persistence
   loadFromSerialized: (serializedTabs: SerializedTab[], activeTabId: string | null) => {
     const tabs: Tab[] = serializedTabs.map((serializedTab) => {
@@ -253,6 +286,13 @@ export const useTabStore = create<TabStore>((set, get) => ({
         return {
           ...serializedTab
         } as TableTab
+      } else if (serializedTab.kind === 'dashboard') {
+        return {
+          id: serializedTab.id,
+          kind: 'dashboard',
+          dashboardId: serializedTab.dashboardId,
+          name: serializedTab.name
+        } as DashboardTab
       } else {
         const lastSaved = serializedTab.lastSavedContent ?? ''
         const current = serializedTab.editorContent ?? ''
@@ -290,6 +330,13 @@ export const useTabStore = create<TabStore>((set, get) => ({
           filters: tab.filters,
           sortRules: tab.sortRules
         } as SerializedTableTab
+      } else if (tab.kind === 'dashboard') {
+        return {
+          kind: 'dashboard',
+          id: tab.id,
+          dashboardId: tab.dashboardId,
+          name: tab.name
+        } as SerializedDashboardTab
       } else {
         return {
           kind: 'query',

@@ -1,74 +1,25 @@
-import type { DashboardConfig } from '@dbdesk/shared/types'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { LayoutDashboard, Loader2, Plus } from 'lucide-react'
-import { useState } from 'react'
-import { Button } from '@renderer/components/ui/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger
-} from '@renderer/components/ui/sheet'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { UserMenu } from '@renderer/features/auth/components/user-menu'
 import {
-  DASHBOARD_QUERY_KEYS,
-  useDashboardStore
-} from '@renderer/features/sql-workspace/stores/dashboard-store'
-import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
-import { dbdeskClient } from '@renderer/shared/api/client'
-import { toast } from 'sonner'
+  useSqlWorkspaceStore,
+  type SidebarViewMode
+} from '@renderer/features/sql-workspace/stores/sql-workspace-store'
+import { DatabaseIcon, FileText, LayoutDashboard } from 'lucide-react'
+import { cn } from '@renderer/shared/lib/utils'
 import { QuickPanel } from './quick-panel'
 import { UpdateNotification } from './update-notification'
+import { Button } from '@renderer/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+
+const VIEW_MODES: { mode: SidebarViewMode; icon: typeof DatabaseIcon; label: string }[] = [
+  { mode: 'schemas', icon: DatabaseIcon, label: 'Schemas' },
+  { mode: 'queries', icon: FileText, label: 'Saved Queries' },
+  { mode: 'dashboards', icon: LayoutDashboard, label: 'Dashboards' }
+]
 
 export function MainSidebar() {
-  const [dashboardSheetOpen, setDashboardSheetOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const queryClient = useQueryClient()
   const currentConnectionId = useSqlWorkspaceStore((s) => s.currentConnectionId)
-  const setCurrentDashboard = useDashboardStore((s) => s.setCurrentDashboard)
-  const createDashboard = useDashboardStore((s) => s.createDashboard)
-
-  // Use TanStack Query for fetching dashboards
-  const { data: dashboards = [] } = useQuery({
-    queryKey: currentConnectionId ? DASHBOARD_QUERY_KEYS.list(currentConnectionId) : ['dashboards', 'disabled'],
-    queryFn: () => dbdeskClient.loadDashboards(currentConnectionId!),
-    enabled: !!currentConnectionId,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false
-  })
-
-  const handleCreateDashboard = async () => {
-    if (!currentConnectionId) {
-      toast.error('No connection selected')
-      return
-    }
-
-    setIsCreating(true)
-    try {
-      const newDashboard = await createDashboard(
-        currentConnectionId,
-        `Dashboard ${dashboards.length + 1}`
-      )
-      // Invalidate the dashboards query to refetch the list
-      await queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEYS.list(currentConnectionId) })
-      setCurrentDashboard(newDashboard)
-      setDashboardSheetOpen(false)
-      toast.success('Dashboard created')
-    } catch (err) {
-      console.error('Failed to create dashboard:', err)
-      toast.error('Failed to create dashboard')
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
-  const handleSelectDashboard = (dashboard: DashboardConfig) => {
-    setCurrentDashboard(dashboard)
-    setDashboardSheetOpen(false)
-  }
+  const sidebarViewMode = useSqlWorkspaceStore((s) => s.sidebarViewMode)
+  const setSidebarViewMode = useSqlWorkspaceStore((s) => s.setSidebarViewMode)
 
   return (
     <div className="bg-main-sidebar backdrop-blur py-2">
@@ -76,70 +27,29 @@ export function MainSidebar() {
         <div className="flex flex-col gap-2 items-center">
           <QuickPanel />
           {currentConnectionId && (
-            <Sheet open={dashboardSheetOpen} onOpenChange={setDashboardSheetOpen}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <LayoutDashboard className="h-4 w-4" />
-                    </Button>
-                  </SheetTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="right">Dashboards</TooltipContent>
-              </Tooltip>
-              <SheetContent side="left" className="w-[320px]">
-                <SheetHeader>
-                  <SheetTitle>Dashboards</SheetTitle>
-                  <SheetDescription>
-                    Create and manage your data dashboards
-                  </SheetDescription>
-                </SheetHeader>
-                <div className="mt-4 space-y-2! px-4">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start cursor-pointer"
-                    onClick={handleCreateDashboard}
-                    disabled={isCreating}
-                  >
-                    {isCreating ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4 mr-2!" />
-                    )}
-                    {isCreating ? 'Creating...' : 'New Dashboard'}
-                  </Button>
-                  {dashboards.length > 0 && (
-                    <div className="mt-4 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground px-2 py-1">
-                        Your Dashboards
-                      </p>
-                      {dashboards.map((dashboard) => (
-                        <button
-                          key={dashboard.dashboardId}
-                          className="w-full text-left! px-3 py-2 text-sm rounded-md hover:bg-accent cursor-pointer"
-                          onClick={() => handleSelectDashboard(dashboard)}
-                        >
-                          <div className="font-medium">{dashboard.name}</div>
-                          {dashboard.description && (
-                            <div className="text-xs text-muted-foreground truncate">
-                              {dashboard.description}
-                            </div>
-                          )}
-                          <div className="text-xs text-muted-foreground">
-                            {dashboard.widgets.length} widget{dashboard.widgets.length !== 1 ? 's' : ''}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {dashboards.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4 whitespace-pre-line">
-                      {`No dashboards yet... \n Create your first one!`}
-                    </p>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
+            <div className="flex flex-col gap-1 items-center pt-1">
+              {VIEW_MODES.map(({ mode, icon: Icon, label }) => {
+                const isActive = sidebarViewMode === mode
+                return (
+                  <Tooltip key={mode}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          'h-8 w-8 cursor-pointer',
+                          isActive && 'bg-accent text-accent-foreground'
+                        )}
+                        onClick={() => setSidebarViewMode(mode)}
+                      >
+                        <Icon className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{label}</TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </div>
           )}
         </div>
         <div className="flex flex-col gap-2 items-center">
