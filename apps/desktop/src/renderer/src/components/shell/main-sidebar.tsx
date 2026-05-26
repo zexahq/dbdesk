@@ -1,8 +1,6 @@
 import { UserMenu } from '@renderer/features/auth/components/user-menu'
-import {
-  useSqlWorkspaceStore,
-  type SidebarViewMode
-} from '@renderer/features/sql-workspace/stores/sql-workspace-store'
+import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
+import type { SidebarViewMode } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { DatabaseIcon, FileText, LayoutDashboard } from 'lucide-react'
 import { cn } from '@renderer/shared/lib/utils'
 import { QuickPanel } from './quick-panel'

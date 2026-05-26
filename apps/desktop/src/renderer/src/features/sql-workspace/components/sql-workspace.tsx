@@ -23,6 +23,7 @@ import { TabNavigation } from './table-view/tab-navigation'
 import { WorkspaceSidebar } from './workspace-sidebar'
 import { WorkspaceTopbar } from './workspace-topbar'
 import { DashboardCanvas } from '@renderer/components/dashboard'
+import { SidebarFocusShortcuts } from './sidebar-focus-shortcuts'
 
 export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const setSchemasWithTables = useSqlWorkspaceStore((s) => s.setSchemasWithTables)
@@ -59,6 +60,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
 
   return (
     <>
+      <SidebarFocusShortcuts />
       <SidebarProvider className="h-full">
         <TabNavigation profile={profile} requestCloseTab={requestCloseTab} />
         <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
