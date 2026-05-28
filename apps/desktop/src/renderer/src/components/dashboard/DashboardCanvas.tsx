@@ -648,7 +648,8 @@ const widgetDescriptions: Record<WidgetType, string> = {
   lineChart: 'Show trends over time or continuous data',
   pieChart: 'Display proportional data as segments',
   scatterChart: 'Plot relationships between two numeric variables',
-  savedQueries: 'View and manage your saved queries'
+  savedQueries: 'View and manage your saved queries',
+  notes: 'Add free-form text notes to your dashboard'
 }
 
 // Sheet-based widget picker with previews

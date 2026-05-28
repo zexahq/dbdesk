@@ -89,6 +89,7 @@ export type {
   DashboardStorage,
   DashboardSyncStatus,
   KPIWidgetSettings,
+  NotesWidgetSettings,
   PieChartWidgetSettings,
   SavedQueriesWidgetSettings,
   ScatterWidgetSettings,
