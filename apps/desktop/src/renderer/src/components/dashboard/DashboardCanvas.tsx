@@ -31,6 +31,7 @@ import {
   BarChartPlaceholder,
   KPIPlaceholder,
   LineChartPlaceholder,
+  NotesPlaceholder,
   PieChartPlaceholder,
   ScatterChartPlaceholder,
   TablePlaceholder,
@@ -351,6 +352,7 @@ export function DashboardCanvas({
                   onEdit={handleEditWidget}
                   onDelete={handleDeleteWidget}
                   onExpand={handleExpandWidget}
+                  onSave={handleSaveWidget}
                 />
               </div>
             ))}
@@ -392,6 +394,7 @@ interface WidgetRendererProps {
   onEdit: (widget: Widget) => void
   onDelete: (widgetId: string) => void
   onExpand: (widget: Widget, zoomState?: ChartZoomState) => void
+  onSave: (widget: Widget) => void
 }
 
 const WidgetRenderer = memo(function WidgetRenderer({
@@ -400,7 +403,8 @@ const WidgetRenderer = memo(function WidgetRenderer({
   isEditMode,
   onEdit,
   onDelete,
-  onExpand
+  onExpand,
+  onSave
 }: WidgetRendererProps) {
   const WidgetComponent = getWidgetComponent(widget.type)
 
@@ -413,6 +417,7 @@ const WidgetRenderer = memo(function WidgetRenderer({
         onEdit={onEdit}
         onDelete={onDelete}
         onExpand={onExpand}
+        onSave={onSave}
       />
     </div>
   )
@@ -670,6 +675,8 @@ const WidgetPreview = memo(function WidgetPreview({ type }: { type: WidgetType }
       return <ScatterChartPlaceholder {...previewSize} />
     case 'savedQueries':
       return <SavedQueriesPlaceholder compact />
+    case 'notes':
+      return <NotesPlaceholder compact />
     default:
       return null
   }

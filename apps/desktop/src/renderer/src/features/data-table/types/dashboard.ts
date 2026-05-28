@@ -31,6 +31,7 @@ export interface WidgetComponentProps<T extends WidgetSettings = WidgetSettings>
   onRefresh?: () => void
   onExpand?: (widget: Widget<T>, zoomState?: ChartZoomState) => void
   onZoomReset?: () => void
+  onSave?: (widget: Widget<T>) => void
 }
 
 // Dashboard mode (renderer-specific)

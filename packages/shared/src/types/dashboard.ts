@@ -12,6 +12,7 @@ export type WidgetType =
   | 'pieChart'
   | 'scatterChart'
   | 'savedQueries'
+  | 'notes'
 
 // Base position/sizing for react-grid-layout
 export interface WidgetPosition {
@@ -69,6 +70,11 @@ export interface SavedQueriesWidgetSettings {
   content: string
 }
 
+// Notes widget specific settings
+export interface NotesWidgetSettings {
+  content: string
+}
+
 // Scatter chart specific settings
 export interface ScatterWidgetSettings {
   xAxisField: string
@@ -86,6 +92,7 @@ export type WidgetSettings =
   | PieChartWidgetSettings
   | ScatterWidgetSettings
   | SavedQueriesWidgetSettings
+  | NotesWidgetSettings
 
 // Base widget interface
 export interface Widget<T extends WidgetSettings = WidgetSettings> {

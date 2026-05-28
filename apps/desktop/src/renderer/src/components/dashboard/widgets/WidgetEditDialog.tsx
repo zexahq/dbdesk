@@ -211,9 +211,10 @@ export function WidgetEditDialog({
 
           <Separator />
 
-          {/* Data binding */}
-          <div className="space-y-3">
-            <Label>Query</Label>
+          {/* Data binding — not shown for notes widgets */}
+          {widget.type !== 'notes' && (
+            <div className="space-y-3">
+              <Label>Query</Label>
             <Tabs
               value={queryMode}
               onValueChange={(v) => setQueryMode(v as 'saved' | 'custom')}
@@ -291,7 +292,8 @@ export function WidgetEditDialog({
                 )}
               </TabsContent>
             </Tabs>
-          </div>
+            </div>
+          )}
 
           <Separator />
 
@@ -345,6 +347,8 @@ function WidgetTypeSettings({ type, settings, columns, numericColumns, onUpdate,
       return <PieChartSettings settings={settings} columns={columns} onUpdate={onUpdate} inputClassName={inputClassName} disabled={disabled} />
     case 'savedQueries':
       return <SavedQueriesSettings settings={settings} onUpdate={onUpdate} />
+    case 'notes':
+      return <NotesSettings settings={settings} onUpdate={onUpdate} />
     default:
       return null
   }
@@ -743,6 +747,32 @@ function SavedQueriesSettings({
           onChange={(e) => onUpdate('content', e.target.value)}
           placeholder="Optional description for this saved queries widget..."
         />
+      </div>
+    </div>
+  )
+}
+
+// Notes Settings
+function NotesSettings({
+  settings,
+  onUpdate
+}: {
+  settings: Record<string, unknown>
+  onUpdate: (key: string, value: unknown) => void
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <Label>Content</Label>
+        <textarea
+          className="w-full min-h-48 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-foreground/50"
+          value={(settings.content as string) ?? ''}
+          onChange={(e) => onUpdate('content', e.target.value)}
+          placeholder="Type your notes here..."
+        />
+        <p className="text-xs text-muted-foreground">
+          You can also click directly on the widget to edit notes inline.
+        </p>
       </div>
     </div>
   )

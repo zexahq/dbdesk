@@ -7,6 +7,7 @@
 import type { WidgetType } from '@common/types'
 import type { WidgetRegistryEntry } from '@renderer/types/dashboard'
 import { KPIWidget } from './KPIWidget'
+import { NotesWidget } from './NotesWidget'
 import { SavedQueriesWidget } from './SavedQueriesWidget'
 import { TableWidget } from './TableWidget'
 import { VisxBarChartWidget } from './charts/VisxBarChartWidget'
@@ -96,6 +97,15 @@ export const WidgetRegistry: Record<WidgetType, WidgetRegistryEntry> = {
     defaultSize: { w: 2, h: 3, minW: 2, minH: 2 },
     label: 'Saved Queries',
     icon: 'code'
+  },
+  notes: {
+    component: NotesWidget,
+    defaultSettings: {
+      content: ''
+    },
+    defaultSize: { w: 2, h: 3, minW: 1, minH: 1 },
+    label: 'Notes',
+    icon: 'file-text'
   }
 }
 
