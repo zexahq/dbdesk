@@ -18,12 +18,22 @@ let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
   // Create the browser window.
+  const isMac = process.platform === 'darwin'
   mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
     frame: false,
     autoHideMenuBar: true,
+    // On macOS use the native hidden-inset titlebar so we get real traffic
+    // light buttons on the left. Position them so they're vertically centered
+    // within our 36px (h-9) custom titlebar.
+    ...(isMac
+      ? {
+          titleBarStyle: 'hiddenInset' as const,
+          trafficLightPosition: { x: 12, y: 11 }
+        }
+      : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
