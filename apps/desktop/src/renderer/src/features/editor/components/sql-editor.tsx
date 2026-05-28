@@ -92,7 +92,13 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
           wordBasedSuggestions: 'off',
           acceptSuggestionOnCommitCharacter: true,
           tabCompletion: 'on',
-          snippetSuggestions: 'bottom'
+          snippetSuggestions: 'bottom',
+          inlineSuggest: {
+            enabled: true,
+            mode: 'prefix',
+            showToolbar: 'onHover',
+            suppressSuggestions: false
+          }
         }}
       />
     </div>

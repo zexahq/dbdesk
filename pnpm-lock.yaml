@@ -56,6 +56,9 @@ importers:
       bindings:
         specifier: ^1.5.0
         version: 1.5.0
+      file-uri-to-path:
+        specifier: 1.0.0
+        version: 1.0.0
       monaco-sql-languages:
         specifier: ^0.15.1
         version: 0.15.1(antlr4ng-cli@1.0.7)(monaco-editor@0.55.1)

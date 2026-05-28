@@ -19,6 +19,10 @@ compression: maximum
 asar: true
 asarUnpack:
   - resources/**
+  - '**/*.node'
+  - '**/node_modules/better-sqlite3/**/*'
+  - '**/node_modules/bindings/**/*'
+  - '**/node_modules/file-uri-to-path/**/*'
 # Remove unnecessary Electron files
 removePackageKeywords: true
 publish:
