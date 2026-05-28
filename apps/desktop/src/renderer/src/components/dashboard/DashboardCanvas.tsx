@@ -255,7 +255,7 @@ export function DashboardCanvas({
 
   return (
     <>
-      <div className="h-full flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Toolbar */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
@@ -286,7 +286,7 @@ export function DashboardCanvas({
         </div>
 
       {/* Grid Canvas */}
-      <div ref={containerRef} className="relative flex-1 overflow-auto p-4 pb-20!">
+      <div ref={containerRef} className="relative flex-1 min-h-0 overflow-auto p-4 pb-20!">
         {/* Background dot grid - extends to cover full scrollable content */}
         <div
           className="absolute inset-x-0 top-0 -z-10 pointer-events-none"

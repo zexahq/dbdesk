@@ -15,7 +15,7 @@ import {
   useDashboardStore
 } from '@renderer/features/sql-workspace/stores/dashboard-store'
 import { dbdeskClient } from '@renderer/shared/api/client'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { QueryView } from './query-view'
 import { TableView } from './table-view'
@@ -35,6 +35,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const { requestCloseTab, dialogProps } = useTabCloseHandler(profile)
+  const queryClient = useQueryClient()
 
   const { data: schemasWithTables } = useSchemasWithTables(profile.id)
 
@@ -100,7 +101,11 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
                     dashboard={dashboardConfig}
                     connectionId={profile.id}
                     onSave={async (config) => {
-                      await useDashboardStore.getState().saveDashboard(config)
+                      const saved = await useDashboardStore.getState().saveDashboard(config)
+                      queryClient.setQueryData(
+                        ['dashboard', 'tab', profile.id, config.dashboardId],
+                        saved
+                      )
                     }}
                     onClose={() => {
                       useTabStore.getState().removeTab(activeTab.id)
