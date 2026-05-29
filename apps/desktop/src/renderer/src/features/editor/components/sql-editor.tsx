@@ -11,7 +11,7 @@ interface SqlEditorProps {
   value: string
   onChange: (value: string) => void
   language: SQLDatabaseType
-  onExecute?: (cursorLine?: number) => void
+  onExecute?: () => void
 }
 
 const LANGUAGE_MAP: Record<SQLDatabaseType, LanguageIdEnum> = {
@@ -64,7 +64,7 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
       label: 'Execute Query',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Enter],
       run: () => {
-        onExecuteRef.current?.(editorInstance.getPosition()?.lineNumber)
+        onExecuteRef.current?.()
       }
     })
   }

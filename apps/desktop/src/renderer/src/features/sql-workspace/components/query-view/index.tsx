@@ -151,7 +151,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
     await executeQueries(queriesToRun, limit, offset)
   }
 
-  const handleRunQuery = async (cursorLine?: number) => {
+  const handleRunQuery = async () => {
     const blocks = getEditorQueries(activeTab.editorContent)
     if (blocks.length === 0) {
       toast.error('Query cannot be empty')
@@ -160,20 +160,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
 
     const limit = activeTab.limit ?? 50
     const offset = 0
-    const blockAtCursor =
-      cursorLine === undefined
-        ? null
-        : blocks.find(
-            (block) =>
-              cursorLine >= block.startLineNumber && cursorLine <= block.endLineNumber
-          )
-
-    if (cursorLine !== undefined && !blockAtCursor) {
-      toast.error('No query found at cursor')
-      return
-    }
-
-    const queriesToRun = (blockAtCursor ? blockAtCursor.queries : blocks.flatMap((block) => block.queries)).filter(Boolean)
+    const queriesToRun = blocks.flatMap((block) => block.queries).filter(Boolean)
 
     await queueDangerousExecution(queriesToRun, limit, offset)
   }

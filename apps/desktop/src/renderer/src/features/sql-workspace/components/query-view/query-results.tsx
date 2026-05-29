@@ -42,7 +42,7 @@ export function QueryResults({
     <div className="flex h-full w-full flex-col border-t">
       <div className="flex flex-col border-b">
         <div className="flex items-center justify-end p-2">
-          <Button size="sm" className="h-8 text-xs" onClick={onRun} disabled={isLoading}>
+          <Button size="sm" className="h-8 text-xs" onClick={() => onRun()} disabled={isLoading}>
             <Play className="size-4" />
             RUN
           </Button>
