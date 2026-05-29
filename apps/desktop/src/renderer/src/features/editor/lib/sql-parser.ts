@@ -403,6 +403,46 @@ export const getEditorQueries = (sql: string): EditorQueryBlock[] => {
   return blocks
 }
 
+// Patterns to extract a meaningful target name from a query for tab labelling.
+// Order matters: more specific multi-word verbs come before single-word ones.
+const VERB_PATTERNS: { verb: string; tablePattern: RegExp }[] = [
+  { verb: 'SELECT',       tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'INSERT INTO',  tablePattern: /\bINSERT\s+INTO\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'UPDATE',       tablePattern: /\bUPDATE\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'DELETE FROM',  tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'DELETE',       tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'CREATE TABLE', tablePattern: /\bCREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'CREATE VIEW',  tablePattern: /\bCREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'CREATE INDEX', tablePattern: /\bCREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:["\w]+)\s+ON\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'ALTER TABLE',  tablePattern: /\bALTER\s+TABLE\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'DROP TABLE',   tablePattern: /\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'DROP VIEW',    tablePattern: /\bDROP\s+VIEW\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'TRUNCATE',     tablePattern: /\bTRUNCATE\s+(?:TABLE\s+)?(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'WITH',         tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'CALL',         tablePattern: /\bCALL\s+(?:["\w.]+\.)?(["\w]+)/i },
+]
+
+export const getQueryTabLabel = (query: string): string => {
+  const stripped = stripQuotedAndCommentedSql(query).trim()
+  for (const { verb, tablePattern } of VERB_PATTERNS) {
+    // Check if the query starts with this verb (case-insensitive, allow whitespace)
+    const verbWords = verb.split(' ')
+    const verbRegex = new RegExp(
+      `^\\s*${verbWords.map((w) => `(?:${w})`).join('\\s+')}\\b`,
+      'i'
+    )
+    if (!verbRegex.test(stripped)) {
+      continue
+    }
+    const tableMatch = stripped.match(tablePattern)
+    const table = tableMatch?.[1]?.replace(/^"|"$/g, '')
+    return table ? `${verb} · ${table}` : verb
+  }
+  // Fallback: first keyword
+  const firstWord = stripped.match(/^([A-Za-z_][A-Za-z0-9_]*)/)
+  return firstWord ? firstWord[1].toUpperCase() : 'Query'
+}
+
 export const hasDangerousSqlKeywords = (query: string): boolean => {
   const sanitizedQuery = stripQuotedAndCommentedSql(query)
   const dangerousKeywordPattern = new RegExp(`\\b(?:${DANGEROUS_SQL_KEYWORDS.join('|')})\\b`, 'i')

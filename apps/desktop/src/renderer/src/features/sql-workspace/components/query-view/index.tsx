@@ -2,7 +2,7 @@ import type { QueryBatchResult, QueryResult, SQLConnectionProfile } from '@dbdes
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import { DangerousQueryDialog } from '@renderer/features/sql-workspace/components/dialogs/dangerous-query-dialog'
 import SqlEditor from '@renderer/features/editor/components/sql-editor'
-import { getEditorQueries, hasDangerousSqlKeywords } from '@renderer/features/editor/lib/sql-parser'
+import { getEditorQueries, getQueryTabLabel, hasDangerousSqlKeywords } from '@renderer/features/editor/lib/sql-parser'
 import { useRunManyQueries, useRunQuery } from '@renderer/features/sql-workspace/queries/query'
 import {
   ResizableHandle,
@@ -115,19 +115,6 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
   const executeQueries = async (queriesToRun: string[], limit: number, offset: number) => {
     if (queriesToRun.length === 0) {
       toast.error('Query cannot be empty')
-      return
-    }
-
-    if (queriesToRun.length === 1) {
-      try {
-        const result = await runQueryMutation({
-          query: queriesToRun[0],
-          options: { limit, offset }
-        })
-        updateSingleQueryResult(queriesToRun[0], result)
-      } catch {
-        clearQueryResults()
-      }
       return
     }
 
@@ -279,7 +266,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
         <QueryBottombar
           resultLabel={
             activeTab.batchResults
-              ? `Query ${(activeTab.activeResultIndex ?? 0) + 1} of ${activeTab.batchResults.length}`
+              ? `${getQueryTabLabel(activeTab.batchResults[activeTab.activeResultIndex ?? 0]?.query ?? '')} (${(activeTab.activeResultIndex ?? 0) + 1} of ${activeTab.batchResults.length})`
               : undefined
           }
           totalRows={

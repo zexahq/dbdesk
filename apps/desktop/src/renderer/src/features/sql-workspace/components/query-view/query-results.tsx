@@ -1,6 +1,7 @@
 import type { QueryBatchResult, QueryResult } from '@dbdesk/shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { cleanErrorMessage } from '@renderer/shared/lib/utils'
+import { getQueryTabLabel } from '@renderer/features/editor/lib/sql-parser'
 import { CircleCheck, CircleX, FileText, Play } from 'lucide-react'
 import { SimpleTable } from './simple-table'
 
@@ -54,11 +55,12 @@ export function QueryResults({
                 key={`${result.query}-${index}`}
                 variant={index === safeActiveResultIndex ? 'secondary' : 'ghost'}
                 size="sm"
-                className="shrink-0"
+                className="shrink-0 max-w-[180px] truncate"
                 onClick={() => onResultSelect?.(index)}
+                title={result.query}
               >
                 {getBatchResultIcon(result)}
-                Query {index + 1}
+                <span className="truncate">{getQueryTabLabel(result.query)}</span>
               </Button>
             ))}
           </div>
