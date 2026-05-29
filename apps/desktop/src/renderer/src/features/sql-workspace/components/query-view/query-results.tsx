@@ -85,7 +85,7 @@ export function QueryResults({
             </div>
           ) : activeBatchResult?.result ? (
             <div className="flex w-full items-center justify-center text-center text-muted-foreground">
-              <p>No data returned</p>
+              <p className="font-mono text-sm">{activeBatchResult.result.commandTag ?? 'OK'}</p>
             </div>
           ) : error ? (
             <div className="flex w-full items-center justify-center text-center text-destructive">

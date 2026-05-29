@@ -19,6 +19,7 @@ export interface QueryResult {
   rows: QueryResultRow[]
   columns: string[]
   rowCount: number
+  commandTag?: string
   executionTime?: number
   totalRowCount?: number
   limit?: number

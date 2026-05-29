@@ -28,6 +28,7 @@ import type {
   TableDataResult
 } from '@dbdesk/shared/types'
 import type { QueryResultRow } from 'pg'
+import { type PoolClient } from 'pg'
 import {
   QUERIES,
   buildCreateTableQuery,
@@ -119,30 +120,36 @@ export class PostgresAdapter implements SQLAdapter {
     options?: RunQueryOptions
   ): Promise<QueryBatchResult[]> {
     const results: QueryBatchResult[] = []
+    const pool = this.ensurePool()
+    const client = await pool.connect()
 
-    for (const query of queries) {
-      const normalizedQuery = normalizeQuery(query).trim()
-      if (!normalizedQuery) {
-        continue
+    try {
+      for (const query of queries) {
+        const normalizedQuery = normalizeQuery(query).trim()
+        if (!normalizedQuery) {
+          continue
+        }
+
+        const start = performance.now()
+
+        try {
+          const result = await this.executeNormalizedQueryOnClient(client, normalizedQuery, options, start)
+          results.push({
+            query: normalizedQuery,
+            result,
+            executionTime: result.executionTime ?? performance.now() - start
+          })
+        } catch (error) {
+          results.push({
+            query: normalizedQuery,
+            error: error instanceof Error ? error.message : 'Failed to execute query',
+            executionTime: performance.now() - start
+          })
+          break
+        }
       }
-
-      const start = performance.now()
-
-      try {
-        const result = await this.executeNormalizedQuery(normalizedQuery, options, start)
-        results.push({
-          query: normalizedQuery,
-          result,
-          executionTime: result.executionTime ?? performance.now() - start
-        })
-      } catch (error) {
-        results.push({
-          query: normalizedQuery,
-          error: error instanceof Error ? error.message : 'Failed to execute query',
-          executionTime: performance.now() - start
-        })
-        break
-      }
+    } finally {
+      client.release()
     }
 
     return results
@@ -157,7 +164,6 @@ export class PostgresAdapter implements SQLAdapter {
 
     // Check if this is a SELECT query that can be paginated
     if (options && isSelectableQuery(normalizedQuery)) {
-      // Execute count query and paginated query in parallel
       const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
       const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${options.limit ?? 50} OFFSET ${options.offset ?? 0}`
 
@@ -179,8 +185,41 @@ export class PostgresAdapter implements SQLAdapter {
       }
     }
 
-    // For non-SELECT queries or when no pagination options provided
     const result = await pool.query(normalizedQuery)
+    const executionTime = performance.now() - start
+
+    return this.transformResult(result, executionTime)
+  }
+
+  private async executeNormalizedQueryOnClient(
+    client: PoolClient,
+    normalizedQuery: string,
+    options?: RunQueryOptions,
+    start = performance.now()
+  ): Promise<QueryResult> {
+    if (options && isSelectableQuery(normalizedQuery)) {
+      const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
+      const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${options.limit ?? 50} OFFSET ${options.offset ?? 0}`
+
+      const [countResult, pageResult] = await Promise.all([
+        client.query<{ total: number }>(countQuery),
+        client.query<QueryResultRow>(paginatedQuery)
+      ])
+
+      const executionTime = performance.now() - start
+      const totalRow = countResult.rows[0]?.total
+      const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
+
+      const transformedResult = this.transformResult(pageResult, executionTime)
+      return {
+        ...transformedResult,
+        totalRowCount,
+        limit: options.limit,
+        offset: options.offset
+      }
+    }
+
+    const result = await client.query(normalizedQuery)
     const executionTime = performance.now() - start
 
     return this.transformResult(result, executionTime)
@@ -577,11 +616,19 @@ export class PostgresAdapter implements SQLAdapter {
     executionTime: number
   ): QueryResult {
     const columns = result.fields.map((field) => field.name)
+    const rowCount = typeof result.rowCount === 'number' ? result.rowCount : result.rows.length
+    // Build a human-readable command tag, e.g. "INSERT 1", "UPDATE 3", "CREATE TABLE"
+    const cmd = result.command ?? ''
+    const commandTag =
+      cmd && rowCount > 0 && !['SELECT', 'SHOW'].includes(cmd)
+        ? `${cmd} ${rowCount}`
+        : cmd || undefined
 
     return {
       rows: result.rows,
       columns,
-      rowCount: typeof result.rowCount === 'number' ? result.rowCount : result.rows.length,
+      rowCount,
+      commandTag,
       executionTime
     }
   }
