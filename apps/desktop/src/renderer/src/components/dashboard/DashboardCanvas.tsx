@@ -15,7 +15,6 @@ import {
 } from '@renderer/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
 import { cn, createId } from '@renderer/lib/utils'
-import { useTheme } from '@renderer/hooks/use-theme'
 import {
   Edit2,
   Eye,
@@ -38,7 +37,6 @@ import {
   SavedQueriesPlaceholder
 } from './widgets/placeholders'
 import { useWidgetData } from './widgets/useWidgetData'
-import DotGrid from './dot-grid'
 
 interface DashboardCanvasProps {
   dashboard: DashboardConfig
@@ -55,7 +53,6 @@ export function DashboardCanvas({
   onLayoutChange,
   onClose
 }: DashboardCanvasProps) {
-  const { theme } = useTheme()
   const [mode, setMode] = useState<DashboardMode>('view')
   const [widgets, setWidgets] = useState<Widget[]>(dashboard.widgets)
   const [containerWidth, setContainerWidth] = useState(1200)
@@ -236,13 +233,6 @@ export function DashboardCanvas({
   }, [])
 
   const isEditMode = mode === 'edit'
-  const dotGridColors = useMemo(
-    () =>
-      theme === 'dark'
-        ? { base: '#242424', active: '#7c7c7e' }
-        : { base: '#E4E4E7', active: '#A1A1AA' },
-    [theme]
-  )
 
   return (
     <>
@@ -278,21 +268,6 @@ export function DashboardCanvas({
 
       {/* Grid Canvas */}
       <div ref={containerRef} className="relative flex-1 min-h-0 overflow-auto p-4 pb-20!">
-        {/* Background dot grid — covers the full visible grid area */}
-        <div className="absolute inset-0 -z-10 pointer-events-none">
-          <DotGrid
-            dotSize={5}
-            gap={22}
-            baseColor={dotGridColors.base}
-            activeColor={dotGridColors.active}
-            proximity={100}
-            shockRadius={150}
-            shockStrength={3}
-            resistance={500}
-            returnDuration={1}
-            className="w-full h-full"
-          />
-        </div>
         {widgets.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <Card className="p-8 text-center">

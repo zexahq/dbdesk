@@ -41,7 +41,6 @@
     "@visx/scale": "^3.12.0",
     "@visx/shape": "^3.12.0",
     "better-auth": "^1.5.4",
-    "gsap": "^3.14.2",
     "js-yaml": "^4.1.1",
     "better-sqlite3": "^12.8.0",
     "bindings": "^1.5.0",
