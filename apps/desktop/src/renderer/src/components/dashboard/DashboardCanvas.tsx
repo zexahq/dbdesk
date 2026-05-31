@@ -134,16 +134,6 @@ export function DashboardCanvas({
     [widgets, mode]
   )
 
-  // Calculate content height based on widget positions
-  const contentHeight = useMemo(() => {
-    if (widgets.length === 0) return 0
-    const rowHeight = dashboard.layout.rowHeight
-    const [, marginY] = dashboard.layout.margin ?? [16, 16]
-    const maxBottom = widgets.reduce((max, w) => Math.max(max, w.position.y + w.position.h), 0)
-    // Calculate pixel height: (rows * rowHeight) + ((rows + 1) * marginY)
-    return maxBottom * rowHeight + (maxBottom + 1) * marginY
-  }, [widgets, dashboard.layout.rowHeight, dashboard.layout.margin])
-
   // Handle layout changes from drag/resize
   const handleLayoutChange = useCallback(
     (newLayout: Layout) => {
@@ -288,11 +278,8 @@ export function DashboardCanvas({
 
       {/* Grid Canvas */}
       <div ref={containerRef} className="relative flex-1 min-h-0 overflow-auto p-4 pb-20!">
-        {/* Background dot grid - extends to cover full scrollable content */}
-        <div
-          className="absolute inset-x-0 top-0 -z-10 pointer-events-none"
-          style={{ minHeight: '100%', height: contentHeight > 0 ? contentHeight + 100 : '100%' }}
-        >
+        {/* Background dot grid — covers the full visible grid area */}
+        <div className="absolute inset-0 -z-10 pointer-events-none">
           <DotGrid
             dotSize={5}
             gap={22}
