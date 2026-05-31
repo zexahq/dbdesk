@@ -119,7 +119,7 @@ export default defineConfig({
       }
     },
     build: {
-      bytecode: true,
+      bytecode: !process.env.CI,
       externalizeDeps: false,
     },
   },
