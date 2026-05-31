@@ -51,7 +51,7 @@ export function QueryResults({ queryResults, isLoading, error, onRun, onCancel }
           </div>
         ) : queryResults ? (
           <div className="w-full h-full">
-            {queryResults.totalRowCount !== undefined && queryResults.columns.length > 0 ? (
+            {queryResults.columns.length > 0 ? (
               <SimpleTable columns={queryResults.columns} data={queryResults.rows} />
             ) : (
               <div className="flex p-2 w-full items-center text-center text-muted-foreground">
