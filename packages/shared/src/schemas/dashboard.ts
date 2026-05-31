@@ -21,23 +21,140 @@ export const widgetTypeSchema = z.enum([
   'lineChart',
   'pieChart',
   'scatterChart',
-  'savedQueries'
+  'savedQueries',
+  'notes'
 ])
 
-// Settings are widget-type-specific; validate the shape loosely as a record
-// of safe primitive/array values to prevent arbitrary objects from being
-// persisted by IPC callers.
-const widgetSettingsSchema = z.record(z.string(), z.unknown())
+// ── Per-type settings schemas ──
 
-export const widgetSchema = z.object({
-  id: z.string().min(1),
-  type: widgetTypeSchema,
-  title: z.string(),
-  queryId: z.string().nullable(),
-  customQuery: z.string().optional(),
-  position: widgetPositionSchema,
-  settings: widgetSettingsSchema
+const kpiWidgetSettingsSchema = z.object({
+  valueField: z.string(),
+  labelField: z.string().optional(),
+  prefix: z.string().optional(),
+  suffix: z.string().optional(),
+  formatType: z.enum(['number', 'currency', 'percentage']).optional(),
+  decimals: z.number().optional(),
+  compareField: z.string().optional(),
+  compareLabel: z.string().optional()
 })
+
+const tableWidgetSettingsSchema = z.object({
+  columns: z.array(z.string()).optional(),
+  pageSize: z.number().optional(),
+  sortable: z.boolean().optional(),
+  filterable: z.boolean().optional()
+})
+
+const chartWidgetSettingsSchema = z.object({
+  xAxisField: z.string(),
+  yAxisField: z.string(),
+  colorField: z.string().optional(),
+  showLegend: z.boolean().optional(),
+  showGrid: z.boolean().optional(),
+  colors: z.array(z.string()).optional(),
+  orientation: z.enum(['vertical', 'horizontal']).optional()
+})
+
+const pieChartWidgetSettingsSchema = z.object({
+  labelField: z.string(),
+  showLegend: z.boolean().optional(),
+  showTable: z.boolean().optional(),
+  colors: z.array(z.string()).optional()
+})
+
+const scatterWidgetSettingsSchema = z.object({
+  xAxisField: z.string(),
+  yAxisField: z.string(),
+  labelField: z.string().optional(),
+  showGrid: z.boolean().optional(),
+  colors: z.array(z.string()).optional()
+})
+
+const savedQueriesWidgetSettingsSchema = z.object({
+  content: z.string()
+})
+
+const notesWidgetSettingsSchema = z.object({
+  content: z.string()
+})
+
+// Pass-through: allow extra unknown keys for forward-compatibility
+const withPassthrough = <T extends z.ZodObject<any>>(schema: T) => schema.passthrough()
+
+export const widgetSchema = z.discriminatedUnion('type', [
+  z.object({
+    id: z.string().min(1),
+    type: z.literal('kpi'),
+    title: z.string(),
+    queryId: z.string().nullable(),
+    customQuery: z.string().optional(),
+    position: widgetPositionSchema,
+    settings: withPassthrough(kpiWidgetSettingsSchema)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal('table'),
+    title: z.string(),
+    queryId: z.string().nullable(),
+    customQuery: z.string().optional(),
+    position: widgetPositionSchema,
+    settings: withPassthrough(tableWidgetSettingsSchema)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal('barChart'),
+    title: z.string(),
+    queryId: z.string().nullable(),
+    customQuery: z.string().optional(),
+    position: widgetPositionSchema,
+    settings: withPassthrough(chartWidgetSettingsSchema)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal('lineChart'),
+    title: z.string(),
+    queryId: z.string().nullable(),
+    customQuery: z.string().optional(),
+    position: widgetPositionSchema,
+    settings: withPassthrough(chartWidgetSettingsSchema)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal('pieChart'),
+    title: z.string(),
+    queryId: z.string().nullable(),
+    customQuery: z.string().optional(),
+    position: widgetPositionSchema,
+    settings: withPassthrough(pieChartWidgetSettingsSchema)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal('scatterChart'),
+    title: z.string(),
+    queryId: z.string().nullable(),
+    customQuery: z.string().optional(),
+    position: widgetPositionSchema,
+    settings: withPassthrough(scatterWidgetSettingsSchema)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal('savedQueries'),
+    title: z.string(),
+    queryId: z.string().nullable(),
+    customQuery: z.string().optional(),
+    position: widgetPositionSchema,
+    settings: withPassthrough(savedQueriesWidgetSettingsSchema)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal('notes'),
+    title: z.string(),
+    queryId: z.string().nullable(),
+    customQuery: z.string().optional(),
+    position: widgetPositionSchema,
+    settings: withPassthrough(notesWidgetSettingsSchema)
+  })
+])
 
 export const dashboardLayoutSchema = z.object({
   columns: z.number().int().min(1),

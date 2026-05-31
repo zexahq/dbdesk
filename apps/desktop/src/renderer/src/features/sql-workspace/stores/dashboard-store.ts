@@ -4,22 +4,21 @@
  *
  * NOTE: This store focuses on UI state (current dashboard, mode, etc.)
  * Data fetching/caching should use TanStack Query directly in components.
- * The store provides mutation helpers that work with the query cache.
- *
- * IMPORTANT: When using mutations that modify dashboards, components should
- * call queryClient.invalidateQueries({ queryKey: ['dashboards', connectionId] })
- * to refresh the dashboard list.
+ * The store provides mutation helpers that work with the query cache and
+ * automatically invalidate the dashboard list query key after mutations.
  */
 
 import { create } from 'zustand'
 import { dbdeskClient } from '@renderer/api/client'
 import { createId } from '@renderer/lib/utils'
+import { queryClient } from '@renderer/shared/lib/query-client'
 import type { DashboardConfig, Widget } from '@common/types'
 
 // Query key constant for consistency across the app
 export const DASHBOARD_QUERY_KEYS = {
   list: (connectionId: string) => ['dashboards', connectionId] as const,
-  detail: (connectionId: string, dashboardId: string) => ['dashboard', connectionId, dashboardId] as const
+  detail: (connectionId: string, dashboardId: string) =>
+    ['dashboard', connectionId, dashboardId] as const
 }
 
 interface DashboardStore {
@@ -38,7 +37,11 @@ interface DashboardStore {
   reset: () => void
 
   // Mutation helpers (not for data fetching - use TanStack Query for that)
-  createDashboard: (connectionId: string, name: string, description?: string) => Promise<DashboardConfig>
+  createDashboard: (
+    connectionId: string,
+    name: string,
+    description?: string
+  ) => Promise<DashboardConfig>
   saveDashboard: (dashboard: DashboardConfig) => Promise<DashboardConfig>
   deleteDashboard: (connectionId: string, dashboardId: string) => Promise<boolean>
 
@@ -47,8 +50,13 @@ interface DashboardStore {
   persistAllDashboards: () => Promise<void>
 
   // Export/Import
-  exportDashboards: (connectionId?: string) => Promise<{ version: string; exportedAt: string; dashboards: DashboardConfig[] }>
-  importDashboards: (dashboards: DashboardConfig[], overwrite?: boolean) => Promise<{ imported: number; skipped: number }>
+  exportDashboards: (
+    connectionId?: string
+  ) => Promise<{ version: string; exportedAt: string; dashboards: DashboardConfig[] }>
+  importDashboards: (
+    dashboards: DashboardConfig[],
+    overwrite?: boolean
+  ) => Promise<{ imported: number; skipped: number }>
 }
 
 export const useDashboardStore = create<DashboardStore>((set) => ({
@@ -99,6 +107,7 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
     try {
       const saved = await dbdeskClient.saveDashboard(newDashboard)
       set({ currentDashboard: saved, error: null })
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEYS.list(connectionId) })
       return saved
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to create dashboard'
@@ -120,6 +129,7 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
         error: null
       }))
 
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEYS.list(dashboard.connectionId) })
       return saved
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to save dashboard'
@@ -139,6 +149,7 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
         error: null
       }))
 
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEYS.list(connectionId) })
       return result
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Failed to delete dashboard'

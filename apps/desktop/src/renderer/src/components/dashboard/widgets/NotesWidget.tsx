@@ -9,6 +9,8 @@ import type { NotesWidgetSettings } from '@common/types'
 import type { WidgetComponentProps } from '@renderer/types/dashboard'
 import { WidgetWrapper } from './WidgetWrapper'
 
+const SAVE_DEBOUNCE_MS = 600
+
 export function NotesWidget({
   widget,
   isEditMode,
@@ -22,6 +24,13 @@ export function NotesWidget({
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState(content)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const saveTimerRef = useRef<number>(0)
+  const contentRef = useRef(content)
+
+  // Keep contentRef always in sync so Escape always restores the latest value
+  useEffect(() => {
+    contentRef.current = content
+  }, [content])
 
   // Sync draft when content changes from outside (e.g. edit dialog save)
   useEffect(() => {
@@ -30,6 +39,15 @@ export function NotesWidget({
     }
   }, [content, isEditing])
 
+  // Cleanup debounce timer on unmount or when widget changes
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+      }
+    }
+  }, [widget.id])
+
   const handleStartEditing = useCallback(() => {
     if (!isEditMode) return
     setDraft(content)
@@ -37,25 +55,35 @@ export function NotesWidget({
     setTimeout(() => textareaRef.current?.focus(), 0)
   }, [isEditMode, content])
 
+  const flushSave = useCallback(() => {
+    onSave?.({
+      ...widget,
+      settings: { ...settings, content: draft }
+    })
+  }, [draft, widget, settings, onSave])
+
   const handleBlur = useCallback(() => {
     setIsEditing(false)
     if (draft !== content) {
-      onSave?.({
-        ...widget,
-        settings: { ...settings, content: draft }
-      })
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+      }
+      saveTimerRef.current = window.setTimeout(flushSave, SAVE_DEBOUNCE_MS)
     }
-  }, [draft, content, widget, settings, onSave])
+  }, [draft, content, flushSave])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Escape cancels edit without saving
       if (e.key === 'Escape') {
         setIsEditing(false)
-        setDraft(content)
+        setDraft(contentRef.current)
+        if (saveTimerRef.current) {
+          clearTimeout(saveTimerRef.current)
+          saveTimerRef.current = 0
+        }
       }
     },
-    [content]
+    []
   )
 
   return (

@@ -7,7 +7,7 @@
 
 import { and, eq, getDb, dashboards } from '@dbdesk/db'
 import { dashboardConfigSchema } from '@dbdesk/shared/schemas'
-import type { DashboardConfig, Widget } from '@common/types'
+import type { DashboardConfig } from '@common/types'
 
 const STORAGE_VERSION = '1.0.0'
 
@@ -31,7 +31,7 @@ const rowToDashboard = (row: DashboardRow): DashboardConfig => {
     name: parsed.name,
     description: parsed.description,
     layout: parsed.layout,
-    widgets: parsed.widgets as Widget[],
+    widgets: parsed.widgets,
     createdAt: new Date(parsed.createdAt),
     updatedAt: new Date(parsed.updatedAt)
   } satisfies DashboardConfig
@@ -86,9 +86,7 @@ export const getDashboard = async (
   const row = getDb()
     .select()
     .from(dashboards)
-    .where(
-      and(eq(dashboards.dashboardId, dashboardId), eq(dashboards.connectionId, connectionId))
-    )
+    .where(and(eq(dashboards.dashboardId, dashboardId), eq(dashboards.connectionId, connectionId)))
     .get()
 
   if (!row) return undefined
@@ -112,9 +110,7 @@ export const saveDashboard = async (dashboard: DashboardConfig): Promise<Dashboa
     .where(eq(dashboards.dashboardId, dashboard.dashboardId))
     .get()
 
-  const createdAt = existing
-    ? new Date(existing.createdAt)
-    : toDate(dashboard.createdAt, now)
+  const createdAt = existing ? new Date(existing.createdAt) : toDate(dashboard.createdAt, now)
 
   const updatedDashboard: DashboardConfig = {
     ...dashboard,
@@ -159,9 +155,7 @@ export const deleteDashboard = async (
 ): Promise<boolean> => {
   const result = getDb()
     .delete(dashboards)
-    .where(
-      and(eq(dashboards.dashboardId, dashboardId), eq(dashboards.connectionId, connectionId))
-    )
+    .where(and(eq(dashboards.dashboardId, dashboardId), eq(dashboards.connectionId, connectionId)))
     .run()
 
   return result.changes > 0
