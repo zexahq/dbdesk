@@ -43,6 +43,7 @@ interface LineChartProps {
   enableBrush?: boolean
   zoomState?: ChartZoomState
   onBrushEnd?: (startIndex: number, endIndex: number) => void
+  chartId: string
 }
 
 function LineChart({
@@ -57,7 +58,8 @@ function LineChart({
   isExpanded,
   enableBrush,
   zoomState,
-  onBrushEnd
+  onBrushEnd,
+  chartId
 }: LineChartProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null)
   const brushRef = useRef<BaseBrush | null>(null)
@@ -167,7 +169,7 @@ function LineChart({
     <div className="relative">
       <svg width={width} height={height} className="text-foreground">
         <PatternLines
-          id="brush-pattern-line"
+          id={`brush-pattern-line-${chartId}`}
           height={8}
           width={8}
           stroke={colors[0]}
@@ -289,7 +291,7 @@ function LineChart({
                 }
               }}
               selectedBoxStyle={{
-                fill: 'url(#brush-pattern-line)',
+                fill: `url(#brush-pattern-line-${chartId})`,
                 stroke: colors[0],
                 strokeWidth: 1,
                 fillOpacity: 0.3
@@ -404,6 +406,7 @@ export function VisxLineChartWidget({
                     enableBrush={!isExpanded && !isEditMode}
                     zoomState={zoomState}
                     onBrushEnd={handleBrushEnd}
+                    chartId={widget.id}
                   />
                 </div>
               </div>

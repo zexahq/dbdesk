@@ -43,6 +43,7 @@ interface ScatterChartProps {
   enableBrush?: boolean
   zoomState?: ChartZoomState
   onBrushEnd?: (xMin: number, xMax: number, yMin: number, yMax: number) => void
+  chartId: string
 }
 
 function ScatterChart({
@@ -55,7 +56,8 @@ function ScatterChart({
   yLabel,
   enableBrush,
   zoomState,
-  onBrushEnd
+  onBrushEnd,
+  chartId
 }: ScatterChartProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null)
   const brushRef = useRef<BaseBrush | null>(null)
@@ -177,7 +179,7 @@ function ScatterChart({
     <div className="relative">
       <svg width={width} height={height} className="text-foreground">
         <PatternLines
-          id="brush-pattern-scatter"
+          id={`brush-pattern-scatter-${chartId}`}
           height={8}
           width={8}
           stroke={colors[0]}
@@ -288,7 +290,7 @@ function ScatterChart({
                 }
               }}
               selectedBoxStyle={{
-                fill: 'url(#brush-pattern-scatter)',
+                fill: `url(#brush-pattern-scatter-${chartId})`,
                 stroke: colors[0],
                 strokeWidth: 1,
                 fillOpacity: 0.3
@@ -408,6 +410,7 @@ export function VisxScatterChartWidget({
                     enableBrush={!isExpanded && !isEditMode}
                     zoomState={zoomState}
                     onBrushEnd={handleBrushEnd}
+                    chartId={widget.id}
                   />
                 </div>
               </div>

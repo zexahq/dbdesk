@@ -39,14 +39,24 @@ export function NotesWidget({
     }
   }, [content, isEditing])
 
-  // Cleanup debounce timer on unmount or when widget changes
+  const flushSave = useCallback(() => {
+    onSave?.({
+      ...widget,
+      settings: { ...settings, content: draft }
+    })
+  }, [draft, widget, settings, onSave])
+
+  // Cleanup: flush any pending save on unmount so edits aren't lost
+  // when the user navigates away or closes the tab before the debounce fires.
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = 0
+        flushSave()
       }
     }
-  }, [widget.id])
+  }, [flushSave])
 
   const handleStartEditing = useCallback(() => {
     if (!isEditMode) return
@@ -54,13 +64,6 @@ export function NotesWidget({
     setIsEditing(true)
     setTimeout(() => textareaRef.current?.focus(), 0)
   }, [isEditMode, content])
-
-  const flushSave = useCallback(() => {
-    onSave?.({
-      ...widget,
-      settings: { ...settings, content: draft }
-    })
-  }, [draft, widget, settings, onSave])
 
   const handleBlur = useCallback(() => {
     setIsEditing(false)

@@ -47,6 +47,7 @@ interface BarChartProps {
   enableBrush?: boolean
   zoomState?: ChartZoomState
   onBrushEnd?: (startIndex: number, endIndex: number) => void
+  chartId: string
 }
 
 function BarChart({
@@ -62,7 +63,8 @@ function BarChart({
   isExpanded,
   enableBrush,
   zoomState,
-  onBrushEnd
+  onBrushEnd,
+  chartId
 }: BarChartProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null)
   const brushRef = useRef<BaseBrush | null>(null)
@@ -219,7 +221,7 @@ function BarChart({
     <div className="relative">
       <svg width={width} height={height} className="text-foreground">
         <PatternLines
-          id="brush-pattern-bar"
+          id={`brush-pattern-bar-${chartId}`}
           height={8}
           width={8}
           stroke={colors[0]}
@@ -358,7 +360,7 @@ function BarChart({
                 }
               }}
               selectedBoxStyle={{
-                fill: 'url(#brush-pattern-bar)',
+                fill: `url(#brush-pattern-bar-${chartId})`,
                 stroke: colors[0],
                 strokeWidth: 1,
                 fillOpacity: 0.3
@@ -490,6 +492,7 @@ export function VisxBarChartWidget({
                     enableBrush={!isExpanded && !isEditMode}
                     zoomState={zoomState}
                     onBrushEnd={handleBrushEnd}
+                    chartId={widget.id}
                   />
                 </div>
               </div>

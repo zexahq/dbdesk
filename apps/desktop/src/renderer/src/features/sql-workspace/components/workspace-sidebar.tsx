@@ -249,12 +249,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
 
       const tab = findDashboardTabById(dashboardRenameMode.dashboardId)
       if (tab) {
-        useTabStore.getState().tabs.forEach((t) => {
-          if (t.kind === 'dashboard' && t.dashboardId === dashboardRenameMode.dashboardId) {
-            removeTab(t.id)
-          }
-        })
-        addDashboardTab(dashboardRenameMode.dashboardId, newName)
+        useTabStore.getState().updateDashboardTab(tab.id, { name: newName })
       }
 
       if (dashboardStore.currentDashboard?.dashboardId === dashboardRenameMode.dashboardId) {

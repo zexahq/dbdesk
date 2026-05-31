@@ -76,6 +76,7 @@ interface TabStore {
 
   // Dashboard-specific actions
   addDashboardTab: (dashboardId: string, name: string) => string
+  updateDashboardTab: (tabId: string, updates: Partial<Pick<DashboardTab, 'name'>>) => void
   findDashboardTabById: (dashboardId: string) => DashboardTab | undefined
 
   // Persistence
@@ -277,6 +278,14 @@ export const useTabStore = create<TabStore>((set, get) => ({
   findDashboardTabById: (dashboardId: string) => {
     const tab = get().tabs.find((t) => t.kind === 'dashboard' && t.dashboardId === dashboardId)
     return tab?.kind === 'dashboard' ? tab : undefined
+  },
+
+  updateDashboardTab: (tabId: string, updates: Partial<Pick<DashboardTab, 'name'>>) => {
+    set((state) => ({
+      tabs: state.tabs.map((t) =>
+        t.kind === 'dashboard' && t.id === tabId ? { ...t, ...updates } : t
+      )
+    }))
   },
 
   // Persistence
