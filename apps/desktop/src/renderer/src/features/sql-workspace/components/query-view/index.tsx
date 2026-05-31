@@ -1,5 +1,5 @@
 import type { SQLConnectionProfile } from '@dbdesk/shared/types'
-import { useRunQuery } from '@renderer/features/sql-workspace/queries/query'
+import { useCancelQuery, useRunQuery } from '@renderer/features/sql-workspace/queries/query'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import SqlEditor from '@renderer/features/editor/components/sql-editor'
 import {
@@ -10,7 +10,7 @@ import {
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { QueryTab, useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { toast } from '@renderer/shared/lib/toast'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { QueryBottombar } from './query-bottombar'
 import { QueryResults } from './query-results'
 
@@ -30,9 +30,13 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
     isPending: isExecuting,
     error: executionError
   } = useRunQuery(profile.id)
+  const { mutateAsync: cancelQueryMutation } = useCancelQuery(profile.id)
 
   const isQueryTabSaved = queries.some((q) => q.id === activeTab.id)
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
+
+  // Tracks the queryId of the in-flight execution so the user can cancel it.
+  const currentQueryIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -63,8 +67,14 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
         return
       }
 
+      const queryId = crypto.randomUUID()
+      currentQueryIdRef.current = queryId
+
       try {
-        const result = await runQueryMutation({ query: rawQuery, options: { limit, offset } })
+        const result = await runQueryMutation({
+          query: rawQuery,
+          options: { limit, offset, queryId }
+        })
         updateQueryTab(activeTab.id, {
           queryResults: result,
           limit: result.limit,
@@ -73,10 +83,24 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
         })
       } catch {
         updateQueryTab(activeTab.id, { queryResults: undefined })
+      } finally {
+        if (currentQueryIdRef.current === queryId) {
+          currentQueryIdRef.current = null
+        }
       }
     },
     [activeTab.editorContent, activeTab.id, runQueryMutation, updateQueryTab]
   )
+
+  const handleCancelQuery = useCallback(async () => {
+    const queryId = currentQueryIdRef.current
+    if (!queryId) return
+    try {
+      await cancelQueryMutation(queryId)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to cancel query')
+    }
+  }, [cancelQueryMutation])
 
   const handleRunQuery = async () => {
     const limit = activeTab.limit ?? 50
@@ -126,6 +150,7 @@ export function QueryView({ profile, activeTab }: QueryViewProps) {
             isLoading={isExecuting}
             error={executionError}
             onRun={handleRunQuery}
+            onCancel={handleCancelQuery}
           />
         </ResizablePanel>
       </ResizablePanelGroup>

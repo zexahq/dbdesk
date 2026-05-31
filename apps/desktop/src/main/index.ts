@@ -6,9 +6,10 @@ import icon from '../../resources/icon.png?asset'
 import './adapters'
 import { connectionManager } from './connectionManager'
 import { initDatabase, closeDatabase, runMigrations } from '@dbdesk/db'
-import { runLegacyImportIfNeeded } from './db/legacy-import'
+import { runDashboardYamlImportIfNeeded, runLegacyImportIfNeeded } from './db/legacy-import'
 import { registerAllIpcHandlers } from './ipc'
 import { authManager } from './lib/auth-manager'
+import { initDashboardStorage } from './dashboard-storage'
 import { AssetServer } from './protocols/asset-server'
 import { AssetUrl } from './protocols/asset-url'
 import { initAutoUpdater } from './lib/auto-updater'
@@ -114,8 +115,6 @@ app.on('open-url', (_event, url) => {
   console.log('[deep-link] open-url received:', url)
 })
 
-authManager.setup(() => mainWindow)
-
 const server = new AssetServer()
 let workspaceFlushPromise: Promise<void> | null = null
 let workspaceFlushCompleted = false
@@ -172,16 +171,26 @@ if (userDataPath) {
   app.setPath('userData', userDataPath)
 }
 
-// Initialize the database early (before authManager.setup() above may
-// access auth storage) so that getSqlite()/getDb() are available immediately.
+// Initialize the database early so getSqlite()/getDb() are available before
+// auth and IPC handlers can access local storage.
 initDatabase(join(app.getPath('userData'), 'dbdesk.sqlite'))
 runMigrations(join(__dirname, 'drizzle'))
 runLegacyImportIfNeeded(previousUserDataPath)
+runDashboardYamlImportIfNeeded(previousUserDataPath)
+
+authManager.setup(() => mainWindow)
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Initialize dashboard storage
+  try {
+    await initDashboardStorage()
+    console.log('Dashboard storage initialized')
+  } catch (error) {
+    console.error('Failed to initialize dashboard storage:', error)
+  }
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')

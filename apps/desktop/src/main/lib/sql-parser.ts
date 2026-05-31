@@ -171,3 +171,24 @@ export const isSelectableQuery = (query: string): boolean => {
 
   return keyword === 'select'
 }
+
+/**
+ * Returns true if the query is safe to run on a read-only connection:
+ * a single statement whose leading keyword (after any WITH-CTE) is
+ * SELECT or SHOW. EXPLAIN is intentionally excluded because
+ * `EXPLAIN ANALYZE <dml>` executes the underlying statement in Postgres.
+ */
+export const isReadOnlyQuery = (query: string): boolean => {
+  const trimmed = query.trim()
+  if (trimmed === '') return false
+
+  const normalized = normalizeQuery(trimmed)
+  if (normalized === '') return false
+
+  if (hasAdditionalStatements(normalized)) return false
+
+  const keyword = getInitialStatementKeyword(normalized)
+  if (!keyword) return false
+
+  return keyword === 'select' || keyword === 'show'
+}

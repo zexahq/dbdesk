@@ -1,4 +1,4 @@
-import type { SQLConnectionProfile } from '@dbdesk/shared/types'
+import type { DashboardConfig, SQLConnectionProfile } from '@dbdesk/shared/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import { AddTableSheet } from '@renderer/features/sql-workspace/components/sheets/add-table-sheet'
 import { TableOptionsDropdown } from '@renderer/features/sql-workspace/components/table-view/table-options-dropdown'
@@ -33,7 +33,7 @@ import { Tab, useActiveTab, useTabStore } from '@renderer/features/sql-workspace
 import {
   ChevronRight,
   DatabaseIcon,
-  FileText,
+  LayoutDashboard,
   MoreVertical,
   Pencil,
   Plus,
@@ -42,7 +42,13 @@ import {
   Table2Icon,
   Trash2
 } from 'lucide-react'
+import { dbdeskClient } from '@renderer/shared/api/client'
 import { queryClient } from '@renderer/shared/lib/query-client'
+import { useQuery } from '@tanstack/react-query'
+import {
+  DASHBOARD_QUERY_KEYS,
+  useDashboardStore
+} from '@renderer/features/sql-workspace/stores/dashboard-store'
 import { useEffect, useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 
@@ -55,9 +61,16 @@ type RenameMode = {
   queryId: string | null
 }
 
+type DashboardRenameMode = {
+  open: boolean
+  dashboardId: string | null
+}
+
 export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const [renameMode, setRenameMode] = useState<RenameMode>({ open: false, queryId: null })
+  const [dashboardRenameMode, setDashboardRenameMode] = useState<DashboardRenameMode>({ open: false, dashboardId: null })
 
+  const sidebarViewMode = useSqlWorkspaceStore((s) => s.sidebarViewMode)
   const schemasWithTables = useSqlWorkspaceStore((s) => s.schemasWithTables)
   const addTableTab = useTabStore((s) => s.addTableTab)
   const addQueryTab = useTabStore((s) => s.addQueryTab)
@@ -66,11 +79,21 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
   const removeTab = useTabStore((s) => s.removeTab)
   const activeTab = useActiveTab()
+  const addDashboardTab = useTabStore((s) => s.addDashboardTab)
+  const findDashboardTabById = useTabStore((s) => s.findDashboardTabById)
 
   const queries = useSavedQueriesStore((s) => s.queries)
   const loadQueries = useSavedQueriesStore((s) => s.loadQueries)
   const deleteQuery = useSavedQueriesStore((s) => s.deleteQuery)
   const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
+
+  const dashboardStore = useDashboardStore()
+  const { data: dashboards = [] } = useQuery({
+    queryKey: DASHBOARD_QUERY_KEYS.list(profile.id),
+    queryFn: () => dbdeskClient.loadDashboards(profile.id),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false
+  })
 
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -118,7 +141,6 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const handleDeleteQuery = async (queryId: string) => {
     try {
       await deleteQuery(profile.id, queryId)
-      // Close the tab if that query is open
       const tab = findQueryTabById(queryId)
       if (tab) {
         removeTab(tab.id)
@@ -149,8 +171,6 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
     }
   }
 
-  const selectedQuery = renameMode.queryId ? queries.find((q) => q.id === renameMode.queryId) : null
-
   const handleNewQuery = () => {
     addQueryTab()
   }
@@ -163,147 +183,306 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
     })
   }
 
+  const handleCreateDashboard = async () => {
+    try {
+      const newDashboard = await dashboardStore.createDashboard(
+        profile.id,
+        `Dashboard ${dashboards.length + 1}`
+      )
+      await queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEYS.list(profile.id) })
+      addDashboardTab(newDashboard.dashboardId, newDashboard.name)
+      dashboardStore.setCurrentDashboard(newDashboard)
+      toast.success('Dashboard created')
+    } catch {
+      toast.error('Failed to create dashboard')
+    }
+  }
+
+  const handleLoadDashboard = (dashboard: DashboardConfig) => {
+    const existingTab = findDashboardTabById(dashboard.dashboardId)
+    if (existingTab) {
+      setActiveTab(existingTab.id)
+      return
+    }
+
+    addDashboardTab(dashboard.dashboardId, dashboard.name)
+    dashboardStore.setCurrentDashboard(dashboard)
+  }
+
+  const handleDeleteDashboard = async (dashboardId: string) => {
+    try {
+      await dashboardStore.deleteDashboard(profile.id, dashboardId)
+      await queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEYS.list(profile.id) })
+
+      const tab = findDashboardTabById(dashboardId)
+      if (tab) {
+        removeTab(tab.id)
+      }
+
+      if (dashboardStore.currentDashboard?.dashboardId === dashboardId) {
+        dashboardStore.setCurrentDashboard(null)
+      }
+
+      toast.success('Dashboard deleted')
+    } catch {
+      toast.error('Failed to delete dashboard')
+    }
+  }
+
+  const handleRenameDashboard = async (newName: string) => {
+    if (!dashboardRenameMode.dashboardId) return
+
+    try {
+      const dashboard = await dbdeskClient.getDashboard(profile.id, dashboardRenameMode.dashboardId)
+      if (!dashboard) {
+        toast.error('Dashboard not found')
+        return
+      }
+
+      const updatedDashboard: DashboardConfig = {
+        ...dashboard,
+        name: newName,
+        updatedAt: new Date()
+      }
+      await dashboardStore.saveDashboard(updatedDashboard)
+      await queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEYS.list(profile.id) })
+
+      const tab = findDashboardTabById(dashboardRenameMode.dashboardId)
+      if (tab) {
+        useTabStore.getState().updateDashboardTab(tab.id, { name: newName })
+      }
+
+      if (dashboardStore.currentDashboard?.dashboardId === dashboardRenameMode.dashboardId) {
+        dashboardStore.setCurrentDashboard(updatedDashboard)
+      }
+
+      toast.success('Dashboard renamed')
+    } catch {
+      toast.error('Failed to rename dashboard')
+    }
+  }
+
+  const selectedQuery = renameMode.queryId ? queries.find((q) => q.id === renameMode.queryId) : null
+  const selectedDashboard = dashboardRenameMode.dashboardId
+    ? dashboards.find((d) => d.dashboardId === dashboardRenameMode.dashboardId)
+    : null
+
+  const renderActionButton = () => {
+    switch (sidebarViewMode) {
+      case 'schemas':
+        return (
+          <Button
+            variant="outline"
+            className="w-full justify-start h-10 gap-2 cursor-pointer"
+            onClick={handleRefreshSchemas}
+            disabled={isRefreshing}
+          >
+            <RotateCw className={cn('size-4 text-muted-foreground', isRefreshing && 'animate-spin')} />
+            Refresh Schemas
+          </Button>
+        )
+      case 'queries':
+        return (
+          <Button
+            variant="outline"
+            className="w-full justify-start h-10 gap-2 cursor-pointer"
+            onClick={handleNewQuery}
+          >
+            <Plus className="size-4 text-muted-foreground" />
+            New Query
+          </Button>
+        )
+      case 'dashboards':
+        return (
+          <Button
+            variant="outline"
+            className="w-full justify-start h-10 gap-2 cursor-pointer"
+            onClick={handleCreateDashboard}
+          >
+            <LayoutDashboard className="size-4 text-muted-foreground" />
+            New Dashboard
+          </Button>
+        )
+    }
+  }
+
+  const renderContent = () => {
+    switch (sidebarViewMode) {
+      case 'schemas':
+        return (
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {schemasWithTables.length === 0 ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton aria-disabled>No schemas</SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : (
+                schemasWithTables.map((schemaData) => (
+                  <SchemaTree
+                    key={schemaData.schema}
+                    connectionId={profile.id}
+                    schema={schemaData.schema}
+                    tables={schemaData.tables}
+                    activeTab={activeTab}
+                    onTableClick={handleTableClick}
+                    onDuplicateToQuery={handleDuplicateToQuery}
+                    profile={profile}
+                  />
+                ))
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        )
+      case 'queries':
+        return (
+          <SidebarGroupContent>
+            {queries.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground text-center">
+                No saved queries yet
+                <div className="text-xs mt-2">Press Ctrl+S to save a query</div>
+              </div>
+            ) : (
+              <SidebarMenu>
+                {queries.map((query) => {
+                  const isActive = activeTab?.id === query.id
+                  return (
+                    <SidebarMenuItem key={query.id}>
+                      <div
+                        className={cn(
+                          'flex items-center justify-between w-full px-2 rounded-md hover:bg-accent group',
+                          isActive && 'bg-accent'
+                        )}
+                      >
+                        <SidebarMenuButton
+                          onClick={() => handleLoadQuery(query)}
+                          className="flex-1 cursor-pointer gap-2 h-9"
+                          asChild
+                        >
+                          <button className="text-left">
+                            <SquareCode className="size-4 shrink-0" />
+                            <span className="truncate">{query.name}</span>
+                          </button>
+                        </SidebarMenuButton>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 hover:bg-accent/80"
+                            >
+                              <MoreVertical className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setRenameMode({ open: true, queryId: query.id })
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Pencil className="size-4 mr-2" />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteQuery(query.id)}
+                              className="cursor-pointer"
+                            >
+                              <Trash2 className="size-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            )}
+          </SidebarGroupContent>
+        )
+      case 'dashboards':
+        return (
+          <SidebarGroupContent>
+            {dashboards.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground text-center">
+                No dashboards yet
+              </div>
+            ) : (
+              <SidebarMenu>
+                {dashboards.map((dashboard) => {
+                  const isActive = activeTab?.kind === 'dashboard' && activeTab.dashboardId === dashboard.dashboardId
+                  return (
+                    <SidebarMenuItem key={dashboard.dashboardId}>
+                      <div
+                        className={cn(
+                          'flex items-center justify-between w-full px-2 rounded-md hover:bg-accent group',
+                          isActive && 'bg-accent'
+                        )}
+                      >
+                        <SidebarMenuButton
+                          onClick={() => handleLoadDashboard(dashboard)}
+                          className="flex-1 cursor-pointer gap-2 h-9"
+                          asChild
+                        >
+                          <button className="text-left">
+                            <LayoutDashboard className="size-4 shrink-0" />
+                            <span className="truncate">{dashboard.name}</span>
+                          </button>
+                        </SidebarMenuButton>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 hover:bg-accent/80"
+                            >
+                              <MoreVertical className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setDashboardRenameMode({ open: true, dashboardId: dashboard.dashboardId })
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Pencil className="size-4 mr-2" />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteDashboard(dashboard.dashboardId)}
+                              className="cursor-pointer"
+                            >
+                              <Trash2 className="size-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            )}
+          </SidebarGroupContent>
+        )
+    }
+  }
+
   return (
     <>
       <Sidebar className="w-full h-full" collapsible="none">
         <SidebarHeader>
           <SidebarGroup className="flex flex-col gap-2">
             <div className="text-sm font-medium text-foreground px-2">{profile.name}</div>
-            <Button
-              variant="outline"
-              className="w-full justify-start h-10 gap-2 cursor-pointer"
-              onClick={handleNewQuery}
-            >
-              <Plus className="size-4 text-muted-foreground" />
-              New Query
-            </Button>
+            {renderActionButton()}
           </SidebarGroup>
         </SidebarHeader>
         <SidebarSeparator />
         <SidebarContent className="gap-0 py-2">
-          <Collapsible defaultOpen className="group/schema">
-            <SidebarGroup className="gap-2 py-0">
-              <div className="flex items-center gap-2">
-                <CollapsibleTrigger className="flex-1 cursor-pointer h-10 px-3 flex items-center justify-between text-sm font-medium border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-                  <span className="flex items-center gap-2">
-                    <DatabaseIcon className="size-4" />
-                    <span>Schemas</span>
-                  </span>
-                  <ChevronRight className="size-4 transition-transform group-data-[state=open]/schema:rotate-90" />
-                </CollapsibleTrigger>
-                <button
-                  onClick={handleRefreshSchemas}
-                  disabled={isRefreshing}
-                  className="h-10 w-10 flex items-center justify-center border rounded-md hover:bg-accent transition-colors cursor-pointer disabled:opacity-50"
-                  title="Refresh schemas"
-                >
-                  <RotateCw className={cn('size-4', isRefreshing && 'animate-spin')} />
-                </button>
-              </div>
-              <CollapsibleContent>
-                <SidebarGroupContent className="mt-2">
-                  <SidebarMenu>
-                    {schemasWithTables.length === 0 ? (
-                      <SidebarMenuItem>
-                        <SidebarMenuButton aria-disabled>No schemas</SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ) : (
-                      schemasWithTables.map((schemaData) => (
-                        <SchemaTree
-                          key={schemaData.schema}
-                          connectionId={profile.id}
-                          schema={schemaData.schema}
-                          tables={schemaData.tables}
-                          activeTab={activeTab}
-                          onTableClick={handleTableClick}
-                          onDuplicateToQuery={handleDuplicateToQuery}
-                          profile={profile}
-                        />
-                      ))
-                    )}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </CollapsibleContent>
-            </SidebarGroup>
-          </Collapsible>
-
-          <Collapsible className="group/queries">
-            <SidebarGroup className="gap-2">
-              <CollapsibleTrigger className="cursor-pointer w-full h-10 px-3 flex items-center justify-between text-sm font-medium border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-                <span className="flex items-center gap-2">
-                  <FileText className="size-4" />
-                  Saved Queries
-                </span>
-                <ChevronRight className="size-4 transition-transform group-data-[state=open]/queries:rotate-90" />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarGroupContent className="mt-2">
-                  {queries.length === 0 ? (
-                    <div className="p-4 text-sm text-muted-foreground text-center">
-                      No saved queries yet
-                      <div className="text-xs mt-2">Press Ctrl+S to save a query</div>
-                    </div>
-                  ) : (
-                    <SidebarMenu>
-                      {queries.map((query) => {
-                        const isActive = activeTab?.id === query.id
-                        return (
-                          <SidebarMenuItem key={query.id}>
-                            <div
-                              className={cn(
-                                'flex items-center justify-between w-full px-2 rounded-md hover:bg-accent group',
-                                isActive && 'bg-accent'
-                              )}
-                            >
-                              <SidebarMenuButton
-                                onClick={() => handleLoadQuery(query)}
-                                className="flex-1 cursor-pointer gap-2 h-9"
-                                asChild
-                              >
-                                <button className="text-left">
-                                  <SquareCode className="size-4 shrink-0" />
-                                  <span className="truncate">{query.name}</span>
-                                </button>
-                              </SidebarMenuButton>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 hover:bg-accent/80"
-                                  >
-                                    <MoreVertical className="size-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setRenameMode({ open: true, queryId: query.id })
-                                    }}
-                                    className="cursor-pointer"
-                                  >
-                                    <Pencil className="size-4 mr-2" />
-                                    Rename
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteQuery(query.id)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Trash2 className="size-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </SidebarMenuItem>
-                        )
-                      })}
-                    </SidebarMenu>
-                  )}
-                </SidebarGroupContent>
-              </CollapsibleContent>
-            </SidebarGroup>
-          </Collapsible>
+          <SidebarGroup className="gap-2 py-0">
+            {renderContent()}
+          </SidebarGroup>
         </SidebarContent>
       </Sidebar>
 
@@ -317,6 +496,18 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
           submitText="Rename"
           initialValue={selectedQuery.name}
           onSave={handleRenameQuery}
+        />
+      )}
+      {selectedDashboard && (
+        <SaveQueryDialog
+          open={dashboardRenameMode.open}
+          onOpenChange={(open) => setDashboardRenameMode({ ...dashboardRenameMode, open })}
+          title="Rename Dashboard"
+          description="Enter a new name for your dashboard"
+          placeholder={selectedDashboard.name}
+          submitText="Rename"
+          initialValue={selectedDashboard.name}
+          onSave={handleRenameDashboard}
         />
       )}
     </>

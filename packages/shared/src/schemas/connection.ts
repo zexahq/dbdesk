@@ -26,6 +26,7 @@ export const sqlConnectionOptionsSchema = z.object({
   user: z.string().min(1),
   password: z.string().min(1),
   sslMode: postgreSQLSslModeSchema.optional(),
+  readOnly: z.boolean().optional(),
 })
 
 export const mongoDBConnectionOptionsSchema = z.object({

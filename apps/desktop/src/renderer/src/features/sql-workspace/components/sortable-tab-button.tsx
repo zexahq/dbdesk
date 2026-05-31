@@ -1,7 +1,7 @@
 import type { Tab } from '@renderer/features/sql-workspace/stores/tab-store'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { SquareCode, Table2Icon, X } from 'lucide-react'
+import { LayoutDashboard, SquareCode, Table2Icon, X } from 'lucide-react'
 
 interface SortableTabButtonProps {
   tab: Tab
@@ -11,7 +11,13 @@ interface SortableTabButtonProps {
   onClose: () => void
 }
 
-export function SortableTabButton({ tab, isActive, isDirty, onClick, onClose }: SortableTabButtonProps) {
+export function SortableTabButton({
+  tab,
+  isActive,
+  isDirty,
+  onClick,
+  onClose
+}: SortableTabButtonProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id
   })
@@ -46,6 +52,8 @@ export function SortableTabButton({ tab, isActive, isDirty, onClick, onClose }: 
     >
       {tab.kind === 'table' ? (
         <Table2Icon className="size-3.5 shrink-0" />
+      ) : tab.kind === 'dashboard' ? (
+        <LayoutDashboard className="size-3.5 shrink-0" />
       ) : (
         <SquareCode className="size-3.5 shrink-0" />
       )}
@@ -53,8 +61,8 @@ export function SortableTabButton({ tab, isActive, isDirty, onClick, onClose }: 
         {tab.kind === 'table' ? tab.table : tab.name}
       </span>
       {isDirty && <span className="size-2 rounded-full bg-white shrink-0" />}
-      <div
-        role="button"
+      <button
+        type="button"
         onClick={(e) => {
           e.stopPropagation()
           if (!isDragging) onClose()
@@ -65,7 +73,7 @@ export function SortableTabButton({ tab, isActive, isDirty, onClick, onClose }: 
       >
         <X className="size-3" />
         <span className="sr-only">Close tab</span>
-      </div>
+      </button>
     </button>
   )
 }
