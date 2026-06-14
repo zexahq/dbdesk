@@ -1,5 +1,6 @@
 import type { SQLAdapter, TableDataOptions, ExportTableOptions } from '@dbdesk/shared/types'
 import { connectionManager } from '../connectionManager'
+import { assertWritable } from '../lib/read-only'
 import { ConnectionError, ValidationError } from '../utils/errors'
 import { typedHandle } from './typed-handle'
 
@@ -21,14 +22,17 @@ export function registerTableHandlers() {
   })
 
   typedHandle('table:deleteRows', async ({ connectionId, schema, table, rows }) => {
+    await assertWritable(connectionId)
     return ensureSQLAdapter(connectionId).deleteTableRows({ schema, table, rows })
   })
 
   typedHandle('table:updateCell', async ({ connectionId, schema, table, columnToUpdate, newValue, row }) => {
+    await assertWritable(connectionId)
     return ensureSQLAdapter(connectionId).updateTableCell({ schema, table, columnToUpdate, newValue, row })
   })
 
   typedHandle('table:insertRow', async ({ connectionId, schema, table, values }) => {
+    await assertWritable(connectionId)
     return ensureSQLAdapter(connectionId).insertTableRow({ schema, table, values })
   })
 
@@ -43,10 +47,12 @@ export function registerTableHandlers() {
   })
 
   typedHandle('table:delete', async ({ connectionId, schema, table }) => {
+    await assertWritable(connectionId)
     return ensureSQLAdapter(connectionId).deleteTable({ schema, table })
   })
 
   typedHandle('table:create', async ({ connectionId, schema, table, columns }) => {
+    await assertWritable(connectionId)
     return ensureSQLAdapter(connectionId).createTable({ schema, table, columns })
   })
 }

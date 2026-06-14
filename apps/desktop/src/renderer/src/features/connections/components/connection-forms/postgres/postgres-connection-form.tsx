@@ -12,6 +12,7 @@ import {
   SelectValue
 } from '@renderer/components/ui/select'
 import { Separator } from '@renderer/components/ui/separator'
+import { Switch } from '@renderer/components/ui/switch'
 import { useForm } from '@tanstack/react-form'
 import { Eye, EyeOff } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -27,7 +28,8 @@ const formSchema = z.object({
   database: z.string().min(1, 'Database is required'),
   user: z.string().min(1, 'User is required'),
   password: z.string(),
-  sslMode: z.enum(['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full'])
+  sslMode: z.enum(['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full']),
+  readOnly: z.boolean()
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -41,7 +43,8 @@ function toDefaults(connection?: ConnectionProfile | null): FormValues {
       database: '',
       user: '',
       password: '',
-      sslMode: 'disable'
+      sslMode: 'disable',
+      readOnly: false
     }
   }
 
@@ -52,6 +55,7 @@ function toDefaults(connection?: ConnectionProfile | null): FormValues {
     user: string
     password: string
     sslMode: PostgreSQLSslMode
+    readOnly: boolean
   }>
 
   return {
@@ -61,7 +65,8 @@ function toDefaults(connection?: ConnectionProfile | null): FormValues {
     database: opts.database ?? '',
     user: opts.user ?? '',
     password: opts.password ?? '',
-    sslMode: opts.sslMode ?? 'disable'
+    sslMode: opts.sslMode ?? 'disable',
+    readOnly: opts.readOnly ?? false
   }
 }
 
@@ -84,7 +89,7 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
       onSubmit: formSchema
     },
     onSubmit: async ({ value }) => {
-      const { name, host, port, database, user, password, sslMode } = value
+      const { name, host, port, database, user, password, sslMode, readOnly } = value
 
       let finalPassword = password ?? ''
       if (connection && !finalPassword) {
@@ -98,7 +103,8 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
         database,
         user,
         password: finalPassword,
-        sslMode
+        sslMode,
+        readOnly
       }
 
       let profile: ConnectionProfile
@@ -137,6 +143,7 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
     form.setFieldValue('user', values.user)
     form.setFieldValue('password', values.password || '')
     form.setFieldValue('sslMode', (values.sslMode as PostgreSQLSslMode) || 'disable')
+    form.setFieldValue('readOnly', false)
   }
 
   return (
@@ -333,6 +340,30 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
           }}
         </form.Field>
       </FieldGroup>
+
+      <Separator />
+
+      <form.Field name="readOnly">
+        {(field) => (
+          <UIField>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <FieldLabel htmlFor={field.name} className="cursor-pointer">
+                  Read-only mode
+                </FieldLabel>
+                <span className="text-xs text-muted-foreground">
+                  Block INSERT/UPDATE/DELETE and schema changes. Only SELECT and SHOW are allowed.
+                </span>
+              </div>
+              <Switch
+                id={field.name}
+                checked={field.state.value}
+                onCheckedChange={(checked) => field.handleChange(checked)}
+              />
+            </div>
+          </UIField>
+        )}
+      </form.Field>
 
       <div className="flex justify-end gap-2">
         <Button type="reset" variant="outline" onClick={() => form.reset()}>

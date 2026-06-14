@@ -1,0 +1,1 @@
+export { dbdeskClient } from '@renderer/shared/api/client'

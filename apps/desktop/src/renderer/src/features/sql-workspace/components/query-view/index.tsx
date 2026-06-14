@@ -3,7 +3,7 @@ import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import { DangerousQueryDialog } from '@renderer/features/sql-workspace/components/dialogs/dangerous-query-dialog'
 import SqlEditor from '@renderer/features/editor/components/sql-editor'
 import { getEditorQueries, getQueryTabLabel, hasDangerousSqlKeywords } from '@renderer/features/editor/lib/sql-parser'
-import { useRunManyQueries, useRunQuery } from '@renderer/features/sql-workspace/queries/query'
+import { useRunManyQueries, useCancelQuery, useRunQuery } from '@renderer/features/sql-workspace/queries/query'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -12,7 +12,7 @@ import {
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { toast } from '@renderer/shared/lib/toast'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { QueryBottombar } from './query-bottombar'
 import { QueryResults } from './query-results'
 
@@ -45,16 +45,73 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
     isPending: isRunningBatchQuery,
     error: batchQueryError
   } = useRunManyQueries(profile.id)
+  const { mutateAsync: cancelQueryMutation } = useCancelQuery(profile.id)
 
   const isExecuting = isRunningSingleQuery || isRunningBatchQuery
   const executionError = batchQueryError ?? singleQueryError
 
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
+
+  // Tracks the queryId of the in-flight execution so the user can cancel it.
+  const currentQueryIdRef = useRef<string | null>(null)
+
+  const isQueryTabSaved = queries.some((q) => q.id === tabId)
+
+  // Refs let the keydown handler read the latest saved state without re-binding.
+  const isQueryTabSavedRef = useRef(isQueryTabSaved)
+  isQueryTabSavedRef.current = isQueryTabSaved
+
+  const handleUpdateQuery = async () => {
+    if (!activeTab) return
+    const savedQuery = queries.find((q) => q.id === activeTab.id)
+    if (!savedQuery) return
+
+    try {
+      await updateQuery(profile.id, activeTab.id, savedQuery.name, activeTab.editorContent)
+      updateQueryTab(activeTab.id, { lastSavedContent: activeTab.editorContent })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save query')
+    }
+  }
+
+  const handleUpdateQueryRef = useRef(handleUpdateQuery)
+  handleUpdateQueryRef.current = handleUpdateQuery
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        if (!activeTab) return
+        e.preventDefault()
+        if (!activeTab.editorContent.trim()) {
+          toast.error('Query cannot be empty')
+          return
+        }
+
+        if (isQueryTabSavedRef.current) {
+          void handleUpdateQueryRef.current()
+        } else {
+          setSaveDialogOpen(true)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeTab])
+
+  const handleCancelQuery = useCallback(async () => {
+    const queryId = currentQueryIdRef.current
+    if (!queryId) return
+    try {
+      await cancelQueryMutation(queryId)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to cancel query')
+    }
+  }, [cancelQueryMutation])
+
   if (!activeTab) {
     return null
   }
-
-  const isQueryTabSaved = queries.some((q) => q.id === activeTab.id)
   const activeBatchResult = activeTab.batchResults?.[activeTab.activeResultIndex ?? 0]
 
   const updateSingleQueryResult = (query: string, result: QueryResult) => {
@@ -90,27 +147,6 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
       totalRowCount: undefined
     })
   }
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault()
-        if (!activeTab.editorContent.trim()) {
-          toast.error('Query cannot be empty')
-          return
-        }
-
-        if (isQueryTabSaved) {
-          void handleUpdateQuery()
-        } else {
-          setSaveDialogOpen(true)
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeTab, isQueryTabSaved])
 
   const executeQueries = async (queriesToRun: string[], limit: number, offset: number) => {
     if (queriesToRun.length === 0) {
@@ -206,18 +242,6 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
     }
   }
 
-  const handleUpdateQuery = async () => {
-    const savedQuery = queries.find((q) => q.id === activeTab.id)
-    if (!savedQuery) return
-
-    try {
-      await updateQuery(profile.id, activeTab.id, savedQuery.name, activeTab.editorContent)
-      updateQueryTab(activeTab.id, { lastSavedContent: activeTab.editorContent })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save query')
-    }
-  }
-
   const handleSaveQuery = async (name: string) => {
     try {
       await saveQuery(profile.id, activeTab.id, name, activeTab.editorContent)
@@ -258,6 +282,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
                 offset: result?.offset ?? 0
               })
             }}
+            onCancel={handleCancelQuery}
           />
         </ResizablePanel>
       </ResizablePanelGroup>

@@ -22,7 +22,14 @@ export interface SerializedQueryTab {
   lastSavedContent?: string
 }
 
-export type SerializedTab = SerializedTableTab | SerializedQueryTab
+export interface SerializedDashboardTab {
+  kind: 'dashboard'
+  id: string
+  dashboardId: string
+  name: string
+}
+
+export type SerializedTab = SerializedTableTab | SerializedQueryTab | SerializedDashboardTab
 
 export interface SavedQuery {
   id: string

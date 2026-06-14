@@ -28,6 +28,11 @@ export const queryInputSchema = connectionIdentifierSchema.extend({
   query: z.string().min(1, 'query is required'),
   limit: z.number().int().min(1).default(50).optional(),
   offset: z.number().int().min(0).default(0).optional(),
+  queryId: z.string().min(1).optional(),
+})
+
+export const queryCancelInputSchema = connectionIdentifierSchema.extend({
+  queryId: z.string().min(1, 'queryId is required'),
 })
 
 export const queryBatchInputSchema = connectionIdentifierSchema.extend({

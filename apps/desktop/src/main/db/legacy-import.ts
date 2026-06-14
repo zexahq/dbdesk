@@ -1,6 +1,7 @@
 import { app } from 'electron'
-import { readFileSync, renameSync } from 'node:fs'
+import { existsSync, readFileSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
+import * as yaml from 'js-yaml'
 import { getSqlite } from '@dbdesk/db'
 
 // TODO: Remove this file once live migrations are implemented.
@@ -8,6 +9,7 @@ import { getSqlite } from '@dbdesk/db'
 // Can be safely deleted after all users have migrated to the SQLite version.
 
 const LEGACY_FLAG = 'legacy_json_import_v1'
+const DASHBOARD_YAML_FLAG = 'legacy_dashboard_yaml_import_v1'
 
 function readJsonFile<T>(basePath: string, filename: string): T | null {
   const filePath = join(basePath, filename)
@@ -27,6 +29,23 @@ function backupFile(basePath: string, filename: string): void {
   } catch {
     // File may not exist
   }
+}
+
+const LEGACY_JSON_FILENAMES = [
+  'connections.json',
+  'workspaces.json',
+  'saved-queries.json',
+  'better-auth-storage.json'
+] as const
+
+function findLegacyJsonBasePath(basePaths: string[]): string {
+  for (const basePath of basePaths) {
+    if (LEGACY_JSON_FILENAMES.some((filename) => existsSync(join(basePath, filename)))) {
+      return basePath
+    }
+  }
+
+  return basePaths[0] ?? app.getPath('userData')
 }
 
 interface LegacyProfile {
@@ -55,9 +74,10 @@ export function runLegacyImportIfNeeded(legacyDataPath?: string): void {
 
   if (existing) return
 
-  // Read legacy files from the previous userData directory (before the path
-  // override) so existing users' JSON data is found even if the path changed.
-  const basePath = legacyDataPath ?? app.getPath('userData')
+  const candidateBasePaths = Array.from(
+    new Set([app.getPath('userData'), legacyDataPath].filter((value): value is string => !!value))
+  )
+  const basePath = findLegacyJsonBasePath(candidateBasePaths)
 
   console.log('[db] Running legacy JSON import...')
 
@@ -179,4 +199,145 @@ export function runLegacyImportIfNeeded(legacyDataPath?: string): void {
   }
 
   console.log('[db] Legacy import complete')
+}
+
+interface LegacyDashboardWidget {
+  id: string
+  type: string
+  title: string
+  queryId: string | null
+  customQuery?: string
+  position: unknown
+  settings: unknown
+}
+
+interface LegacyDashboard {
+  dashboardId: string
+  connectionId: string
+  name: string
+  description?: string
+  layout: unknown
+  widgets: LegacyDashboardWidget[]
+  createdAt: string
+  updatedAt: string
+}
+
+interface LegacyDashboardsYaml {
+  version?: string
+  lastModified?: string
+  dashboards: LegacyDashboard[]
+}
+
+interface DashboardYamlSource {
+  basePath: string
+  parsed: LegacyDashboardsYaml
+}
+
+function readYamlFile<T>(basePath: string, filename: string): T | null {
+  const filePath = join(basePath, filename)
+  try {
+    const content = readFileSync(filePath, 'utf8').trim()
+    if (!content) return null
+    // JSON_SCHEMA disallows custom tags that could execute arbitrary code.
+    return yaml.load(content, { schema: yaml.JSON_SCHEMA }) as T
+  } catch {
+    return null
+  }
+}
+
+function findDashboardYamlSource(basePaths: string[]): DashboardYamlSource | null {
+  for (const basePath of basePaths) {
+    const parsed =
+      readYamlFile<LegacyDashboardsYaml>(basePath, 'dashboards.yaml') ??
+      readYamlFile<LegacyDashboardsYaml>(basePath, 'dashboards.yaml.backup')
+
+    if (parsed && Array.isArray(parsed.dashboards)) {
+      return { basePath, parsed }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Migrate dashboards from the legacy `dashboards.yaml` file (and its `.backup`)
+ * into the SQLite `dashboards` table. Idempotent via the `app_meta` flag.
+ */
+export function runDashboardYamlImportIfNeeded(legacyDataPath?: string): void {
+  const sqlite = getSqlite()
+
+  const existingFlag = sqlite
+    .prepare('SELECT value FROM app_meta WHERE key = ?')
+    .get(DASHBOARD_YAML_FLAG) as { value: string } | undefined
+
+  const candidateBasePaths = Array.from(
+    new Set([app.getPath('userData'), legacyDataPath].filter((value): value is string => !!value))
+  )
+  const source = findDashboardYamlSource(candidateBasePaths)
+
+  if (existingFlag) {
+    const existingDashboards = sqlite
+      .prepare('SELECT COUNT(*) as count FROM dashboards')
+      .get() as { count: number }
+
+    if (existingDashboards.count > 0 || !source) {
+      return
+    }
+  }
+
+  console.log('[db] Running legacy dashboard YAML import...')
+
+  let imported = 0
+
+  const transaction = sqlite.transaction(() => {
+    if (source) {
+      const stmt = sqlite.prepare(`
+        INSERT OR REPLACE INTO dashboards
+          (dashboard_id, connection_id, name, description, layout_json, widgets_json, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+
+      // Verify the connection exists before inserting; the FK is ON DELETE CASCADE
+      // and an INSERT with a missing parent would be rejected.
+      const connExists = sqlite.prepare('SELECT 1 FROM connection_profiles WHERE id = ?')
+
+      for (const d of source.parsed.dashboards) {
+        try {
+          if (!connExists.get(d.connectionId)) {
+            console.warn(
+              `[db] Skipping dashboard ${d.dashboardId}: connection ${d.connectionId} not found`
+            )
+            continue
+          }
+          stmt.run(
+            d.dashboardId,
+            d.connectionId,
+            d.name,
+            d.description ?? null,
+            JSON.stringify(d.layout ?? {}),
+            JSON.stringify(d.widgets ?? []),
+            new Date(d.createdAt).getTime(),
+            new Date(d.updatedAt).getTime()
+          )
+          imported++
+        } catch (err) {
+          console.warn(`[db] Failed to import dashboard ${d.dashboardId}:`, err)
+        }
+      }
+      console.log(`[db] Imported ${imported} dashboards from YAML`)
+    }
+
+    sqlite
+      .prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)')
+      .run(DASHBOARD_YAML_FLAG, 'done')
+  })
+
+  transaction()
+
+  if (source && imported > 0) {
+    backupFile(source.basePath, 'dashboards.yaml')
+    backupFile(source.basePath, 'dashboards.yaml.backup')
+  }
+
+  console.log('[db] Dashboard YAML import complete')
 }

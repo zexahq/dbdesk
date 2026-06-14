@@ -2,6 +2,7 @@ import type { ConnectionProfile, DatabaseType } from '@dbdesk/shared/types'
 import { randomUUID } from 'node:crypto'
 import { adapterRegistry } from '../adapters'
 import { connectionManager } from '../connectionManager'
+import { deleteAllDashboardsForConnection } from '../dashboard-storage'
 import { deleteAllQueriesForConnection } from '../saved-queries-storage'
 import { deleteProfile, getProfile, loadProfiles, saveProfile } from '../storage'
 import { ConnectionError, ValidationError } from '../utils/errors'
@@ -100,6 +101,7 @@ export function registerConnectionHandlers() {
     await deleteProfile(connectionId)
     await deleteWorkspace(connectionId).catch(() => {})
     await deleteAllQueriesForConnection(connectionId).catch(() => {})
+    await deleteAllDashboardsForConnection(connectionId).catch(() => {})
     return { success: true }
   })
 }

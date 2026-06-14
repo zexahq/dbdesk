@@ -2,7 +2,7 @@ import type { QueryBatchResult, QueryResult } from '@dbdesk/shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { cleanErrorMessage } from '@renderer/shared/lib/utils'
 import { getQueryTabLabel } from '@renderer/features/editor/lib/sql-parser'
-import { CircleCheck, CircleX, FileText, Play } from 'lucide-react'
+import { CircleCheck, CircleX, FileText, Play, Square } from 'lucide-react'
 import { SimpleTable } from './simple-table'
 
 interface QueryResultsProps {
@@ -13,6 +13,7 @@ interface QueryResultsProps {
   error?: Error | null
   onRun: () => void
   onResultSelect?: (index: number) => void
+  onCancel?: () => void
 }
 
 const getBatchResultIcon = (result: QueryBatchResult) => {
@@ -34,7 +35,8 @@ export function QueryResults({
   isLoading,
   error,
   onRun,
-  onResultSelect
+  onResultSelect,
+  onCancel
 }: QueryResultsProps) {
   const safeActiveResultIndex = Math.min(activeResultIndex ?? 0, Math.max((batchResults?.length ?? 1) - 1, 0))
   const activeBatchResult = batchResults?.[safeActiveResultIndex]
@@ -42,8 +44,24 @@ export function QueryResults({
   return (
     <div className="flex h-full w-full flex-col border-t">
       <div className="flex flex-col border-b">
-        <div className="flex items-center justify-end p-2">
-          <Button size="sm" className="h-8 text-xs" onClick={() => onRun()} disabled={isLoading}>
+        <div className="flex items-center justify-end gap-2 p-2">
+          {isLoading && onCancel && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs cursor-pointer"
+              onClick={onCancel}
+            >
+              <Square className="size-3.5" />
+              STOP
+            </Button>
+          )}
+          <Button
+            size="sm"
+            className="h-8 text-xs cursor-pointer"
+            onClick={() => onRun()}
+            disabled={isLoading}
+          >
             <Play className="size-4" />
             RUN
           </Button>

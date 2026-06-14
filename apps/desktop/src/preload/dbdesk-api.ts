@@ -1,6 +1,7 @@
 import type {
   ColumnDefinition,
   ConnectionWorkspace,
+  DashboardConfig,
   DatabaseType,
   DBConnectionOptions,
   ExportTableOptions,
@@ -34,12 +35,17 @@ export const dbdeskAPI = {
     typedInvoke('connections:delete', { connectionId }),
 
   // ── Query ──
-  runQuery: (connectionId: string, query: string, options?: { limit?: number; offset?: number }) =>
+  runQuery: (
+    connectionId: string,
+    query: string,
+    options?: { limit?: number; offset?: number; queryId?: string },
+  ) =>
     typedInvoke('query:run', {
       connectionId,
       query,
       limit: options?.limit,
       offset: options?.offset,
+      queryId: options?.queryId,
     }),
   runManyQueries: (
     connectionId: string,
@@ -52,6 +58,8 @@ export const dbdeskAPI = {
       limit: options?.limit,
       offset: options?.offset,
     }),
+  cancelQuery: (connectionId: string, queryId: string) =>
+    typedInvoke('query:cancel', { connectionId, queryId }),
 
   // ── Schema ──
   listSchemas: (connectionId: string) =>
@@ -128,6 +136,22 @@ export const dbdeskAPI = {
     typedInvoke('queries:delete', { connectionId, queryId }),
   updateQuery: (connectionId: string, queryId: string, name: string, content: string) =>
     typedInvoke('queries:update', { connectionId, queryId, name, content }),
+
+  // ── Dashboards ──
+  loadDashboards: (connectionId: string) =>
+    typedInvoke('dashboards:load', { connectionId }),
+  getDashboard: (connectionId: string, dashboardId: string) =>
+    typedInvoke('dashboards:get', { connectionId, dashboardId }),
+  saveDashboard: (dashboard: DashboardConfig) => typedInvoke('dashboards:save', dashboard),
+  deleteDashboard: (connectionId: string, dashboardId: string) =>
+    typedInvoke('dashboards:delete', { connectionId, dashboardId }),
+  persistDashboard: (dashboardId: string) =>
+    typedInvoke('dashboards:persist', { dashboardId }),
+  persistAllDashboards: () => typedInvoke('dashboards:persist-all'),
+  exportDashboards: (connectionId?: string) =>
+    typedInvoke('dashboards:export', { connectionId }),
+  importDashboards: (dashboards: DashboardConfig[], overwrite?: boolean) =>
+    typedInvoke('dashboards:import', { dashboards, overwrite }),
 
   // ── Auth ──
   getSession: () => typedInvoke('auth:get-session'),

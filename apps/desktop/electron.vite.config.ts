@@ -88,6 +88,11 @@ function monacoSelectiveLanguageRegistration(): Plugin {
 export default defineConfig({
   main: {
     define: envDefines(),
+    resolve: {
+      alias: {
+        '@common': resolve('../../packages/shared/src')
+      }
+    },
     plugins: [
       {
         name: 'copy-drizzle-migrations',
@@ -108,16 +113,26 @@ export default defineConfig({
   },
   preload: {
     define: envDefines(),
+    resolve: {
+      alias: {
+        '@common': resolve('../../packages/shared/src')
+      }
+    },
     build: {
-      bytecode: true,
+      bytecode: !process.env.CI,
       externalizeDeps: false,
     },
   },
   renderer: {
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src')
-      }
+        '@renderer': resolve('src/renderer/src'),
+        '@common': resolve('../../packages/shared/src')
+      },
+      dedupe: ['react', 'react-dom']
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom']
     },
     plugins: [
       monacoSelectiveLanguageRegistration(),

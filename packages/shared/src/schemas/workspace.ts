@@ -25,9 +25,17 @@ export const serializedQueryTabSchema = z.object({
   lastSavedContent: z.string().optional()
 })
 
+export const serializedDashboardTabSchema = z.object({
+  kind: z.literal('dashboard'),
+  id: z.string().min(1),
+  dashboardId: z.string().min(1),
+  name: z.string().min(1)
+})
+
 export const serializedTabSchema = z.discriminatedUnion('kind', [
   serializedTableTabSchema,
-  serializedQueryTabSchema
+  serializedQueryTabSchema,
+  serializedDashboardTabSchema
 ])
 
 export const savedQuerySchema = z.object({

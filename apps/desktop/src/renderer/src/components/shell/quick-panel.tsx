@@ -2,6 +2,7 @@
 
 import { dbdeskClient } from '@renderer/shared/api/client'
 import { useConnect, useConnections, useDisconnect } from '@renderer/features/connections/queries/connections'
+import { useDashboardStore } from '@renderer/features/sql-workspace/stores/dashboard-store'
 import {
   CommandDialog,
   CommandEmpty,
@@ -28,6 +29,9 @@ export function QuickPanel() {
   const schemasWithTables = useSqlWorkspaceStore((s) => s.schemasWithTables)
   const currentConnectionId = useSqlWorkspaceStore((s) => s.currentConnectionId)
   const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
+  const currentDashboard = useDashboardStore((s) => s.currentDashboard)
+  const persistDashboard = useDashboardStore((s) => s.persistDashboard)
+  const resetDashboard = useDashboardStore((s) => s.reset)
 
   const addTableTab = useTabStore((s) => s.addTableTab)
   const addQueryTab = useTabStore((s) => s.addQueryTab)
@@ -93,8 +97,15 @@ export function QuickPanel() {
     if (!currentConnectionId) return
     await saveCurrentWorkspace()
 
+    if (currentDashboard?.connectionId === currentConnectionId) {
+      await persistDashboard(currentDashboard.dashboardId).catch((error) => {
+        console.warn('Failed to persist dashboard before disconnect:', error)
+      })
+    }
+
     await disconnect(currentConnectionId)
     setCurrentConnection(null)
+    resetDashboard()
     reset()
     navigate({ to: '/' })
     setOpen(false)
