@@ -14,6 +14,7 @@ export function useUpdateToast() {
         toastIdRef.current = toast.info('Update available', {
           description: `Version ${data.version} is ready to download.`,
           duration: Infinity,
+          position: 'bottom-right',
           action: {
             label: 'Update now',
             onClick: () => window.dbdesk.downloadUpdate(),
@@ -25,6 +26,7 @@ export function useUpdateToast() {
         if (toastIdRef.current) {
           toast.loading(`Downloading update… ${data.percent}%`, {
             id: toastIdRef.current,
+            position: 'bottom-right',
           })
         }
       }),
@@ -37,6 +39,7 @@ export function useUpdateToast() {
         toastIdRef.current = toast.success('Ready to install', {
           description: `Version ${data.version} will install on restart.`,
           duration: Infinity,
+          position: 'bottom-right',
           action: {
             label: 'Restart now',
             onClick: () => window.dbdesk.installUpdate(),
@@ -52,6 +55,7 @@ export function useUpdateToast() {
 
         toast.error('Update failed', {
           description: data.message,
+          position: 'bottom-right',
         })
       }),
     ]

@@ -1,4 +1,4 @@
-appId: com.electron.app
+appId: app.zexa.dbdesk
 productName: dbdesk
 directories:
   buildResources: build
@@ -42,16 +42,16 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
-  notarize: false
-dmg:
+  identity: null
+  target:
+    - dmg
+    - zip
   artifactName: ${productName}-${version}.${ext}
 linux:
   target:
     - AppImage
     - deb
-  maintainer: electronjs.org
+  maintainer: Zexa Technologies <contact@zexa.app>
   category: Utility
   executableName: dbdesk
 deb:

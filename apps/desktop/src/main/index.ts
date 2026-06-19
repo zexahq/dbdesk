@@ -193,7 +193,7 @@ app.whenReady().then(async () => {
   }
 
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  electronApp.setAppUserModelId('app.zexa.dbdesk')
 
   // Remove the application menu
   Menu.setApplicationMenu(null)

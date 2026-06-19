@@ -18,6 +18,14 @@ export default async function DownloadPage() {
     <main className="min-h-screen bg-fd-background">
       <section className="py-14 px-6">
         <div className="max-w-6xl mx-auto">
+          <div className="mb-6 rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-fd-foreground">
+            <p className="font-medium">Notice for v0.1.7 users</p>
+            <p className="mt-1 text-fd-muted-foreground">
+              The auto-update in v0.1.7 is broken due to a code signing issue. If you are on v0.1.7,
+              please download and reinstall the latest version manually. Future updates will work
+              automatically. We apologise for the inconvenience.
+            </p>
+          </div>
           <OSDetect assets={latestRelease?.assets} />
 
           {latestRelease ? (

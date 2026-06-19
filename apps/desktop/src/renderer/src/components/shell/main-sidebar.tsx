@@ -4,7 +4,6 @@ import type { SidebarViewMode } from '@renderer/features/sql-workspace/stores/sq
 import { DatabaseIcon, FileText, LayoutDashboard } from 'lucide-react'
 import { cn } from '@renderer/shared/lib/utils'
 import { QuickPanel } from './quick-panel'
-import { UpdateNotification } from './update-notification'
 import { Button } from '@renderer/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 
@@ -51,7 +50,6 @@ export function MainSidebar() {
           )}
         </div>
         <div className="flex flex-col gap-2 items-center">
-          <UpdateNotification />
           <UserMenu />
         </div>
       </div>
