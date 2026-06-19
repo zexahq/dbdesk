@@ -18,14 +18,6 @@ export default async function DownloadPage() {
     <main className="min-h-screen bg-fd-background">
       <section className="py-14 px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-6 rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-fd-foreground">
-            <p className="font-medium">Notice for v0.1.7 users</p>
-            <p className="mt-1 text-fd-muted-foreground">
-              The auto-update in v0.1.7 is broken due to a code signing issue. If you are on v0.1.7,
-              please download and reinstall the latest version manually. Future updates will work
-              automatically. We apologise for the inconvenience.
-            </p>
-          </div>
           <OSDetect assets={latestRelease?.assets} />
 
           {latestRelease ? (
@@ -35,13 +27,15 @@ export default async function DownloadPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div className="border border-fd-border rounded-lg p-4 bg-fd-secondary/30">
                   <p className="mb-2 text-xs text-fd-muted-foreground">
-                    If macOS blocks the app, run in terminal:
+                    Install via Homebrew (macOS):
                   </p>
                   <code
-                    className="block bg-fd-background border border-fd-border p-3 rounded text-xs select-all text-fd-foreground"
+                    className="block bg-fd-background border border-fd-border p-3 rounded text-xs select-all text-fd-foreground leading-relaxed"
                     style={{ fontFamily: 'var(--font-mono)' }}
                   >
-                    xattr -rd com.apple.quarantine /Applications/dbdesk.app
+                    brew tap zexahq/dbdesk<br />
+                    brew trust zexahq/dbdesk<br />
+                    brew install --cask dbdesk
                   </code>
                 </div>
                 <div className="border border-fd-border rounded-lg p-4 bg-fd-secondary/30">
