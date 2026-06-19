@@ -112,7 +112,18 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
   if (!activeTab) {
     return null
   }
-  const activeBatchResult = activeTab.batchResults?.[activeTab.activeResultIndex ?? 0]
+  const batchResultCount = activeTab.batchResults?.length ?? 0
+  const safeActiveResultIndex = batchResultCount
+    ? Math.min(Math.max(activeTab.activeResultIndex ?? 0, 0), batchResultCount - 1)
+    : 0
+  const activeBatchResult = activeTab.batchResults?.[safeActiveResultIndex]
+  const batchResultLabel =
+    activeBatchResult && batchResultCount > 0
+      ? [
+          getQueryTabLabel(activeBatchResult.query),
+          `(${safeActiveResultIndex + 1} of ${batchResultCount})`
+        ].join(' ')
+      : undefined
 
   const updateSingleQueryResult = (query: string, result: QueryResult) => {
     updateQueryTab(activeTab.id, {
@@ -289,11 +300,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
 
       {(activeTab.queryResults || activeBatchResult) && (
         <QueryBottombar
-          resultLabel={
-            activeTab.batchResults
-              ? `${getQueryTabLabel(activeTab.batchResults[activeTab.activeResultIndex ?? 0]?.query ?? '')} (${(activeTab.activeResultIndex ?? 0) + 1} of ${activeTab.batchResults.length})`
-              : undefined
-          }
+          resultLabel={batchResultLabel}
           totalRows={
             activeBatchResult?.result
               ? activeBatchResult.result.totalRowCount ?? activeBatchResult.result.rowCount

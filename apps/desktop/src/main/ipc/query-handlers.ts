@@ -41,6 +41,14 @@ export function registerQueryHandlers() {
     const adapter = connectionManager.getConnection(connectionId)
     if (!adapter) throw new ConnectionError(`Connection "${connectionId}" is not established`)
 
+    const profile = await getProfile(connectionId)
+    const unsafeQuery = queries.find((query) => !isReadOnlyQuery(query))
+    if (isProfileReadOnly(profile) && unsafeQuery) {
+      throw new ValidationError(
+        `Connection "${profile?.name ?? connectionId}" is read-only. Only single SELECT or SHOW statements are allowed.`
+      )
+    }
+
     try {
       return await adapter.runManyQueries(queries, { limit, offset })
     } catch (error) {

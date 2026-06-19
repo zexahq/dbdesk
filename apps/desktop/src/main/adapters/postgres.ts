@@ -147,7 +147,6 @@ export class PostgresAdapter implements SQLAdapter {
             error: error instanceof Error ? error.message : 'Failed to execute query',
             executionTime: performance.now() - start
           })
-          break
         }
       }
     } finally {
