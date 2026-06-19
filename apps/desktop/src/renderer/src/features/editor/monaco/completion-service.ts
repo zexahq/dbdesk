@@ -14,8 +14,8 @@ import {
   type CompletionReplacementRange,
   type TableReference
 } from './completion-context'
+import { SQL_COMPLETION_KEYWORDS } from './sql-keywords'
 
-const COMMON_KEYWORDS = new Set(['SELECT', 'FROM', 'WHERE', 'JOIN', 'GROUP', 'ORDER', 'LIMIT'])
 const COLUMN_CONTEXT_TYPES = new Set([EntityContextType.COLUMN, EntityContextType.COLUMN_CREATE])
 const TABLE_CONTEXT_TYPES = new Set([
   EntityContextType.TABLE,
@@ -31,6 +31,12 @@ type MonacoRange = {
   startColumn: number
   endColumn: number
 }
+
+type GetTableColumns = (schema: string, table: string) => ColumnInfo[] | undefined
+type LoadTableColumns = (
+  schema: string,
+  table: string
+) => Promise<ColumnInfo[] | undefined>
 
 const getColumnDetail = (column: ColumnInfo): string => {
   return `${column.type}${column.nullable ? '' : ' NOT NULL'}`
@@ -79,22 +85,8 @@ const buildMonacoRange = (
 
 const getDefaultReplacementRange = (
   model: Parameters<CompletionService>[0],
-  position: Parameters<CompletionService>[1],
-  suggestions: Parameters<CompletionService>[3]
+  position: Parameters<CompletionService>[1]
 ): MonacoRange => {
-  const syntaxRange = suggestions?.syntax
-    .flatMap((item) => item.wordRanges)
-    .findLast((wordRange) => wordRange.line === position.lineNumber)
-
-  if (syntaxRange) {
-    return {
-      startLineNumber: position.lineNumber,
-      endLineNumber: position.lineNumber,
-      startColumn: syntaxRange.startColumn,
-      endColumn: position.column
-    }
-  }
-
   const wordUntilPosition = model.getWordUntilPosition(position)
   return {
     startLineNumber: position.lineNumber,
@@ -196,17 +188,18 @@ const addColumnSuggestions = (
   }
 }
 
-const addStatementColumnSuggestions = (
+const addStatementColumnSuggestions = async (
   items: ICompletionItem[],
   seen: Set<string>,
   tableReferences: TableReference[],
-  getTableColumns: (schema: string, table: string) => ColumnInfo[] | undefined,
+  getTableColumns: GetTableColumns,
+  loadTableColumns: LoadTableColumns | undefined,
   range: MonacoRange
-) => {
+): Promise<Set<string>> => {
   const seenColumnLabels = new Set<string>()
 
   for (const { schema, table, alias } of tableReferences) {
-    const columns = getTableColumns(schema, table)
+    const columns = getTableColumns(schema, table) ?? await loadTableColumns?.(schema, table)
     if (!columns) {
       continue
     }
@@ -217,7 +210,14 @@ const addStatementColumnSuggestions = (
       }
 
       seenColumnLabels.add(column.name)
-      addColumnSuggestions(items, seen, [column], range, alias ? `${schema}.${table} as ${alias}` : `${schema}.${table}`, '1_0')
+      addColumnSuggestions(
+        items,
+        seen,
+        [column],
+        range,
+        alias ? `${schema}.${table} as ${alias}` : `${schema}.${table}`,
+        '1_0'
+      )
     }
   }
 
@@ -228,7 +228,7 @@ const addAllColumnSuggestions = (
   items: ICompletionItem[],
   seen: Set<string>,
   schemasWithTables: SchemaWithTables[],
-  getTableColumns: (schema: string, table: string) => ColumnInfo[] | undefined,
+  getTableColumns: GetTableColumns,
   range: MonacoRange,
   existingColumnLabels = new Set<string>()
 ) => {
@@ -253,21 +253,24 @@ const addAllColumnSuggestions = (
   return existingColumnLabels
 }
 
-const addEnumValueSuggestions = (
+const addEnumValueSuggestions = async (
   items: ICompletionItem[],
   seen: Set<string>,
   tableReferences: TableReference[],
   schemasWithTables: SchemaWithTables[],
-  getTableColumns: (schema: string, table: string) => ColumnInfo[] | undefined,
+  getTableColumns: GetTableColumns,
+  loadTableColumns: LoadTableColumns | undefined,
   range: MonacoRange
-) => {
+): Promise<void> => {
   const seenEnumValues = new Set<string>()
   const enumSources = tableReferences.length > 0
     ? tableReferences
     : schemasWithTables.flatMap(({ schema, tables }) => tables.map((table) => ({ schema, table })))
 
   for (const { schema, table } of enumSources) {
-    const columns = getTableColumns(schema, table)
+    const columns =
+      getTableColumns(schema, table) ??
+      (tableReferences.length > 0 ? await loadTableColumns?.(schema, table) : undefined)
     if (!columns) {
       continue
     }
@@ -297,15 +300,19 @@ const addKeywordSuggestions = (
   keywords: string[],
   range: MonacoRange
 ) => {
-  for (const keyword of keywords) {
+  for (const [index, keyword] of keywords.entries()) {
     addUniqueItem(items, seen, withRange({
       label: keyword,
       kind: languages.CompletionItemKind.Keyword,
       detail: 'keyword',
       filterText: keyword,
-      sortText: `3_${COMMON_KEYWORDS.has(keyword.toUpperCase()) ? '0' : '1'}_${keyword}`
+      sortText: `3_${String(index).padStart(4, '0')}_${keyword}`
     }, range))
   }
+}
+
+const getKeywordSuggestions = (contextKeywords: string[] | undefined): string[] => {
+  return Array.from(new Set([...SQL_COMPLETION_KEYWORDS, ...(contextKeywords ?? [])]))
 }
 
 const addSnippetSuggestions = (
@@ -371,7 +378,8 @@ const getCurrentStatementTablesFromEntities = (
 
 export const createCompletionService = (
   getSchemasWithTables: () => SchemaWithTables[],
-  getTableColumns: (schema: string, table: string) => ColumnInfo[] | undefined
+  getTableColumns: GetTableColumns,
+  loadTableColumns?: LoadTableColumns
 ): CompletionService => {
   return async (model, position, _context, suggestions, entities, snippets) => {
     const items: ICompletionItem[] = []
@@ -383,7 +391,7 @@ export const createCompletionService = (
     const qualifiedReference = parseQualifiedReferenceFromLine(linePrefix, position.column)
     const replacementRange = qualifiedReference
       ? buildMonacoRange(position.lineNumber, qualifiedReference.replacementRange)
-      : getDefaultReplacementRange(model, position, suggestions)
+      : getDefaultReplacementRange(model, position)
     const statementTableReferences = [
       ...getCurrentStatementTablesFromEntities(entities, schemasWithTables),
       ...getCurrentStatementTableReferences(textBeforeCursor, schemasWithTables)
@@ -414,7 +422,10 @@ export const createCompletionService = (
 
       if (resolvedReference?.kind === 'columns' && resolvedReference.tableReferences?.length) {
         for (const tableReference of resolvedReference.tableReferences) {
-          const columns = getTableColumns(tableReference.schema, tableReference.table) ?? []
+          const columns =
+            getTableColumns(tableReference.schema, tableReference.table) ??
+            await loadTableColumns?.(tableReference.schema, tableReference.table) ??
+            []
           addColumnSuggestions(
             items,
             seen,
@@ -438,11 +449,12 @@ export const createCompletionService = (
       ![...syntaxContextTypes].some((type) => TABLE_CONTEXT_TYPES.has(type as EntityContextType))
 
     if (prefersColumnSuggestions) {
-      const seenStatementColumns = addStatementColumnSuggestions(
+      const seenStatementColumns = await addStatementColumnSuggestions(
         items,
         seen,
         statementTableReferences,
         getTableColumns,
+        loadTableColumns,
         replacementRange
       )
       addAllColumnSuggestions(
@@ -453,22 +465,24 @@ export const createCompletionService = (
         replacementRange,
         seenStatementColumns
       )
-      addEnumValueSuggestions(
+      await addEnumValueSuggestions(
         items,
         seen,
         statementTableReferences,
         schemasWithTables,
         getTableColumns,
+        loadTableColumns,
         replacementRange
       )
     } else if (prefersSchemaSuggestions) {
       addSchemaSuggestions(items, seen, schemasWithTables, replacementRange)
+      addTableSuggestions(items, seen, schemasWithTables, replacementRange)
     } else {
       addSchemaSuggestions(items, seen, schemasWithTables, replacementRange)
       addTableSuggestions(items, seen, schemasWithTables, replacementRange)
     }
 
-    addKeywordSuggestions(items, seen, suggestions?.keywords ?? [], replacementRange)
+    addKeywordSuggestions(items, seen, getKeywordSuggestions(suggestions?.keywords), replacementRange)
 
     if (snippets) {
       addSnippetSuggestions(items, seen, snippets, replacementRange)

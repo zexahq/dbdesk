@@ -55,6 +55,8 @@ const LANGUAGE_MAP: Record<SQLDatabaseType, LanguageIdEnum> = {
   postgres: LanguageIdEnum.PG
 }
 
+const SUGGEST_TRIGGER_TEXT_PATTERN = /^[A-Za-z0-9_$. ]$/
+
 export const getLanguageId = (type: SQLDatabaseType): LanguageIdEnum => {
   return LANGUAGE_MAP[type] ?? LanguageIdEnum.PG
 }
@@ -65,6 +67,7 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const onExecuteRef = useRef(onExecute)
   const focusFrameRef = useRef<number | null>(null)
+  const suggestTimeoutRef = useRef<number | null>(null)
   const [height, setHeight] = useState('400px')
 
   const editorTheme = theme === 'dark' ? 'vs-dark' : 'vs'
@@ -98,6 +101,9 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
       if (focusFrameRef.current !== null) {
         cancelAnimationFrame(focusFrameRef.current)
       }
+      if (suggestTimeoutRef.current !== null) {
+        window.clearTimeout(suggestTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -123,6 +129,30 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
     editorRef.current = editorInstance
     focusEditor(editorInstance)
 
+    const triggerSuggest = () => {
+      if (suggestTimeoutRef.current !== null) {
+        window.clearTimeout(suggestTimeoutRef.current)
+      }
+
+      suggestTimeoutRef.current = window.setTimeout(() => {
+        suggestTimeoutRef.current = null
+        if (editorInstance.hasTextFocus()) {
+          editorInstance.trigger('sql-editor', 'editor.action.triggerSuggest', {})
+        }
+      }, 0)
+    }
+
+    const contentChangeDisposable = editorInstance.onDidChangeModelContent((event) => {
+      if (editorInstance.inComposition || event.changes.length !== 1) {
+        return
+      }
+
+      const typedText = event.changes[0]?.text
+      if (typedText && SUGGEST_TRIGGER_TEXT_PATTERN.test(typedText)) {
+        triggerSuggest()
+      }
+    })
+
     // Register Ctrl+Enter keybinding for query execution
     editorInstance.addAction({
       id: 'execute-query',
@@ -147,6 +177,14 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
         ed.getAction('editor.action.formatDocument')?.run()
       }
     })
+
+    editorInstance.onDidDispose(() => {
+      contentChangeDisposable.dispose()
+      if (suggestTimeoutRef.current !== null) {
+        window.clearTimeout(suggestTimeoutRef.current)
+        suggestTimeoutRef.current = null
+      }
+    })
   }
 
   return (
@@ -168,8 +206,18 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
             comments: false,
             strings: false
           },
+          quickSuggestionsDelay: 0,
           suggestOnTriggerCharacters: true,
           wordBasedSuggestions: 'off',
+          suggestSelection: 'first',
+          suggest: {
+            preview: true,
+            previewMode: 'prefix',
+            selectionMode: 'always',
+            showInlineDetails: true,
+            showStatusBar: false,
+            showWords: false
+          },
           acceptSuggestionOnCommitCharacter: true,
           tabCompletion: 'on',
           snippetSuggestions: 'bottom',
@@ -177,7 +225,8 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
             enabled: true,
             mode: 'prefix',
             showToolbar: 'onHover',
-            suppressSuggestions: false
+            suppressSuggestions: false,
+            keepOnBlur: true
           }
         }}
       />

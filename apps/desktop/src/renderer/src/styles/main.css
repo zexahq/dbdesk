@@ -143,3 +143,28 @@
 .react-grid-item > .react-resizable-handle::after {
   border-color: var(--ring) !important;
 }
+
+/* Keep Monaco's suggest widget from inheriting app-level body line-height. */
+.monaco-editor .suggest-widget {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.monaco-editor .suggest-widget.message {
+  min-height: 32px;
+}
+
+.monaco-editor .suggest-widget > .message {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 12px 6px 22px;
+  line-height: 20px;
+}
+
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row > .contents {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  line-height: 20px;
+}
