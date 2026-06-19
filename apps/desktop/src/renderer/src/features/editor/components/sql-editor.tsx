@@ -4,7 +4,7 @@ import { useTheme } from '@renderer/shared/hooks/use-theme'
 import type { editor } from 'monaco-editor'
 import { KeyCode, KeyMod } from 'monaco-editor'
 import { LanguageIdEnum } from 'monaco-sql-languages'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { format as formatSql } from 'sql-formatter'
 
 // Map SQL database types to sql-formatter dialects.
@@ -64,6 +64,7 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const onExecuteRef = useRef(onExecute)
+  const focusFrameRef = useRef<number | null>(null)
   const [height, setHeight] = useState('400px')
 
   const editorTheme = theme === 'dark' ? 'vs-dark' : 'vs'
@@ -74,6 +75,31 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
   useEffect(() => {
     onExecuteRef.current = onExecute
   }, [onExecute])
+
+  const focusEditor = useCallback((editorInstance = editorRef.current) => {
+    if (!editorInstance) return
+
+    if (focusFrameRef.current !== null) {
+      cancelAnimationFrame(focusFrameRef.current)
+    }
+
+    focusFrameRef.current = requestAnimationFrame(() => {
+      focusFrameRef.current = null
+      editorInstance.focus()
+    })
+  }, [])
+
+  useEffect(() => {
+    focusEditor()
+  }, [tabId, focusEditor])
+
+  useEffect(() => {
+    return () => {
+      if (focusFrameRef.current !== null) {
+        cancelAnimationFrame(focusFrameRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const updateHeight = () => {
@@ -95,6 +121,7 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
 
   const handleEditorDidMount = (editorInstance: editor.IStandaloneCodeEditor, monaco: Monaco) => {
     editorRef.current = editorInstance
+    focusEditor(editorInstance)
 
     // Register Ctrl+Enter keybinding for query execution
     editorInstance.addAction({
