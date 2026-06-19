@@ -11,6 +11,7 @@ import type {
   DeleteTableRowsResult,
   ExportTableResult,
   InsertTableRowResult,
+  QueryBatchResult,
   QueryResult,
   QueryResultRow,
   SavedQuery,
@@ -78,6 +79,10 @@ export interface IpcContract {
       queryId?: string
     }
     result: QueryResult
+  }
+  'query:runMany': {
+    payload: { connectionId: string; queries: string[]; limit?: number; offset?: number }
+    result: QueryBatchResult[]
   }
   'query:cancel': {
     payload: { connectionId: string; queryId: string }

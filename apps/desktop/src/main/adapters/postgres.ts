@@ -7,6 +7,7 @@ import type {
   DeleteTableRowsResult,
   InsertTableRowOptions,
   InsertTableRowResult,
+  QueryBatchResult,
   QueryResult,
   RunQueryOptions,
   SQLAdapter,
@@ -27,6 +28,7 @@ import type {
   TableDataResult
 } from '@dbdesk/shared/types'
 import type { QueryResultRow } from 'pg'
+import { type PoolClient } from 'pg'
 import {
   QUERIES,
   buildCreateTableQuery,
@@ -110,10 +112,56 @@ export class PostgresAdapter implements SQLAdapter {
   }
 
   public async runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult> {
-    const pool = this.ensurePool()
-    const start = performance.now()
-
     const normalizedQuery = normalizeQuery(query)
+
+    return this.executeNormalizedQuery(normalizedQuery, options)
+  }
+
+  public async runManyQueries(
+    queries: string[],
+    options?: RunQueryOptions
+  ): Promise<QueryBatchResult[]> {
+    const results: QueryBatchResult[] = []
+    const pool = this.ensurePool()
+    const client = await pool.connect()
+
+    try {
+      for (const query of queries) {
+        const normalizedQuery = normalizeQuery(query).trim()
+        if (!normalizedQuery) {
+          continue
+        }
+
+        const start = performance.now()
+
+        try {
+          const result = await this.executeNormalizedQueryOnClient(client, normalizedQuery, options, start)
+          results.push({
+            query: normalizedQuery,
+            result,
+            executionTime: result.executionTime ?? performance.now() - start
+          })
+        } catch (error) {
+          results.push({
+            query: normalizedQuery,
+            error: error instanceof Error ? error.message : 'Failed to execute query',
+            executionTime: performance.now() - start
+          })
+        }
+      }
+    } finally {
+      client.release()
+    }
+
+    return results
+  }
+
+  private async executeNormalizedQuery(
+    normalizedQuery: string,
+    options?: RunQueryOptions,
+    start = performance.now()
+  ): Promise<QueryResult> {
+    const pool = this.ensurePool()
     const queryId = options?.queryId
 
     // Only check out a dedicated client when cancellation support is needed.
@@ -188,6 +236,39 @@ export class PostgresAdapter implements SQLAdapter {
     return this.transformResult(result, executionTime)
   }
 
+  private async executeNormalizedQueryOnClient(
+    client: PoolClient,
+    normalizedQuery: string,
+    options?: RunQueryOptions,
+    start = performance.now()
+  ): Promise<QueryResult> {
+    if (options && isSelectableQuery(normalizedQuery)) {
+      const countQuery = `SELECT COUNT(*) AS total FROM (${normalizedQuery}) AS subquery`
+      const paginatedQuery = `SELECT * FROM (${normalizedQuery}) AS subquery LIMIT ${options.limit ?? 50} OFFSET ${options.offset ?? 0}`
+
+      const [countResult, pageResult] = await Promise.all([
+        client.query<{ total: number }>(countQuery),
+        client.query<QueryResultRow>(paginatedQuery)
+      ])
+
+      const executionTime = performance.now() - start
+      const totalRow = countResult.rows[0]?.total
+      const totalRowCount = typeof totalRow === 'number' ? totalRow : Number(totalRow ?? 0)
+
+      const transformedResult = this.transformResult(pageResult, executionTime)
+      return {
+        ...transformedResult,
+        totalRowCount,
+        limit: options.limit,
+        offset: options.offset
+      }
+    }
+
+    const result = await client.query(normalizedQuery)
+    const executionTime = performance.now() - start
+
+    return this.transformResult(result, executionTime)
+  }
   /**
    * Cancel an in-flight query by issuing pg_cancel_backend() on a
    * side connection from the pool. Returns true if the PID was known.
@@ -591,12 +672,20 @@ export class PostgresAdapter implements SQLAdapter {
     result: PgQueryResult<QueryResultRow>,
     executionTime: number
   ): QueryResult {
-    const columns = result?.fields?.map((field) => field.name) ?? []
+    const columns = result.fields.map((field) => field.name)
+    const rowCount = typeof result.rowCount === 'number' ? result.rowCount : result.rows.length
+    // Build a human-readable command tag, e.g. "INSERT 1", "UPDATE 3", "CREATE TABLE"
+    const cmd = result.command ?? ''
+    const commandTag =
+      cmd && rowCount > 0 && !['SELECT', 'SHOW'].includes(cmd)
+        ? `${cmd} ${rowCount}`
+        : cmd || undefined
     const rows = result?.rows ?? []
 
     return {
       rows,
       columns,
+      commandTag,
       rowCount: typeof result?.rowCount === 'number' ? result.rowCount : rows.length,
       executionTime
     }

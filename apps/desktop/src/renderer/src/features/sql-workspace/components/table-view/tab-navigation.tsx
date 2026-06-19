@@ -2,7 +2,7 @@
 
 import type { SQLConnectionProfile } from '@dbdesk/shared/types'
 import type { Tab } from '@renderer/features/sql-workspace/stores/tab-store'
-import { useActiveTab, useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
+import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import * as React from 'react'
 
 interface TabNavigationProps {
@@ -16,7 +16,6 @@ export function TabNavigation({ requestCloseTab, onTabClick, onAddQueryTab }: Ta
   const tabs = useTabStore((s) => s.tabs)
   const activeTabId = useTabStore((s) => s.activeTabId)
   const setActiveTab = useTabStore((s) => s.setActiveTab)
-  const activeTab = useActiveTab()
 
   const handleTabClick = React.useCallback(
     (tabId: string) => {
@@ -57,8 +56,9 @@ export function TabNavigation({ requestCloseTab, onTabClick, onAddQueryTab }: Ta
         (event.key === 'w' || event.key === 'W' || event.key === 'F4')
       ) {
         event.preventDefault()
-        if (activeTab) {
-          requestCloseTab(activeTab)
+        const tabToClose = tabs.find((t) => t.id === activeTabId)
+        if (tabToClose) {
+          requestCloseTab(tabToClose)
         }
         return
       }
@@ -87,7 +87,7 @@ export function TabNavigation({ requestCloseTab, onTabClick, onAddQueryTab }: Ta
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [tabs, activeTabId, activeTab, handleTabClick, requestCloseTab, onAddQueryTab])
+  }, [tabs, activeTabId, handleTabClick, requestCloseTab, onAddQueryTab])
 
   return null
 }

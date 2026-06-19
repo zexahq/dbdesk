@@ -29,7 +29,7 @@ import { toast } from '@renderer/shared/lib/toast'
 import { cn } from '@renderer/shared/lib/utils'
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
-import { Tab, useActiveTab, useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
+import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import {
   ChevronRight,
   DatabaseIcon,
@@ -78,7 +78,8 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const findQueryTabById = useTabStore((s) => s.findQueryTabById)
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
   const removeTab = useTabStore((s) => s.removeTab)
-  const activeTab = useActiveTab()
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const activeTab = useTabStore((state) => state.tabs.find((t) => t.id === state.activeTabId))
   const addDashboardTab = useTabStore((s) => s.addDashboardTab)
   const findDashboardTabById = useTabStore((s) => s.findDashboardTabById)
 
@@ -323,7 +324,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
                     connectionId={profile.id}
                     schema={schemaData.schema}
                     tables={schemaData.tables}
-                    activeTab={activeTab}
+                    activeTabId={activeTabId}
                     onTableClick={handleTableClick}
                     onDuplicateToQuery={handleDuplicateToQuery}
                     profile={profile}
@@ -518,7 +519,7 @@ type SchemaTreeProps = {
   connectionId: string
   schema: string
   tables: string[]
-  activeTab: Tab | null
+  activeTabId: string | null
   onTableClick: (schema: string, table: string) => void
   onDuplicateToQuery: (schema: string, table: string) => void
   profile: SQLConnectionProfile
@@ -528,7 +529,7 @@ function SchemaTree({
   connectionId,
   schema,
   tables,
-  activeTab,
+  activeTabId,
   onTableClick,
   profile
 }: SchemaTreeProps) {
@@ -566,7 +567,7 @@ function SchemaTree({
                 <SidebarMenuButton aria-disabled>No tables</SidebarMenuButton>
               ) : (
                 tables.map((table) => {
-                  const isActive = activeTab?.id === `${schema}.${table}`
+                  const isActive = activeTabId === `${schema}.${table}`
                   return (
                     <div
                       key={table}

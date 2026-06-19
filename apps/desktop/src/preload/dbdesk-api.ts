@@ -47,6 +47,17 @@ export const dbdeskAPI = {
       offset: options?.offset,
       queryId: options?.queryId,
     }),
+  runManyQueries: (
+    connectionId: string,
+    queries: string[],
+    options?: { limit?: number; offset?: number },
+  ) =>
+    typedInvoke('query:runMany', {
+      connectionId,
+      queries,
+      limit: options?.limit,
+      offset: options?.offset,
+    }),
   cancelQuery: (connectionId: string, queryId: string) =>
     typedInvoke('query:cancel', { connectionId, queryId }),
 

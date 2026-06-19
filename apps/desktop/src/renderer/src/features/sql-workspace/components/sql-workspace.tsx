@@ -8,13 +8,13 @@ import {
 } from '@renderer/components/ui/resizable'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import { cn } from '@renderer/shared/lib/utils'
+import { dbdeskClient } from '@renderer/shared/api/client'
 import { useTabCloseHandler } from '@renderer/features/sql-workspace/hooks/use-tab-close-handler'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import {
   useDashboardStore
 } from '@renderer/features/sql-workspace/stores/dashboard-store'
-import { dbdeskClient } from '@renderer/shared/api/client'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { QueryView } from './query-view'
@@ -27,6 +27,8 @@ import { SidebarFocusShortcuts } from './sidebar-focus-shortcuts'
 
 export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const setSchemasWithTables = useSqlWorkspaceStore((s) => s.setSchemasWithTables)
+  const setTableColumns = useSqlWorkspaceStore((s) => s.setTableColumns)
+  const activeTabId = useTabStore((s) => s.activeTabId)
   const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
   const activeTab = useTabStore((state) => {
     const { tabs, activeTabId } = state
@@ -59,6 +61,37 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
     }
   }, [schemasWithTables, setSchemasWithTables])
 
+  useEffect(() => {
+    if (!schemasWithTables?.length) {
+      return
+    }
+
+    let cancelled = false
+
+    void Promise.all(
+      schemasWithTables.flatMap(({ schema, tables }) =>
+        tables.map(async (table) => {
+          if (useSqlWorkspaceStore.getState().getTableColumns(schema, table)) {
+            return
+          }
+
+          try {
+            const tableInfo = await dbdeskClient.introspectTable(profile.id, schema, table)
+            if (!cancelled) {
+              setTableColumns(schema, table, tableInfo.columns)
+            }
+          } catch (error) {
+            console.error(`Failed to load columns for ${schema}.${table}`, error)
+          }
+        })
+      )
+    )
+
+    return () => {
+      cancelled = true
+    }
+  }, [profile.id, schemasWithTables, setTableColumns])
+
   return (
     <>
       <SidebarFocusShortcuts />
@@ -77,14 +110,14 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
           <ResizablePanel>
             <SidebarInset className="flex h-full flex-col overflow-hidden">
               <WorkspaceTopbar
-                 profile={profile}
-                 isSidebarOpen={isSidebarOpen}
-                 onSidebarOpenChange={setIsSidebarOpen}
-                 requestCloseTab={requestCloseTab}
-               />
+                profile={profile}
+                isSidebarOpen={isSidebarOpen}
+                onSidebarOpenChange={setIsSidebarOpen}
+                requestCloseTab={requestCloseTab}
+              />
 
               {/* No tab open - empty state */}
-              {!activeTab ? (
+              {!activeTabId ? (
                 <div className="flex flex-1 items-center justify-center">
                   <div className="text-center text-muted-foreground">
                     <p className="text-lg font-medium">No tab open</p>
@@ -92,9 +125,9 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
                   </div>
                 </div>
               ) : activeTab?.kind === 'table' ? (
-                <TableView profile={profile} activeTab={activeTab} />
+                <TableView profile={profile} tabId={activeTab.id} />
               ) : activeTab?.kind === 'query' ? (
-                <QueryView profile={profile} activeTab={activeTab} />
+                <QueryView profile={profile} tabId={activeTab.id} />
               ) : activeTab?.kind === 'dashboard' ? (
                 dashboardConfig ? (
                   <DashboardCanvas

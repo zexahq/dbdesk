@@ -3,7 +3,15 @@
  */
 
 // Base adapter types
-export type { BaseAdapter, DBAdapter, QueryResult, QueryResultRow, RunQueryOptions } from './adapter'
+// Base adapter types
+export type {
+  BaseAdapter,
+  DBAdapter,
+  QueryBatchResult,
+  QueryResult,
+  QueryResultRow,
+  RunQueryOptions,
+} from './adapter'
 
 // SQL types
 export type {
@@ -23,6 +31,7 @@ export type {
   IndexInfo,
   InsertTableRowOptions,
   InsertTableRowResult,
+  EditorQueryBlock,
   PostgreSQLSslMode,
   SQLAdapter,
   SQLConnectionOptions,

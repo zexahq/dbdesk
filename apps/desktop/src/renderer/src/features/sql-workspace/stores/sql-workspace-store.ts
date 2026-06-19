@@ -1,4 +1,4 @@
-import type { SchemaWithTables } from '@dbdesk/shared/types'
+import type { ColumnInfo, SchemaWithTables } from '@dbdesk/shared/types'
 import { create } from 'zustand'
 
 export type SidebarViewMode = 'schemas' | 'queries' | 'dashboards'
@@ -6,17 +6,21 @@ export type SidebarViewMode = 'schemas' | 'queries' | 'dashboards'
 interface SqlWorkspaceStore {
   currentConnectionId: string | null
   schemasWithTables: SchemaWithTables[]
+  tableColumns: Record<string, ColumnInfo[]>
   sidebarViewMode: SidebarViewMode
 
   setCurrentConnection: (connectionId: string | null) => void
   setSchemasWithTables: (schemas: SchemaWithTables[]) => void
+  setTableColumns: (schema: string, table: string, columns: ColumnInfo[]) => void
+  getTableColumns: (schema: string, table: string) => ColumnInfo[] | undefined
   setSidebarViewMode: (mode: SidebarViewMode) => void
   reset: () => void
 }
 
-export const useSqlWorkspaceStore = create<SqlWorkspaceStore>((set) => ({
+export const useSqlWorkspaceStore = create<SqlWorkspaceStore>((set, get) => ({
   currentConnectionId: null,
   schemasWithTables: [],
+  tableColumns: {},
   sidebarViewMode: 'schemas',
 
   setCurrentConnection: (connectionId) =>
@@ -27,15 +31,25 @@ export const useSqlWorkspaceStore = create<SqlWorkspaceStore>((set) => ({
 
       return {
         currentConnectionId: connectionId,
-        schemasWithTables: []
+        schemasWithTables: [],
+        tableColumns: {}
       }
     }),
   setSchemasWithTables: (schemas) => set({ schemasWithTables: schemas }),
+  setTableColumns: (schema, table, columns) =>
+    set((state) => ({
+      tableColumns: {
+        ...state.tableColumns,
+        [`${schema}.${table}`]: columns
+      }
+    })),
+  getTableColumns: (schema, table) => get().tableColumns[`${schema}.${table}`],
   setSidebarViewMode: (mode) => set({ sidebarViewMode: mode }),
   reset: () =>
     set({
       currentConnectionId: null,
       schemasWithTables: [],
+      tableColumns: {},
       sidebarViewMode: 'schemas'
     })
 }))

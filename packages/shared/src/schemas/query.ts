@@ -17,5 +17,13 @@ export const queryResultSchema = z.object({
   offset: z.number().int().optional(),
 })
 
+export const queryBatchResultSchema = z.object({
+  query: z.string(),
+  result: queryResultSchema.optional(),
+  error: z.string().optional(),
+  executionTime: z.number(),
+})
+
 export type RunQueryOptionsSchema = z.infer<typeof runQueryOptionsSchema>
 export type QueryResultSchema = z.infer<typeof queryResultSchema>
+export type QueryBatchResultSchema = z.infer<typeof queryBatchResultSchema>

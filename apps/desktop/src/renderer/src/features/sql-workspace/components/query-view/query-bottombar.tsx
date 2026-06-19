@@ -11,6 +11,7 @@ import { ArrowLeft, ArrowRight } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
 interface QueryBottombarProps {
+  resultLabel?: string
   totalRows: number
   executionTime?: number
   limit: number
@@ -21,6 +22,7 @@ interface QueryBottombarProps {
 }
 
 export const QueryBottombar = ({
+  resultLabel,
   totalRows,
   executionTime,
   limit,
@@ -136,7 +138,13 @@ export const QueryBottombar = ({
         )}
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{totalRows} records</span>
+          {resultLabel ? (
+            <>
+              <span className="text-sm text-muted-foreground">{resultLabel}</span>
+              <span className="text-sm text-muted-foreground">•</span>
+            </>
+          ) : null}
+          <span className="text-sm text-muted-foreground">{totalRows} rows</span>
           {executionTime !== undefined && (
             <>
               <span className="text-sm text-muted-foreground">•</span>

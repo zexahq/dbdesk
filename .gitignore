@@ -13,4 +13,4 @@ agent_plans/
 package-lock.json
 .vercel
 .env*
-apps/desktop/index.js
+.context

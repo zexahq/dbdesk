@@ -29,6 +29,27 @@ export function useRunQuery(connectionId: string) {
   })
 }
 
+export function useRunManyQueries(connectionId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      queries,
+      options
+    }: {
+      queries: string[]
+      options?: { limit?: number; offset?: number }
+    }) => dbdeskClient.runManyQueries(connectionId, queries, options),
+    onSuccess: (_, variables) => {
+      if (variables.queries.some((query) => isDDLQuery(query))) {
+        queryClient.invalidateQueries({
+          queryKey: ['schemasWithTables', connectionId]
+        })
+      }
+    }
+  })
+}
+
 export function useCancelQuery(connectionId: string) {
   return useMutation({
     mutationFn: (queryId: string) => dbdeskClient.cancelQuery(connectionId, queryId)

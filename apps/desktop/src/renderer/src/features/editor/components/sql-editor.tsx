@@ -4,7 +4,7 @@ import { useTheme } from '@renderer/shared/hooks/use-theme'
 import type { editor } from 'monaco-editor'
 import { KeyCode, KeyMod } from 'monaco-editor'
 import { LanguageIdEnum } from 'monaco-sql-languages'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { format as formatSql } from 'sql-formatter'
 
 // Map SQL database types to sql-formatter dialects.
@@ -51,21 +51,55 @@ interface SqlEditorProps {
   onExecute?: () => void
 }
 
-export default function SqlEditor({ value, onChange, language, onExecute }: SqlEditorProps) {
+const LANGUAGE_MAP: Record<SQLDatabaseType, LanguageIdEnum> = {
+  postgres: LanguageIdEnum.PG
+}
+
+export const getLanguageId = (type: SQLDatabaseType): LanguageIdEnum => {
+  return LANGUAGE_MAP[type] ?? LanguageIdEnum.PG
+}
+
+export default function SqlEditor({ tabId, value, onChange, language, onExecute }: SqlEditorProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const onExecuteRef = useRef(onExecute)
+  const focusFrameRef = useRef<number | null>(null)
   const [height, setHeight] = useState('400px')
 
   const editorTheme = theme === 'dark' ? 'vs-dark' : 'vs'
-  const languageId = LanguageIdEnum.PG
+  const languageId = getLanguageId(language)
   const formatterDialect = FORMATTER_DIALECTS[language]
 
   // Keep onExecute ref updated
   useEffect(() => {
     onExecuteRef.current = onExecute
   }, [onExecute])
+
+  const focusEditor = useCallback((editorInstance = editorRef.current) => {
+    if (!editorInstance) return
+
+    if (focusFrameRef.current !== null) {
+      cancelAnimationFrame(focusFrameRef.current)
+    }
+
+    focusFrameRef.current = requestAnimationFrame(() => {
+      focusFrameRef.current = null
+      editorInstance.focus()
+    })
+  }, [])
+
+  useEffect(() => {
+    focusEditor()
+  }, [tabId, focusEditor])
+
+  useEffect(() => {
+    return () => {
+      if (focusFrameRef.current !== null) {
+        cancelAnimationFrame(focusFrameRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const updateHeight = () => {
@@ -87,6 +121,7 @@ export default function SqlEditor({ value, onChange, language, onExecute }: SqlE
 
   const handleEditorDidMount = (editorInstance: editor.IStandaloneCodeEditor, monaco: Monaco) => {
     editorRef.current = editorInstance
+    focusEditor(editorInstance)
 
     // Register Ctrl+Enter keybinding for query execution
     editorInstance.addAction({
@@ -119,6 +154,7 @@ export default function SqlEditor({ value, onChange, language, onExecute }: SqlE
       <Editor
         height={height}
         language={languageId}
+        path={tabId}
         theme={editorTheme}
         value={value}
         onChange={(val) => onChange(val ?? '')}
@@ -126,7 +162,23 @@ export default function SqlEditor({ value, onChange, language, onExecute }: SqlE
         options={{
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
-          smoothScrolling: true
+          smoothScrolling: true,
+          quickSuggestions: {
+            other: true,
+            comments: false,
+            strings: false
+          },
+          suggestOnTriggerCharacters: true,
+          wordBasedSuggestions: 'off',
+          acceptSuggestionOnCommitCharacter: true,
+          tabCompletion: 'on',
+          snippetSuggestions: 'bottom',
+          inlineSuggest: {
+            enabled: true,
+            mode: 'prefix',
+            showToolbar: 'onHover',
+            suppressSuggestions: false
+          }
         }}
       />
     </div>

@@ -29,10 +29,18 @@ export interface QueryResult {
   rows: QueryResultRow[]
   columns: string[]
   rowCount: number
+  commandTag?: string
   executionTime?: number
   totalRowCount?: number
   limit?: number
   offset?: number
+}
+
+export interface QueryBatchResult {
+  query: string
+  result?: QueryResult
+  error?: string
+  executionTime: number
 }
 
 /**
@@ -42,6 +50,7 @@ export interface BaseAdapter {
   connect(): Promise<void>
   disconnect(): Promise<void>
   runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult>
+  runManyQueries(queries: string[], options?: RunQueryOptions): Promise<QueryBatchResult[]>
   /**
    * Cancel an in-flight query previously started with the given `queryId`.
    * Returns true when a cancel was actually issued. Optional — adapters

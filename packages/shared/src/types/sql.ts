@@ -283,6 +283,12 @@ export interface SchemaWithTables {
   tables: string[]
 }
 
+export interface EditorQueryBlock {
+  startLineNumber: number
+  endLineNumber: number
+  queries: string[]
+}
+
 /**
  * SQL adapter interface (PostgreSQL)
  */

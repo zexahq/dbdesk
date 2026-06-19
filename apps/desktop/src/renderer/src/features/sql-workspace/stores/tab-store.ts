@@ -1,4 +1,5 @@
 import type {
+  QueryBatchResult,
   QueryResult,
   SerializedDashboardTab,
   SerializedQueryTab,
@@ -34,7 +35,10 @@ export interface QueryTab extends BaseTab {
   offset: number
   totalRowCount?: number
   lastSavedContent?: string
+  lastExecutedQuery?: string
   queryResults?: QueryResult
+  batchResults?: QueryBatchResult[]
+  activeResultIndex: number
   isDirty: boolean
 }
 
@@ -105,6 +109,9 @@ const createDefaultQueryTab = (): QueryTab => ({
   limit: 50,
   offset: 0,
   queryResults: undefined,
+  batchResults: undefined,
+  activeResultIndex: 0,
+  lastExecutedQuery: undefined,
   lastSavedContent: undefined,
   isDirty: false
 })
@@ -313,7 +320,10 @@ export const useTabStore = create<TabStore>((set, get) => ({
           ...serializedTab,
           limit: 50,
           offset: 0,
+          lastExecutedQuery: undefined,
           queryResults: undefined,
+          batchResults: undefined,
+          activeResultIndex: 0,
           isDirty
         } as QueryTab
       }
