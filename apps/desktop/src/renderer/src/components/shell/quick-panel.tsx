@@ -1,7 +1,11 @@
 'use client'
 
 import { dbdeskClient } from '@renderer/shared/api/client'
-import { useConnect, useConnections, useDisconnect } from '@renderer/features/connections/queries/connections'
+import {
+  useConnect,
+  useConnections,
+  useDisconnect
+} from '@renderer/features/connections/queries/connections'
 import { useDashboardStore } from '@renderer/features/sql-workspace/stores/dashboard-store'
 import {
   CommandDialog,
@@ -14,6 +18,7 @@ import {
 } from '@renderer/components/ui/command'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useTheme } from '@renderer/shared/hooks/use-theme'
+import { toast } from '@renderer/shared/lib/toast'
 import { saveCurrentWorkspace } from '@renderer/features/sql-workspace/lib/workspace'
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
@@ -21,7 +26,8 @@ import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { useNavigate } from '@tanstack/react-router'
 import { Database, Moon, Plus, Search, SquareCode, Sun, Table2Icon, Unplug } from 'lucide-react'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useHotkey } from '@tanstack/react-hotkeys'
+import { useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 
 export function QuickPanel() {
@@ -49,17 +55,7 @@ export function QuickPanel() {
   const { mutateAsync: disconnect } = useDisconnect()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'p' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setOpen((open) => !open)
-      }
-    }
-
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [])
+  useHotkey('Mod+P', () => setOpen((open) => !open), { preventDefault: true })
 
   const handleTableSelect = (schema: string, table: string) => {
     addTableTab(schema, table)
@@ -89,7 +85,7 @@ export function QuickPanel() {
       })
       setOpen(false)
     } catch (error) {
-      console.error('Failed to connect:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to connect')
     }
   }
 
