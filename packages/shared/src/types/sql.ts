@@ -21,11 +21,6 @@ export interface SQLConnectionOptions {
   user: string
   password: string
   sslMode?: PostgreSQLSslMode
-  /**
-   * When true, the connection rejects any non-SELECT/SHOW SQL and all
-   * table-mutating IPC calls (insert/update/delete row, create/drop table).
-   */
-  readOnly?: boolean
 }
 
 /**

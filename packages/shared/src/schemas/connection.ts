@@ -8,7 +8,7 @@ export const postgreSQLSslModeSchema = z.enum([
   'prefer',
   'require',
   'verify-ca',
-  'verify-full',
+  'verify-full'
 ])
 
 // ── Database Types ──
@@ -25,8 +25,7 @@ export const sqlConnectionOptionsSchema = z.object({
   database: z.string().min(1),
   user: z.string().min(1),
   password: z.string().min(1),
-  sslMode: postgreSQLSslModeSchema.optional(),
-  readOnly: z.boolean().optional(),
+  sslMode: postgreSQLSslModeSchema.optional()
 })
 
 export const mongoDBConnectionOptionsSchema = z.object({
@@ -38,7 +37,7 @@ export const mongoDBConnectionOptionsSchema = z.object({
   connectionString: z.string().optional(),
   authSource: z.string().optional(),
   replicaSet: z.string().optional(),
-  ssl: z.union([z.boolean(), z.object({}).passthrough()]).optional(),
+  ssl: z.union([z.boolean(), z.object({}).passthrough()]).optional()
 })
 
 export const redisConnectionOptionsSchema = z.object({
@@ -47,13 +46,13 @@ export const redisConnectionOptionsSchema = z.object({
   database: z.number().int().min(0).max(15).optional(),
   password: z.string().optional(),
   username: z.string().optional(),
-  ssl: z.union([z.boolean(), z.object({}).passthrough()]).optional(),
+  ssl: z.union([z.boolean(), z.object({}).passthrough()]).optional()
 })
 
 export const dbConnectionOptionsSchema = z.union([
   sqlConnectionOptionsSchema,
   mongoDBConnectionOptionsSchema,
-  redisConnectionOptionsSchema,
+  redisConnectionOptionsSchema
 ])
 
 // ── Connection Profiles ──
@@ -63,31 +62,31 @@ const baseProfileFields = {
   name: z.string().min(1),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
-  lastConnectedAt: z.coerce.date().optional(),
+  lastConnectedAt: z.coerce.date().optional()
 }
 
 export const sqlConnectionProfileSchema = z.object({
   ...baseProfileFields,
   type: sqlDatabaseTypeSchema,
-  options: sqlConnectionOptionsSchema,
+  options: sqlConnectionOptionsSchema
 })
 
 export const mongoDBConnectionProfileSchema = z.object({
   ...baseProfileFields,
   type: z.literal('mongodb'),
-  options: mongoDBConnectionOptionsSchema,
+  options: mongoDBConnectionOptionsSchema
 })
 
 export const redisConnectionProfileSchema = z.object({
   ...baseProfileFields,
   type: z.literal('redis'),
-  options: redisConnectionOptionsSchema,
+  options: redisConnectionOptionsSchema
 })
 
 export const connectionProfileSchema = z.discriminatedUnion('type', [
   sqlConnectionProfileSchema,
   mongoDBConnectionProfileSchema,
-  redisConnectionProfileSchema,
+  redisConnectionProfileSchema
 ])
 
 // ── Create / Update ──
@@ -95,11 +94,11 @@ export const connectionProfileSchema = z.discriminatedUnion('type', [
 export const createConnectionSchema = z.object({
   name: z.string().min(1),
   type: databaseTypeSchema,
-  options: dbConnectionOptionsSchema,
+  options: dbConnectionOptionsSchema
 })
 
 export const updateConnectionSchema = createConnectionSchema.extend({
-  connectionId: z.string().uuid(),
+  connectionId: z.string().uuid()
 })
 
 // ── Inferred Types ──

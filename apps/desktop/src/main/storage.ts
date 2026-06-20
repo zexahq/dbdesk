@@ -1,4 +1,5 @@
 import type { ConnectionProfile } from '@dbdesk/shared/types'
+import { connectionProfileSchema } from '@dbdesk/shared/schemas'
 import { eq, getDb, connectionProfiles } from '@dbdesk/db'
 
 const toProfile = (row: typeof connectionProfiles.$inferSelect): ConnectionProfile => {
@@ -9,7 +10,7 @@ const toProfile = (row: typeof connectionProfiles.$inferSelect): ConnectionProfi
     console.warn(`[storage] Failed to parse options for profile ${row.id}`)
   }
 
-  return {
+  const profile = {
     id: row.id,
     name: row.name,
     type: row.type,
@@ -18,6 +19,9 @@ const toProfile = (row: typeof connectionProfiles.$inferSelect): ConnectionProfi
     updatedAt: new Date(row.updatedAt),
     lastConnectedAt: row.lastConnectedAt !== null ? new Date(row.lastConnectedAt) : undefined
   } as ConnectionProfile
+
+  const parsed = connectionProfileSchema.safeParse(profile)
+  return parsed.success ? (parsed.data as ConnectionProfile) : profile
 }
 
 export const loadProfiles = async (): Promise<ConnectionProfile[]> => {

@@ -129,7 +129,7 @@ export function useWidgetData(
       // Validate that it's a SELECT query
       if (!isSelectQuery(resolvedQueryContent)) {
         throw new Error(
-          'Only read-only queries (SELECT / read-only CTE / SHOW / EXPLAIN) are allowed for widgets. Data-modifying queries cannot be used.'
+          'Only non-mutating queries (SELECT / CTE / SHOW / EXPLAIN) are allowed for widgets. Data-modifying queries cannot be used.'
         )
       }
 
