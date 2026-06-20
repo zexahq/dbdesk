@@ -20,7 +20,7 @@
   "devDependencies": {
     "@dbdesk/server": "workspace:*",
     "@dbdesk/tsconfig": "workspace:*",
-    "@types/node": "^22.19.21",
+    "@types/node": "^26.0.0",
     "typescript": "^5.9.3"
   }
 }

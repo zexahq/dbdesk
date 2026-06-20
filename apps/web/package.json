@@ -12,14 +12,14 @@
   },
   "dependencies": {
     "@better-auth/electron": "^1.6.20",
-    "@octokit/rest": "^21.1.1",
+    "@octokit/rest": "^22.0.0",
     "better-auth": "^1.6.20",
     "clsx": "^2.1.1",
-    "fumadocs-core": "16.1.0",
-    "fumadocs-mdx": "14.0.3",
-    "fumadocs-ui": "16.1.0",
+    "fumadocs-core": "^16.10.4",
+    "fumadocs-mdx": "^15.0.12",
+    "fumadocs-ui": "^16.10.4",
     "lucide-react": "^0.552.0",
-    "next": "16.1.7",
+    "next": "^16.2.9",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwind-merge": "^3.6.0"
@@ -27,11 +27,11 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.1",
     "@types/mdx": "^2.0.14",
-    "@types/node": "^24.13.2",
+    "@types/node": "^26.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.0.1",
+    "eslint-config-next": "^16.2.9",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.1",
     "typescript": "^5.9.3"

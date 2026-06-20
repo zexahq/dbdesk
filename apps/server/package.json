@@ -22,8 +22,8 @@
   "dependencies": {
     "@ai-sdk/google": "^3.0.83",
     "@better-auth/electron": "^1.6.20",
-    "@hono/node-server": "^1.19.14",
-    "@hono/zod-validator": "^0.7.6",
+    "@hono/node-server": "^2.0.0",
+    "@hono/zod-validator": "^0.8.0",
     "ai": "^6.0.208",
     "better-auth": "^1.6.20",
     "dotenv": "^17.4.2",
@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "@better-auth/cli": "^1.4.21",
-    "@types/node": "^20.19.43",
+    "@types/node": "^26.0.0",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.22.4",
