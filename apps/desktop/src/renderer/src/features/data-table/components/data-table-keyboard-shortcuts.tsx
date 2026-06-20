@@ -13,9 +13,8 @@ import { Input } from '@renderer/components/ui/input'
 import { Kbd, KbdGroup } from '@renderer/components/ui/kbd'
 import { Separator } from '@renderer/components/ui/separator'
 import { SearchIcon, XIcon } from 'lucide-react'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
-
-const SHORTCUT_KEY = '/'
 
 interface ShortcutGroup {
   title: string
@@ -56,7 +55,66 @@ function DataTableKeyboardShortcutsImpl() {
   const shortcutGroups: ShortcutGroup[] = React.useMemo(
     () => [
       {
-        title: 'Navigation',
+        title: 'General',
+        shortcuts: [
+          {
+            keys: [modKey, 'P'],
+            description: 'Open Quick Panel'
+          },
+          {
+            keys: [modKey, '/'],
+            description: 'Show keyboard shortcuts'
+          }
+        ]
+      },
+      {
+        title: 'Sidebar',
+        shortcuts: [
+          {
+            keys: [modKey, 'B'],
+            description: 'Toggle sidebar'
+          },
+          {
+            keys: [modKey, 'Shift', 'E'],
+            description: 'Show schemas in sidebar'
+          },
+          {
+            keys: [modKey, 'Shift', 'Y'],
+            description: 'Show saved queries in sidebar'
+          },
+          {
+            keys: [modKey, 'Shift', 'D'],
+            description: 'Show dashboards in sidebar'
+          }
+        ]
+      },
+      {
+        title: 'Tabs',
+        shortcuts: [
+          {
+            keys: [modKey, 'T'],
+            description: 'Open a new query tab'
+          },
+          {
+            keys: [modKey, 'W'],
+            description: 'Close current tab'
+          },
+          {
+            keys: [modKey, 'Tab'],
+            description: 'Switch to next tab'
+          },
+          {
+            keys: [modKey, 'Shift', 'Tab'],
+            description: 'Switch to previous tab'
+          },
+          {
+            keys: [modKey, '1-9'],
+            description: 'Switch to tab by number'
+          }
+        ]
+      },
+      {
+        title: 'Table Navigation',
         shortcuts: [
           {
             keys: ['↑', '↓', '←', '→'],
@@ -97,14 +155,10 @@ function DataTableKeyboardShortcutsImpl() {
         ]
       },
       {
-        title: 'Editing',
+        title: 'Table Editing',
         shortcuts: [
           {
             keys: ['Enter'],
-            description: 'Start editing cell'
-          },
-          {
-            keys: ['Double Click'],
             description: 'Start editing cell'
           },
           {
@@ -120,17 +174,28 @@ function DataTableKeyboardShortcutsImpl() {
             description: 'Copy cell content'
           },
           {
+            keys: [modKey, 'F'],
+            description: 'Filter by focused cell value'
+          },
+          {
+            keys: [modKey, 'Shift', 'L'],
+            description: 'Clear all filters'
+          },
+          {
+            keys: [modKey, 'Shift', '↑'],
+            description: 'Sort focused column ascending'
+          },
+          {
+            keys: [modKey, 'Shift', '↓'],
+            description: 'Sort focused column descending'
+          },
+          {
+            keys: [modKey, 'Shift', 'Backspace'],
+            description: 'Clear focused column sort'
+          },
+          {
             keys: ['Esc'],
             description: 'Cancel editing / Clear focus'
-          }
-        ]
-      },
-      {
-        title: 'General',
-        shortcuts: [
-          {
-            keys: [modKey, '/'],
-            description: 'Show keyboard shortcuts'
           }
         ]
       }
@@ -154,19 +219,7 @@ function DataTableKeyboardShortcutsImpl() {
       .filter((group) => group.shortcuts.length > 0)
   }, [shortcutGroups, input])
 
-  React.useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && event.key === SHORTCUT_KEY) {
-        event.preventDefault()
-        setOpen(true)
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [])
+  useHotkey('Mod+/', () => setOpen(true), { preventDefault: true })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

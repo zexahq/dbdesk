@@ -1,7 +1,12 @@
 'use client'
 
-import type { TableSortRule } from '@dbdesk/shared/types'
-import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/features/data-table/types/data-table'
+import type { TableFilterCondition, TableFilterScalar, TableSortRule } from '@dbdesk/shared/types'
+import type {
+  CellPosition,
+  NavigationDirection,
+  UpdateCell
+} from '@renderer/features/data-table/types/data-table'
+import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -11,13 +16,16 @@ import {
   type Updater,
   useReactTable
 } from '@tanstack/react-table'
-import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useHotkeys } from '@tanstack/react-hotkeys'
+import { type MouseEvent, useCallback, useRef, useState } from 'react'
 
 import type { QueryResultRow } from '@dbdesk/shared/types'
 import { toast } from '@renderer/shared/lib/toast'
 
-interface UseDataTableProps<TData, TValue = unknown>
-  extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
+interface UseDataTableProps<TData, TValue = unknown> extends Omit<
+  TableOptions<TData>,
+  'getCoreRowModel'
+> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
@@ -26,6 +34,7 @@ interface UseDataTableProps<TData, TValue = unknown>
   onRowSelectionChange: OnChangeFn<RowSelectionState>
   // Optional sorting support
   sortRules?: TableSortRule[]
+  tabId: string
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
@@ -38,6 +47,7 @@ export function useDataTable<TData, TValue = unknown>({
   rowSelection,
   onRowSelectionChange,
   sortRules,
+  tabId,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -48,22 +58,7 @@ export function useDataTable<TData, TValue = unknown>({
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({})
-
-  // Get column IDs
-  const columnIds = useMemo(() => {
-    return columns
-      .map((c) => {
-        if (c.id) return c.id
-        if ('accessorKey' in c) return c.accessorKey as string
-        return undefined
-      })
-      .filter((id): id is string => Boolean(id))
-  }, [columns])
-
-  // Get navigable column IDs (exclude select and actions columns)
-  const navigableColumnIds = useMemo(() => {
-    return columnIds.filter((c) => !NON_NAVIGABLE_COLUMN_IDS.includes(c))
-  }, [columnIds])
+  const updateTableTab = useTabStore((s) => s.updateTableTab)
 
   // Handle row selection change (keep separate from cell selection)
   const handleRowSelectionChange = useCallback(
@@ -98,6 +93,16 @@ export function useDataTable<TData, TValue = unknown>({
   if (!tableRef.current) {
     tableRef.current = table
   }
+
+  const tableRef2 = useRef(table)
+  tableRef2.current = table
+
+  const getNavigableColumnIds = useCallback(() => {
+    return tableRef2.current
+      .getVisibleLeafColumns()
+      .map((column) => column.id)
+      .filter((columnId) => !NON_NAVIGABLE_COLUMN_IDS.includes(columnId))
+  }, [])
 
   // Scroll cell into view
   const scrollCellIntoView = useCallback(
@@ -233,6 +238,7 @@ export function useDataTable<TData, TValue = unknown>({
     if (!focusedCell) return
 
     const { rowIndex, columnId } = focusedCell
+    const navigableColumnIds = getNavigableColumnIds()
     const currentColIndex = navigableColumnIds.indexOf(columnId)
     const rows = table.getRowModel().rows
     const rowCount = rows.length
@@ -363,10 +369,6 @@ export function useDataTable<TData, TValue = unknown>({
     []
   )
 
-  // Handle data updates - use ref to avoid table dependency
-  const tableRef2 = useRef(table)
-  tableRef2.current = table
-
   const onDataUpdate = useCallback(
     (updates: UpdateCell | Array<UpdateCell>) => {
       const updateArray = Array.isArray(updates) ? updates : [updates]
@@ -417,22 +419,19 @@ export function useDataTable<TData, TValue = unknown>({
     [onCellEditingStart]
   )
 
-  // Handle keyboard events - use refs to get latest state
-  const onKeyDownRef = useRef<(event: KeyboardEvent) => void>(null)
+  const handleTableKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      const { key, ctrlKey, metaKey, shiftKey } = event
+      const normalizedKey = key.toLowerCase()
+      const isCtrlPressed = ctrlKey || metaKey
 
-  onKeyDownRef.current = (event: KeyboardEvent) => {
-    const { key, ctrlKey, metaKey, shiftKey } = event
-    const isCtrlPressed = ctrlKey || metaKey
+      if (editingCell) return
 
-    if (editingCell) return
+      let direction: NavigationDirection | null = null
 
-    if (!focusedCell) return
-
-    let direction: NavigationDirection | null = null
-
-    // Ctrl+C to copy focused cell content
-    if (key === 'c' && isCtrlPressed) {
-      if (focusedCell) {
+      // Ctrl+C to copy focused cell content
+      if (normalizedKey === 'c' && isCtrlPressed) {
+        if (!focusedCell) return
         event.preventDefault()
         const rows = tableRef2.current.getRowModel().rows
         const row = rows[focusedCell.rowIndex]
@@ -448,96 +447,186 @@ export function useDataTable<TData, TValue = unknown>({
               console.error('Failed to copy to clipboard:', err)
             })
         }
+        return
       }
-      return
-    }
 
-    // Delete to clear focused cell value
-    if (key === 'Delete') {
-      if (focusedCell) {
+      // Ctrl+F to filter focused column by focused cell content
+      if (normalizedKey === 'f' && isCtrlPressed) {
+        if (!focusedCell) return
+        event.preventDefault()
+        const rows = tableRef2.current.getRowModel().rows
+        const row = rows[focusedCell.rowIndex]
+        if (row) {
+          const activeTab = useTabStore.getState().findTableTabById(tabId)
+          if (!activeTab) return
+
+          const value = row.getValue(focusedCell.columnId)
+          const filter: TableFilterCondition =
+            value === null || value === undefined
+              ? { column: focusedCell.columnId, operator: 'IS', value: 'NULL' }
+              : { column: focusedCell.columnId, operator: '=', value: value as TableFilterScalar }
+
+          updateTableTab(tabId, {
+            filters: [
+              ...(activeTab.filters ?? []).filter((item) => item.column !== filter.column),
+              filter
+            ],
+            offset: 0
+          })
+        }
+        return
+      }
+
+      // Ctrl+Shift+L to clear all filters
+      if (normalizedKey === 'l' && isCtrlPressed && shiftKey) {
+        event.preventDefault()
+        updateTableTab(tabId, { filters: undefined, offset: 0 })
+        return
+      }
+
+      // Ctrl+Shift+ArrowUp/ArrowDown to sort focused column
+      if ((key === 'ArrowUp' || key === 'ArrowDown') && isCtrlPressed && shiftKey) {
+        if (!focusedCell) return
+        event.preventDefault()
+        updateTableTab(tabId, {
+          sortRules: [
+            { column: focusedCell.columnId, direction: key === 'ArrowUp' ? 'ASC' : 'DESC' }
+          ],
+          offset: 0
+        })
+        return
+      }
+
+      // Ctrl+Shift+Backspace to clear focused column sort
+      if (key === 'Backspace' && isCtrlPressed && shiftKey) {
+        if (!focusedCell) return
+        event.preventDefault()
+        const activeTab = useTabStore.getState().findTableTabById(tabId)
+        const remainingSortRules = activeTab?.sortRules?.filter(
+          (rule) => rule.column !== focusedCell.columnId
+        )
+        updateTableTab(tabId, {
+          sortRules:
+            remainingSortRules && remainingSortRules.length > 0 ? remainingSortRules : undefined,
+          offset: 0
+        })
+        return
+      }
+
+      // Delete to clear focused cell value
+      if (key === 'Delete') {
+        if (!focusedCell) return
         event.preventDefault()
         onDataUpdate({
           rowIndex: focusedCell.rowIndex,
           columnId: focusedCell.columnId,
           value: null
         })
+        return
       }
-      return
-    }
 
-    // Backspace to enter editing mode
-    if (key === 'Backspace') {
-      if (focusedCell) {
+      // Backspace to enter editing mode
+      if (key === 'Backspace') {
+        if (!focusedCell) return
         event.preventDefault()
         onCellEditingStart(focusedCell.rowIndex, focusedCell.columnId)
-      }
-      return
-    }
-
-    // Navigation keys
-    switch (key) {
-      case 'ArrowUp':
-        direction = 'up'
-        break
-      case 'ArrowDown':
-        direction = 'down'
-        break
-      case 'ArrowLeft':
-        direction = 'left'
-        break
-      case 'ArrowRight':
-        direction = 'right'
-        break
-      case 'Home':
-        direction = isCtrlPressed ? 'ctrl+home' : 'home'
-        break
-      case 'End':
-        direction = isCtrlPressed ? 'ctrl+end' : 'end'
-        break
-      case 'PageUp':
-        direction = 'pageup'
-        break
-      case 'PageDown':
-        direction = 'pagedown'
-        break
-      case 'Escape':
-        event.preventDefault()
-        setFocusedCell(null)
-        setEditingCell(null)
         return
-      case 'Tab':
-        event.preventDefault()
-        direction = shiftKey ? 'left' : 'right'
-        break
-      case 'Enter':
-        if (!editingCell) {
+      }
+
+      // Navigation keys
+      switch (key) {
+        case 'ArrowUp':
+          direction = 'up'
+          break
+        case 'ArrowDown':
+          direction = 'down'
+          break
+        case 'ArrowLeft':
+          direction = 'left'
+          break
+        case 'ArrowRight':
+          direction = 'right'
+          break
+        case 'Home':
+          direction = isCtrlPressed ? 'ctrl+home' : 'home'
+          break
+        case 'End':
+          direction = isCtrlPressed ? 'ctrl+end' : 'end'
+          break
+        case 'PageUp':
+          direction = 'pageup'
+          break
+        case 'PageDown':
+          direction = 'pagedown'
+          break
+        case 'Escape':
+          event.preventDefault()
+          setFocusedCell(null)
+          setEditingCell(null)
+          return
+        case 'Tab':
+          event.preventDefault()
+          direction = shiftKey ? 'left' : 'right'
+          break
+        case 'Enter':
+          if (!focusedCell) return
           event.preventDefault()
           onCellEditingStart(focusedCell.rowIndex, focusedCell.columnId)
+          return
+      }
+
+      if (direction) {
+        event.preventDefault()
+        if (!focusedCell) {
+          const firstColumnId = getNavigableColumnIds()[0]
+          if (firstColumnId && tableRef2.current.getRowModel().rows.length > 0) {
+            focusCell(0, firstColumnId)
+          }
+          return
         }
-        return
-    }
+        navigateCell(direction)
+      }
+    },
+    [
+      editingCell,
+      focusCell,
+      focusedCell,
+      getNavigableColumnIds,
+      navigateCell,
+      onCellEditingStart,
+      onDataUpdate,
+      tabId,
+      updateTableTab
+    ]
+  )
 
-    if (direction) {
-      event.preventDefault()
-      navigateCell(direction)
-    }
-  }
-
-  // Set up keyboard event listeners
-  useEffect(() => {
-    const container = tableContainerRef.current
-    if (!container) return
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      onKeyDownRef.current?.(event)
-    }
-
-    container.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      container.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [])
+  useHotkeys(
+    [
+      { hotkey: 'ArrowUp', callback: handleTableKeyDown },
+      { hotkey: 'ArrowDown', callback: handleTableKeyDown },
+      { hotkey: 'ArrowLeft', callback: handleTableKeyDown },
+      { hotkey: 'ArrowRight', callback: handleTableKeyDown },
+      { hotkey: 'Home', callback: handleTableKeyDown },
+      { hotkey: 'End', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Home', callback: handleTableKeyDown },
+      { hotkey: 'Mod+End', callback: handleTableKeyDown },
+      { hotkey: 'PageUp', callback: handleTableKeyDown },
+      { hotkey: 'PageDown', callback: handleTableKeyDown },
+      { hotkey: 'Escape', callback: handleTableKeyDown },
+      { hotkey: 'Tab', callback: handleTableKeyDown },
+      { hotkey: 'Shift+Tab', callback: handleTableKeyDown },
+      { hotkey: 'Enter', callback: handleTableKeyDown },
+      { hotkey: 'Backspace', callback: handleTableKeyDown },
+      { hotkey: 'Delete', callback: handleTableKeyDown },
+      { hotkey: 'Mod+C', callback: handleTableKeyDown },
+      { hotkey: 'Mod+F', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Shift+L', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Shift+ArrowUp', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Shift+ArrowDown', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Shift+Backspace', callback: handleTableKeyDown }
+    ],
+    { target: tableContainerRef, preventDefault: false, stopPropagation: false }
+  )
 
   return {
     table,
@@ -546,7 +635,7 @@ export function useDataTable<TData, TValue = unknown>({
     focusedCell,
     editingCell,
     columnSizing,
-    columnIds,
+    columnIds: getNavigableColumnIds(),
     onCellClick,
     onCellDoubleClick,
     onCellEditingStart,

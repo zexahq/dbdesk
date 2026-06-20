@@ -13,7 +13,7 @@ interface SqlTableProps {
   onTableInteract?: () => void
   rowSelection: RowSelectionState
   onRowSelectionChange: OnChangeFn<RowSelectionState>
-  tabId?: string
+  tabId: string
   sortRules?: TableSortRule[]
 }
 
@@ -32,7 +32,7 @@ export const SqlTable = ({
 
   // Memoize columns to prevent recreation on every render
   const columns = React.useMemo(() => {
-    if (!tableData || !tabId) return []
+    if (!tableData) return []
     return getColumns(tableData.columns, (nextSortRules) => {
       updateTableTab(tabId, { sortRules: nextSortRules, offset: 0 })
     })

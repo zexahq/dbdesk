@@ -2,8 +2,16 @@ import type { QueryBatchResult, QueryResult, SQLConnectionProfile } from '@dbdes
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import { DangerousQueryDialog } from '@renderer/features/sql-workspace/components/dialogs/dangerous-query-dialog'
 import SqlEditor from '@renderer/features/editor/components/sql-editor'
-import { getEditorQueries, getQueryTabLabel, hasDangerousSqlKeywords } from '@renderer/features/editor/lib/sql-parser'
-import { useRunManyQueries, useCancelQuery, useRunQuery } from '@renderer/features/sql-workspace/queries/query'
+import {
+  getEditorQueries,
+  getQueryTabLabel,
+  hasDangerousSqlKeywords
+} from '@renderer/features/editor/lib/sql-parser'
+import {
+  useRunManyQueries,
+  useCancelQuery,
+  useRunQuery
+} from '@renderer/features/sql-workspace/queries/query'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -12,7 +20,8 @@ import {
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { toast } from '@renderer/shared/lib/toast'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useHotkey } from '@tanstack/react-hotkeys'
+import { useCallback, useRef, useState } from 'react'
 import { QueryBottombar } from './query-bottombar'
 import { QueryResults } from './query-results'
 
@@ -77,27 +86,23 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
   const handleUpdateQueryRef = useRef(handleUpdateQuery)
   handleUpdateQueryRef.current = handleUpdateQuery
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        if (!activeTab) return
-        e.preventDefault()
-        if (!activeTab.editorContent.trim()) {
-          toast.error('Query cannot be empty')
-          return
-        }
-
-        if (isQueryTabSavedRef.current) {
-          void handleUpdateQueryRef.current()
-        } else {
-          setSaveDialogOpen(true)
-        }
+  useHotkey(
+    'Mod+S',
+    () => {
+      if (!activeTab) return
+      if (!activeTab.editorContent.trim()) {
+        toast.error('Query cannot be empty')
+        return
       }
-    }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeTab])
+      if (isQueryTabSavedRef.current) {
+        void handleUpdateQueryRef.current()
+      } else {
+        setSaveDialogOpen(true)
+      }
+    },
+    { preventDefault: true }
+  )
 
   const handleCancelQuery = useCallback(async () => {
     const queryId = currentQueryIdRef.current
@@ -303,9 +308,9 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
           resultLabel={batchResultLabel}
           totalRows={
             activeBatchResult?.result
-              ? activeBatchResult.result.totalRowCount ?? activeBatchResult.result.rowCount
+              ? (activeBatchResult.result.totalRowCount ?? activeBatchResult.result.rowCount)
               : activeTab.queryResults
-                ? activeTab.totalRowCount ?? activeTab.queryResults.rowCount
+                ? (activeTab.totalRowCount ?? activeTab.queryResults.rowCount)
                 : 0
           }
           executionTime={

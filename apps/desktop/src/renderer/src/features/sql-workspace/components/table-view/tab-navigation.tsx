@@ -3,6 +3,7 @@
 import type { SQLConnectionProfile } from '@dbdesk/shared/types'
 import type { Tab } from '@renderer/features/sql-workspace/stores/tab-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
+import { useHotkeys } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 
 interface TabNavigationProps {
@@ -28,66 +29,44 @@ export function TabNavigation({ requestCloseTab, onTabClick, onAddQueryTab }: Ta
     [onTabClick, setActiveTab]
   )
 
-  React.useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      // Prevent default browser behavior for Ctrl+Tab and Ctrl+Shift+Tab
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Tab') {
-        event.preventDefault()
-
+  useHotkeys([
+    {
+      hotkey: 'Mod+Tab',
+      callback: () => {
         if (tabs.length === 0) return
-
         const currentIndex = activeTabId ? tabs.findIndex((tab) => tab.id === activeTabId) : -1
-
-        if (event.shiftKey) {
-          // Ctrl+Shift+Tab: Previous tab
-          const prevIndex = currentIndex <= 0 ? tabs.length - 1 : currentIndex - 1
-          handleTabClick(tabs[prevIndex].id)
-        } else {
-          // Ctrl+Tab: Next tab
-          const nextIndex = currentIndex >= tabs.length - 1 ? 0 : currentIndex + 1
-          handleTabClick(tabs[nextIndex].id)
-        }
-        return
+        const nextIndex = currentIndex >= tabs.length - 1 ? 0 : currentIndex + 1
+        handleTabClick(tabs[nextIndex].id)
       }
-
-      // Ctrl+W or Ctrl+F4: Close active tab
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        (event.key === 'w' || event.key === 'W' || event.key === 'F4')
-      ) {
-        event.preventDefault()
+    },
+    {
+      hotkey: 'Mod+Shift+Tab',
+      callback: () => {
+        if (tabs.length === 0) return
+        const currentIndex = activeTabId ? tabs.findIndex((tab) => tab.id === activeTabId) : -1
+        const prevIndex = currentIndex <= 0 ? tabs.length - 1 : currentIndex - 1
+        handleTabClick(tabs[prevIndex].id)
+      }
+    },
+    {
+      hotkey: 'Mod+W',
+      callback: () => {
         const tabToClose = tabs.find((t) => t.id === activeTabId)
-        if (tabToClose) {
-          requestCloseTab(tabToClose)
-        }
-        return
+        if (tabToClose) requestCloseTab(tabToClose)
       }
-
-      // Ctrl+1-9: Switch to tab by number
-      if ((event.ctrlKey || event.metaKey) && /^[1-9]$/.test(event.key)) {
-        const tabIndex = parseInt(event.key, 10) - 1
-        if (tabIndex < tabs.length) {
-          event.preventDefault()
-          handleTabClick(tabs[tabIndex].id)
-        }
-        return
+    },
+    ...Array.from({ length: 9 }, (_, index) => ({
+      hotkey: { key: String(index + 1), mod: true },
+      callback: () => {
+        const tab = tabs[index]
+        if (tab) handleTabClick(tab.id)
       }
-
-      // Ctrl+T: New tab
-      if ((event.ctrlKey || event.metaKey) && event.key === 't') {
-        event.preventDefault()
-        if (onAddQueryTab) {
-          onAddQueryTab()
-        }
-        return
-      }
+    })),
+    {
+      hotkey: 'Mod+T',
+      callback: () => onAddQueryTab?.()
     }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [tabs, activeTabId, handleTabClick, requestCloseTab, onAddQueryTab])
+  ])
 
   return null
 }
