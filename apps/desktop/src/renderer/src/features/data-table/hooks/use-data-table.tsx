@@ -16,7 +16,7 @@ import {
   useReactTable
 } from '@tanstack/react-table'
 import { useHotkeys } from '@tanstack/react-hotkeys'
-import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react'
+import { type MouseEvent, useCallback, useRef, useState } from 'react'
 
 import type { QueryResultRow } from '@dbdesk/shared/types'
 import { toast } from '@renderer/shared/lib/toast'
@@ -56,22 +56,6 @@ export function useDataTable<TData, TValue = unknown>({
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({})
 
-  // Get column IDs
-  const columnIds = useMemo(() => {
-    return columns
-      .map((c) => {
-        if (c.id) return c.id
-        if ('accessorKey' in c) return c.accessorKey as string
-        return undefined
-      })
-      .filter((id): id is string => Boolean(id))
-  }, [columns])
-
-  // Get navigable column IDs (exclude select and actions columns)
-  const navigableColumnIds = useMemo(() => {
-    return columnIds.filter((c) => !NON_NAVIGABLE_COLUMN_IDS.includes(c))
-  }, [columnIds])
-
   // Handle row selection change (keep separate from cell selection)
   const handleRowSelectionChange = useCallback(
     (updater: Updater<RowSelectionState>) => {
@@ -105,6 +89,16 @@ export function useDataTable<TData, TValue = unknown>({
   if (!tableRef.current) {
     tableRef.current = table
   }
+
+  const tableRef2 = useRef(table)
+  tableRef2.current = table
+
+  const getNavigableColumnIds = useCallback(() => {
+    return tableRef2.current
+      .getVisibleLeafColumns()
+      .map((column) => column.id)
+      .filter((columnId) => !NON_NAVIGABLE_COLUMN_IDS.includes(columnId))
+  }, [])
 
   // Scroll cell into view
   const scrollCellIntoView = useCallback(
@@ -240,6 +234,7 @@ export function useDataTable<TData, TValue = unknown>({
     if (!focusedCell) return
 
     const { rowIndex, columnId } = focusedCell
+    const navigableColumnIds = getNavigableColumnIds()
     const currentColIndex = navigableColumnIds.indexOf(columnId)
     const rows = table.getRowModel().rows
     const rowCount = rows.length
@@ -369,10 +364,6 @@ export function useDataTable<TData, TValue = unknown>({
     },
     []
   )
-
-  // Handle data updates - use ref to avoid table dependency
-  const tableRef2 = useRef(table)
-  tableRef2.current = table
 
   const onDataUpdate = useCallback(
     (updates: UpdateCell | Array<UpdateCell>) => {
@@ -519,7 +510,7 @@ export function useDataTable<TData, TValue = unknown>({
       if (direction) {
         event.preventDefault()
         if (!focusedCell) {
-          const firstColumnId = navigableColumnIds[0]
+          const firstColumnId = getNavigableColumnIds()[0]
           if (firstColumnId && tableRef2.current.getRowModel().rows.length > 0) {
             focusCell(0, firstColumnId)
           }
@@ -532,8 +523,8 @@ export function useDataTable<TData, TValue = unknown>({
       editingCell,
       focusCell,
       focusedCell,
+      getNavigableColumnIds,
       navigateCell,
-      navigableColumnIds,
       onCellEditingStart,
       onDataUpdate
     ]
@@ -569,7 +560,7 @@ export function useDataTable<TData, TValue = unknown>({
     focusedCell,
     editingCell,
     columnSizing,
-    columnIds,
+    columnIds: getNavigableColumnIds(),
     onCellClick,
     onCellDoubleClick,
     onCellEditingStart,
