@@ -55,13 +55,6 @@ export function TabNavigation({ requestCloseTab, onTabClick, onAddQueryTab }: Ta
         if (tabToClose) requestCloseTab(tabToClose)
       }
     },
-    {
-      hotkey: { key: 'F4', ctrl: true },
-      callback: () => {
-        const tabToClose = tabs.find((t) => t.id === activeTabId)
-        if (tabToClose) requestCloseTab(tabToClose)
-      }
-    },
     ...Array.from({ length: 9 }, (_, index) => ({
       hotkey: { key: String(index + 1), mod: true },
       callback: () => {

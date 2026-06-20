@@ -12,9 +12,7 @@ import { dbdeskClient } from '@renderer/shared/api/client'
 import { useTabCloseHandler } from '@renderer/features/sql-workspace/hooks/use-tab-close-handler'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
-import {
-  useDashboardStore
-} from '@renderer/features/sql-workspace/stores/dashboard-store'
+import { useDashboardStore } from '@renderer/features/sql-workspace/stores/dashboard-store'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { QueryView } from './query-view'
@@ -95,7 +93,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   return (
     <>
       <SidebarFocusShortcuts />
-      <SidebarProvider className="h-full">
+      <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen} className="h-full">
         <TabNavigation profile={profile} requestCloseTab={requestCloseTab} />
         <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden">
           <ResizablePanel

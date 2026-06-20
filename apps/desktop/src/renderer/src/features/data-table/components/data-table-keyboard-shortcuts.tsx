@@ -55,7 +55,66 @@ function DataTableKeyboardShortcutsImpl() {
   const shortcutGroups: ShortcutGroup[] = React.useMemo(
     () => [
       {
-        title: 'Navigation',
+        title: 'General',
+        shortcuts: [
+          {
+            keys: [modKey, 'P'],
+            description: 'Open Quick Panel'
+          },
+          {
+            keys: [modKey, '/'],
+            description: 'Show keyboard shortcuts'
+          }
+        ]
+      },
+      {
+        title: 'Sidebar',
+        shortcuts: [
+          {
+            keys: [modKey, 'B'],
+            description: 'Toggle sidebar'
+          },
+          {
+            keys: [modKey, 'Shift', 'E'],
+            description: 'Show schemas in sidebar'
+          },
+          {
+            keys: [modKey, 'Shift', 'F'],
+            description: 'Show saved queries in sidebar'
+          },
+          {
+            keys: [modKey, 'Shift', 'D'],
+            description: 'Show dashboards in sidebar'
+          }
+        ]
+      },
+      {
+        title: 'Tabs',
+        shortcuts: [
+          {
+            keys: [modKey, 'T'],
+            description: 'Open a new query tab'
+          },
+          {
+            keys: [modKey, 'W'],
+            description: 'Close current tab'
+          },
+          {
+            keys: [modKey, 'Tab'],
+            description: 'Switch to next tab'
+          },
+          {
+            keys: [modKey, 'Shift', 'Tab'],
+            description: 'Switch to previous tab'
+          },
+          {
+            keys: [modKey, '1-9'],
+            description: 'Switch to tab by number'
+          }
+        ]
+      },
+      {
+        title: 'Table Navigation',
         shortcuts: [
           {
             keys: ['↑', '↓', '←', '→'],
@@ -96,14 +155,10 @@ function DataTableKeyboardShortcutsImpl() {
         ]
       },
       {
-        title: 'Editing',
+        title: 'Table Editing',
         shortcuts: [
           {
             keys: ['Enter'],
-            description: 'Start editing cell'
-          },
-          {
-            keys: ['Double Click'],
             description: 'Start editing cell'
           },
           {
@@ -121,15 +176,6 @@ function DataTableKeyboardShortcutsImpl() {
           {
             keys: ['Esc'],
             description: 'Cancel editing / Clear focus'
-          }
-        ]
-      },
-      {
-        title: 'General',
-        shortcuts: [
-          {
-            keys: [modKey, '/'],
-            description: 'Show keyboard shortcuts'
           }
         ]
       }
