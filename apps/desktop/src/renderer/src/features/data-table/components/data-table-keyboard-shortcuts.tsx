@@ -13,9 +13,8 @@ import { Input } from '@renderer/components/ui/input'
 import { Kbd, KbdGroup } from '@renderer/components/ui/kbd'
 import { Separator } from '@renderer/components/ui/separator'
 import { SearchIcon, XIcon } from 'lucide-react'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
-
-const SHORTCUT_KEY = '/'
 
 interface ShortcutGroup {
   title: string
@@ -154,19 +153,7 @@ function DataTableKeyboardShortcutsImpl() {
       .filter((group) => group.shortcuts.length > 0)
   }, [shortcutGroups, input])
 
-  React.useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && event.key === SHORTCUT_KEY) {
-        event.preventDefault()
-        setOpen(true)
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [])
+  useHotkey('Mod+/', () => setOpen(true), { preventDefault: true })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

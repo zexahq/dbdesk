@@ -65,6 +65,14 @@ export function DataTable<TData, TValue>({
   const hasRows = rows.length > 0
 
   useEffect(() => {
+    if (!hasRows || document.activeElement === tableContainerRef.current) {
+      return
+    }
+
+    tableContainerRef.current?.focus({ preventScroll: true })
+  }, [hasRows, tableContainerRef, tabId])
+
+  useEffect(() => {
     if (!tabId) {
       return
     }

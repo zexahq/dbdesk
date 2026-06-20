@@ -1,7 +1,11 @@
 'use client'
 
 import type { TableSortRule } from '@dbdesk/shared/types'
-import type { CellPosition, NavigationDirection, UpdateCell } from '@renderer/features/data-table/types/data-table'
+import type {
+  CellPosition,
+  NavigationDirection,
+  UpdateCell
+} from '@renderer/features/data-table/types/data-table'
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -11,13 +15,16 @@ import {
   type Updater,
   useReactTable
 } from '@tanstack/react-table'
-import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useHotkeys } from '@tanstack/react-hotkeys'
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react'
 
 import type { QueryResultRow } from '@dbdesk/shared/types'
 import { toast } from '@renderer/shared/lib/toast'
 
-interface UseDataTableProps<TData, TValue = unknown>
-  extends Omit<TableOptions<TData>, 'getCoreRowModel'> {
+interface UseDataTableProps<TData, TValue = unknown> extends Omit<
+  TableOptions<TData>,
+  'getCoreRowModel'
+> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onCellUpdate?: (columnToUpdate: string, newValue: unknown, row: QueryResultRow) => Promise<void>
@@ -417,22 +424,18 @@ export function useDataTable<TData, TValue = unknown>({
     [onCellEditingStart]
   )
 
-  // Handle keyboard events - use refs to get latest state
-  const onKeyDownRef = useRef<(event: KeyboardEvent) => void>(null)
+  const handleTableKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      const { key, ctrlKey, metaKey, shiftKey } = event
+      const isCtrlPressed = ctrlKey || metaKey
 
-  onKeyDownRef.current = (event: KeyboardEvent) => {
-    const { key, ctrlKey, metaKey, shiftKey } = event
-    const isCtrlPressed = ctrlKey || metaKey
+      if (editingCell) return
 
-    if (editingCell) return
+      let direction: NavigationDirection | null = null
 
-    if (!focusedCell) return
-
-    let direction: NavigationDirection | null = null
-
-    // Ctrl+C to copy focused cell content
-    if (key === 'c' && isCtrlPressed) {
-      if (focusedCell) {
+      // Ctrl+C to copy focused cell content
+      if (key === 'c' && isCtrlPressed) {
+        if (!focusedCell) return
         event.preventDefault()
         const rows = tableRef2.current.getRowModel().rows
         const row = rows[focusedCell.rowIndex]
@@ -448,96 +451,116 @@ export function useDataTable<TData, TValue = unknown>({
               console.error('Failed to copy to clipboard:', err)
             })
         }
+        return
       }
-      return
-    }
 
-    // Delete to clear focused cell value
-    if (key === 'Delete') {
-      if (focusedCell) {
+      // Delete to clear focused cell value
+      if (key === 'Delete') {
+        if (!focusedCell) return
         event.preventDefault()
         onDataUpdate({
           rowIndex: focusedCell.rowIndex,
           columnId: focusedCell.columnId,
           value: null
         })
+        return
       }
-      return
-    }
 
-    // Backspace to enter editing mode
-    if (key === 'Backspace') {
-      if (focusedCell) {
+      // Backspace to enter editing mode
+      if (key === 'Backspace') {
+        if (!focusedCell) return
         event.preventDefault()
         onCellEditingStart(focusedCell.rowIndex, focusedCell.columnId)
-      }
-      return
-    }
-
-    // Navigation keys
-    switch (key) {
-      case 'ArrowUp':
-        direction = 'up'
-        break
-      case 'ArrowDown':
-        direction = 'down'
-        break
-      case 'ArrowLeft':
-        direction = 'left'
-        break
-      case 'ArrowRight':
-        direction = 'right'
-        break
-      case 'Home':
-        direction = isCtrlPressed ? 'ctrl+home' : 'home'
-        break
-      case 'End':
-        direction = isCtrlPressed ? 'ctrl+end' : 'end'
-        break
-      case 'PageUp':
-        direction = 'pageup'
-        break
-      case 'PageDown':
-        direction = 'pagedown'
-        break
-      case 'Escape':
-        event.preventDefault()
-        setFocusedCell(null)
-        setEditingCell(null)
         return
-      case 'Tab':
-        event.preventDefault()
-        direction = shiftKey ? 'left' : 'right'
-        break
-      case 'Enter':
-        if (!editingCell) {
+      }
+
+      // Navigation keys
+      switch (key) {
+        case 'ArrowUp':
+          direction = 'up'
+          break
+        case 'ArrowDown':
+          direction = 'down'
+          break
+        case 'ArrowLeft':
+          direction = 'left'
+          break
+        case 'ArrowRight':
+          direction = 'right'
+          break
+        case 'Home':
+          direction = isCtrlPressed ? 'ctrl+home' : 'home'
+          break
+        case 'End':
+          direction = isCtrlPressed ? 'ctrl+end' : 'end'
+          break
+        case 'PageUp':
+          direction = 'pageup'
+          break
+        case 'PageDown':
+          direction = 'pagedown'
+          break
+        case 'Escape':
+          event.preventDefault()
+          setFocusedCell(null)
+          setEditingCell(null)
+          return
+        case 'Tab':
+          event.preventDefault()
+          direction = shiftKey ? 'left' : 'right'
+          break
+        case 'Enter':
+          if (!focusedCell) return
           event.preventDefault()
           onCellEditingStart(focusedCell.rowIndex, focusedCell.columnId)
+          return
+      }
+
+      if (direction) {
+        event.preventDefault()
+        if (!focusedCell) {
+          const firstColumnId = navigableColumnIds[0]
+          if (firstColumnId && tableRef2.current.getRowModel().rows.length > 0) {
+            focusCell(0, firstColumnId)
+          }
+          return
         }
-        return
-    }
+        navigateCell(direction)
+      }
+    },
+    [
+      editingCell,
+      focusCell,
+      focusedCell,
+      navigateCell,
+      navigableColumnIds,
+      onCellEditingStart,
+      onDataUpdate
+    ]
+  )
 
-    if (direction) {
-      event.preventDefault()
-      navigateCell(direction)
-    }
-  }
-
-  // Set up keyboard event listeners
-  useEffect(() => {
-    const container = tableContainerRef.current
-    if (!container) return
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      onKeyDownRef.current?.(event)
-    }
-
-    container.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      container.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [])
+  useHotkeys(
+    [
+      { hotkey: 'ArrowUp', callback: handleTableKeyDown },
+      { hotkey: 'ArrowDown', callback: handleTableKeyDown },
+      { hotkey: 'ArrowLeft', callback: handleTableKeyDown },
+      { hotkey: 'ArrowRight', callback: handleTableKeyDown },
+      { hotkey: 'Home', callback: handleTableKeyDown },
+      { hotkey: 'End', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Home', callback: handleTableKeyDown },
+      { hotkey: 'Mod+End', callback: handleTableKeyDown },
+      { hotkey: 'PageUp', callback: handleTableKeyDown },
+      { hotkey: 'PageDown', callback: handleTableKeyDown },
+      { hotkey: 'Escape', callback: handleTableKeyDown },
+      { hotkey: 'Tab', callback: handleTableKeyDown },
+      { hotkey: 'Shift+Tab', callback: handleTableKeyDown },
+      { hotkey: 'Enter', callback: handleTableKeyDown },
+      { hotkey: 'Backspace', callback: handleTableKeyDown },
+      { hotkey: 'Delete', callback: handleTableKeyDown },
+      { hotkey: 'Mod+C', callback: handleTableKeyDown }
+    ],
+    { target: tableContainerRef, preventDefault: false, stopPropagation: false }
+  )
 
   return {
     table,

@@ -1,34 +1,14 @@
-import { useEffect } from 'react'
+import { useHotkeys } from '@tanstack/react-hotkeys'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 
 export function SidebarFocusShortcuts() {
   const setSidebarViewMode = useSqlWorkspaceStore((s) => s.setSidebarViewMode)
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      const mod = event.metaKey || event.ctrlKey
-      if (!mod || !event.shiftKey) return
-
-      event.preventDefault()
-
-      switch (event.code) {
-        case 'KeyE':
-          setSidebarViewMode('schemas')
-          break
-        case 'KeyD':
-          setSidebarViewMode('dashboards')
-          break
-        case 'KeyF':
-          setSidebarViewMode('queries')
-          break
-        default:
-          return
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [setSidebarViewMode])
+  useHotkeys([
+    { hotkey: 'Mod+Shift+E', callback: () => setSidebarViewMode('schemas') },
+    { hotkey: 'Mod+Shift+D', callback: () => setSidebarViewMode('dashboards') },
+    { hotkey: 'Mod+Shift+F', callback: () => setSidebarViewMode('queries') }
+  ])
 
   return null
 }
