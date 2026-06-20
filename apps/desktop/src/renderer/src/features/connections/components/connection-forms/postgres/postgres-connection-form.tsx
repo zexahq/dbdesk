@@ -1,6 +1,9 @@
 import type { ConnectionProfile, DBConnectionOptions } from '@dbdesk/shared/types'
 import type { PostgreSQLSslMode } from '@dbdesk/shared/types'
-import { useCreateConnection, useUpdateConnection } from '@renderer/features/connections/queries/connections'
+import {
+  useCreateConnection,
+  useUpdateConnection
+} from '@renderer/features/connections/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { FieldError, FieldGroup, FieldLabel, Field as UIField } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
@@ -12,7 +15,6 @@ import {
   SelectValue
 } from '@renderer/components/ui/select'
 import { Separator } from '@renderer/components/ui/separator'
-import { Switch } from '@renderer/components/ui/switch'
 import { useForm } from '@tanstack/react-form'
 import { Eye, EyeOff } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -28,8 +30,7 @@ const formSchema = z.object({
   database: z.string().min(1, 'Database is required'),
   user: z.string().min(1, 'User is required'),
   password: z.string(),
-  sslMode: z.enum(['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full']),
-  readOnly: z.boolean()
+  sslMode: z.enum(['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full'])
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -43,8 +44,7 @@ function toDefaults(connection?: ConnectionProfile | null): FormValues {
       database: '',
       user: '',
       password: '',
-      sslMode: 'disable',
-      readOnly: false
+      sslMode: 'disable'
     }
   }
 
@@ -55,7 +55,6 @@ function toDefaults(connection?: ConnectionProfile | null): FormValues {
     user: string
     password: string
     sslMode: PostgreSQLSslMode
-    readOnly: boolean
   }>
 
   return {
@@ -65,8 +64,7 @@ function toDefaults(connection?: ConnectionProfile | null): FormValues {
     database: opts.database ?? '',
     user: opts.user ?? '',
     password: opts.password ?? '',
-    sslMode: opts.sslMode ?? 'disable',
-    readOnly: opts.readOnly ?? false
+    sslMode: opts.sslMode ?? 'disable'
   }
 }
 
@@ -89,7 +87,7 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
       onSubmit: formSchema
     },
     onSubmit: async ({ value }) => {
-      const { name, host, port, database, user, password, sslMode, readOnly } = value
+      const { name, host, port, database, user, password, sslMode } = value
 
       let finalPassword = password ?? ''
       if (connection && !finalPassword) {
@@ -103,8 +101,7 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
         database,
         user,
         password: finalPassword,
-        sslMode,
-        readOnly
+        sslMode
       }
 
       let profile: ConnectionProfile
@@ -143,7 +140,6 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
     form.setFieldValue('user', values.user)
     form.setFieldValue('password', values.password || '')
     form.setFieldValue('sslMode', (values.sslMode as PostgreSQLSslMode) || 'disable')
-    form.setFieldValue('readOnly', false)
   }
 
   return (
@@ -340,30 +336,6 @@ export function PostgresConnectionForm({ connection, onSuccess }: PostgresConnec
           }}
         </form.Field>
       </FieldGroup>
-
-      <Separator />
-
-      <form.Field name="readOnly">
-        {(field) => (
-          <UIField>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex flex-col gap-1">
-                <FieldLabel htmlFor={field.name} className="cursor-pointer">
-                  Read-only mode
-                </FieldLabel>
-                <span className="text-xs text-muted-foreground">
-                  Block INSERT/UPDATE/DELETE and schema changes. Only SELECT and SHOW are allowed.
-                </span>
-              </div>
-              <Switch
-                id={field.name}
-                checked={field.state.value}
-                onCheckedChange={(checked) => field.handleChange(checked)}
-              />
-            </div>
-          </UIField>
-        )}
-      </form.Field>
 
       <div className="flex justify-end gap-2">
         <Button type="reset" variant="outline" onClick={() => form.reset()}>

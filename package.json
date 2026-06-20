@@ -16,10 +16,10 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "prettier": "^3.8.1",
+    "prettier": "^3.8.4",
     "prettier-plugin-organize-imports": "^4.3.0",
-    "turbo": "^2.8.11",
-    "typescript": "^5.9.2"
+    "turbo": "^2.9.18",
+    "typescript": "^6.0.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

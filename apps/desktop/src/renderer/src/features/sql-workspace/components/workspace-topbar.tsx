@@ -10,15 +10,13 @@ import {
 import { horizontalListSortingStrategy, SortableContext } from '@dnd-kit/sortable'
 import { useDisconnect } from '@renderer/features/connections/queries/connections'
 import { TabNavigation } from '@renderer/features/sql-workspace/components/table-view/tab-navigation'
-import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useWorkspaceTabs } from '@renderer/features/sql-workspace/hooks/use-workspace-tabs'
 import { saveCurrentWorkspace } from '@renderer/features/sql-workspace/lib/workspace'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import type { Tab } from '@renderer/features/sql-workspace/stores/tab-store'
 import { useRouter } from '@tanstack/react-router'
-import { Lock, PanelLeftClose, PanelLeftOpen, Plus, Unplug } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, Plus, Unplug } from 'lucide-react'
 import { useCallback, useMemo } from 'react'
 import { SortableTabButton } from './sortable-tab-button'
 
@@ -83,8 +81,6 @@ export function WorkspaceTopbar({
   // Memoize tab IDs to prevent unnecessary re-renders
   const tabIds = useMemo(() => tabs.map((tab) => tab.id), [tabs])
 
-  const isReadOnly = profile.options.readOnly === true
-
   return (
     <>
       <TabNavigation
@@ -138,23 +134,6 @@ export function WorkspaceTopbar({
             </SortableContext>
           </DndContext>
         </div>
-
-        {isReadOnly && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge
-                variant="outline"
-                className="mr-2 gap-1 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-              >
-                <Lock className="size-3" />
-                Read-only
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              Writes are disabled for this connection. Edit the connection to allow writes.
-            </TooltipContent>
-          </Tooltip>
-        )}
 
         <Button
           variant="ghost"

@@ -11,7 +11,7 @@ import {
 import { Input } from '@renderer/components/ui/input'
 import { cn } from '@renderer/shared/lib/utils'
 import type { OnChangeFn, VisibilityState } from '@tanstack/react-table'
-import { AlertCircle, Search, SlidersHorizontal, X } from 'lucide-react'
+import { CircleAlert, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 interface TableColumnVisibilityDropdownProps {
@@ -32,7 +32,8 @@ export function TableColumnVisibilityDropdown({
       | typeof columnVisibility
       | ((prev: typeof columnVisibility) => typeof columnVisibility)
   ) => {
-    const newVisibility = typeof visibility === 'function' ? visibility(columnVisibility) : visibility
+    const newVisibility =
+      typeof visibility === 'function' ? visibility(columnVisibility) : visibility
     onColumnVisibilityChange(newVisibility)
   }
 
@@ -103,7 +104,7 @@ export function TableColumnVisibilityDropdown({
           </Button>
           {allDeselected && (
             <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white">
-              <AlertCircle className="size-4 text-black" />
+              <CircleAlert className="size-4 text-black" />
             </div>
           )}
         </div>
@@ -140,8 +141,8 @@ export function TableColumnVisibilityDropdown({
             />
             {searchQuery && (
               <button
-                type='button'
-                title='close'
+                type="button"
+                title="close"
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
