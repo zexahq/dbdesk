@@ -3,7 +3,8 @@ import { authManager } from '../lib/auth-manager'
 
 export function registerAuthHandlers() {
   typedHandle('auth:get-session', async () => {
-    const session = await authManager.getSession()
+    // Returns cached session immediately (no network)
+    const session = authManager.getSession()
     console.log('[ipc] auth:get-session →', session ? `user=${session.user?.email}` : 'null')
     return session
   })

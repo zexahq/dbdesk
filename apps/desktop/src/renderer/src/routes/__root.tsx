@@ -3,6 +3,7 @@ import { Titlebar } from '@renderer/components/shell/titlebar'
 import { Toaster } from '@renderer/components/ui/sonner'
 import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
 import { MainSidebar } from '@renderer/components/shell/main-sidebar'
+import { AuthOverlay } from '@renderer/features/auth/components/auth-overlay'
 import { useUpdateToast } from '@renderer/shared/hooks/use-update-toast'
 import { redirect } from '@tanstack/react-router'
 
@@ -22,6 +23,7 @@ const RootLayout = () => {
           </main>
         </div>
       </div>
+      <AuthOverlay />
       <Toaster position="top-right" />
     </>
   )
@@ -31,11 +33,13 @@ const NotFound = () => <Navigate to="/" replace />
 
 export const Route = createRootRoute({
   beforeLoad: ({ location }) => {
-    const { isAuthenticated } = useAuthStore.getState()
+    const { isAuthenticated, sessionExpired } = useAuthStore.getState()
     const pathname = location.pathname ?? '/'
     const isAuthRoute = pathname === '/auth'
 
-    if (!isAuthenticated && !isAuthRoute) {
+    // If the session expired in the background, don't redirect —
+    // keep the user on the current page with the sign-in overlay.
+    if (!isAuthenticated && !isAuthRoute && !sessionExpired) {
       throw redirect({ to: '/auth' })
     }
 
