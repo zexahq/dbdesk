@@ -1,11 +1,12 @@
 'use client'
 
-import type { TableSortRule } from '@dbdesk/shared/types'
+import type { TableFilterCondition, TableFilterScalar, TableSortRule } from '@dbdesk/shared/types'
 import type {
   CellPosition,
   NavigationDirection,
   UpdateCell
 } from '@renderer/features/data-table/types/data-table'
+import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -33,6 +34,7 @@ interface UseDataTableProps<TData, TValue = unknown> extends Omit<
   onRowSelectionChange: OnChangeFn<RowSelectionState>
   // Optional sorting support
   sortRules?: TableSortRule[]
+  tabId: string
 }
 
 const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
@@ -45,6 +47,7 @@ export function useDataTable<TData, TValue = unknown>({
   rowSelection,
   onRowSelectionChange,
   sortRules,
+  tabId,
   ...tableOptions
 }: UseDataTableProps<TData, TValue>) {
   const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -55,6 +58,7 @@ export function useDataTable<TData, TValue = unknown>({
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null)
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({})
+  const updateTableTab = useTabStore((s) => s.updateTableTab)
 
   // Handle row selection change (keep separate from cell selection)
   const handleRowSelectionChange = useCallback(
@@ -418,6 +422,7 @@ export function useDataTable<TData, TValue = unknown>({
   const handleTableKeyDown = useCallback(
     (event: KeyboardEvent) => {
       const { key, ctrlKey, metaKey, shiftKey } = event
+      const normalizedKey = key.toLowerCase()
       const isCtrlPressed = ctrlKey || metaKey
 
       if (editingCell) return
@@ -425,7 +430,7 @@ export function useDataTable<TData, TValue = unknown>({
       let direction: NavigationDirection | null = null
 
       // Ctrl+C to copy focused cell content
-      if (key === 'c' && isCtrlPressed) {
+      if (normalizedKey === 'c' && isCtrlPressed) {
         if (!focusedCell) return
         event.preventDefault()
         const rows = tableRef2.current.getRowModel().rows
@@ -442,6 +447,69 @@ export function useDataTable<TData, TValue = unknown>({
               console.error('Failed to copy to clipboard:', err)
             })
         }
+        return
+      }
+
+      // Ctrl+F to filter focused column by focused cell content
+      if (normalizedKey === 'f' && isCtrlPressed) {
+        if (!focusedCell) return
+        event.preventDefault()
+        const rows = tableRef2.current.getRowModel().rows
+        const row = rows[focusedCell.rowIndex]
+        if (row) {
+          const activeTab = useTabStore.getState().findTableTabById(tabId)
+          if (!activeTab) return
+
+          const value = row.getValue(focusedCell.columnId)
+          const filter: TableFilterCondition =
+            value === null || value === undefined
+              ? { column: focusedCell.columnId, operator: 'IS', value: 'NULL' }
+              : { column: focusedCell.columnId, operator: '=', value: value as TableFilterScalar }
+
+          updateTableTab(tabId, {
+            filters: [
+              ...(activeTab.filters ?? []).filter((item) => item.column !== filter.column),
+              filter
+            ],
+            offset: 0
+          })
+        }
+        return
+      }
+
+      // Ctrl+Shift+L to clear all filters
+      if (normalizedKey === 'l' && isCtrlPressed && shiftKey) {
+        event.preventDefault()
+        updateTableTab(tabId, { filters: undefined, offset: 0 })
+        return
+      }
+
+      // Ctrl+Shift+ArrowUp/ArrowDown to sort focused column
+      if ((key === 'ArrowUp' || key === 'ArrowDown') && isCtrlPressed && shiftKey) {
+        if (!focusedCell) return
+        event.preventDefault()
+        updateTableTab(tabId, {
+          sortRules: [
+            { column: focusedCell.columnId, direction: key === 'ArrowUp' ? 'ASC' : 'DESC' }
+          ],
+          offset: 0
+        })
+        return
+      }
+
+      // Ctrl+Shift+Backspace to clear focused column sort
+      if (key === 'Backspace' && isCtrlPressed && shiftKey) {
+        if (!focusedCell) return
+        event.preventDefault()
+        const activeTab = useTabStore.getState().findTableTabById(tabId)
+        const remainingSortRules = activeTab?.sortRules?.filter(
+          (rule) => rule.column !== focusedCell.columnId
+        )
+        updateTableTab(tabId, {
+          sortRules:
+            remainingSortRules && remainingSortRules.length > 0 ? remainingSortRules : undefined,
+          offset: 0
+        })
         return
       }
 
@@ -526,7 +594,9 @@ export function useDataTable<TData, TValue = unknown>({
       getNavigableColumnIds,
       navigateCell,
       onCellEditingStart,
-      onDataUpdate
+      onDataUpdate,
+      tabId,
+      updateTableTab
     ]
   )
 
@@ -548,7 +618,12 @@ export function useDataTable<TData, TValue = unknown>({
       { hotkey: 'Enter', callback: handleTableKeyDown },
       { hotkey: 'Backspace', callback: handleTableKeyDown },
       { hotkey: 'Delete', callback: handleTableKeyDown },
-      { hotkey: 'Mod+C', callback: handleTableKeyDown }
+      { hotkey: 'Mod+C', callback: handleTableKeyDown },
+      { hotkey: 'Mod+F', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Shift+L', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Shift+ArrowUp', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Shift+ArrowDown', callback: handleTableKeyDown },
+      { hotkey: 'Mod+Shift+Backspace', callback: handleTableKeyDown }
     ],
     { target: tableContainerRef, preventDefault: false, stopPropagation: false }
   )

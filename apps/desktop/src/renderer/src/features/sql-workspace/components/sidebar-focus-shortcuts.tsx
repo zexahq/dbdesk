@@ -7,7 +7,7 @@ export function SidebarFocusShortcuts() {
   useHotkeys([
     { hotkey: 'Mod+Shift+E', callback: () => setSidebarViewMode('schemas') },
     { hotkey: 'Mod+Shift+D', callback: () => setSidebarViewMode('dashboards') },
-    { hotkey: 'Mod+Shift+F', callback: () => setSidebarViewMode('queries') }
+    { hotkey: 'Mod+Shift+Y', callback: () => setSidebarViewMode('queries') }
   ])
 
   return null

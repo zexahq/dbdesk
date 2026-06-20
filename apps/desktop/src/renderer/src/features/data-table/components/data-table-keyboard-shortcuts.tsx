@@ -79,7 +79,7 @@ function DataTableKeyboardShortcutsImpl() {
             description: 'Show schemas in sidebar'
           },
           {
-            keys: [modKey, 'Shift', 'F'],
+            keys: [modKey, 'Shift', 'Y'],
             description: 'Show saved queries in sidebar'
           },
           {
@@ -172,6 +172,26 @@ function DataTableKeyboardShortcutsImpl() {
           {
             keys: [modKey, 'C'],
             description: 'Copy cell content'
+          },
+          {
+            keys: [modKey, 'F'],
+            description: 'Filter by focused cell value'
+          },
+          {
+            keys: [modKey, 'Shift', 'L'],
+            description: 'Clear all filters'
+          },
+          {
+            keys: [modKey, 'Shift', '↑'],
+            description: 'Sort focused column ascending'
+          },
+          {
+            keys: [modKey, 'Shift', '↓'],
+            description: 'Sort focused column descending'
+          },
+          {
+            keys: [modKey, 'Shift', 'Backspace'],
+            description: 'Clear focused column sort'
           },
           {
             keys: ['Esc'],
