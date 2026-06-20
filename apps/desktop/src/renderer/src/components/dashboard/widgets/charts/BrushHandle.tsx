@@ -3,7 +3,7 @@
  * Used by chart widgets for brush selection interactions
  */
 
-import type { BrushHandleRenderProps } from '@visx/brush/lib/BrushHandle'
+import type { BrushHandleRenderProps } from '@visx/brush'
 import { Group } from '@visx/group'
 
 export function BrushHandle({ x, height, isBrushActive }: BrushHandleRenderProps) {
