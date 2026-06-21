@@ -1,6 +1,6 @@
 {
   "name": "dbdesk",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "private": true,
   "description": "The cleanest database management tool for your databases.",
   "packageManager": "pnpm@10.30.3",
