@@ -6,7 +6,7 @@ import type {
   DBConnectionOptions,
   ExportTableOptions,
   QueryResultRow,
-  TableDataOptions,
+  TableDataOptions
 } from '@dbdesk/shared/types'
 import { ipcRenderer } from 'electron'
 import { typedInvoke } from './typed-ipc'
@@ -17,53 +17,48 @@ export const dbdeskAPI = {
 
   // ── Connections CRUD ──
   listConnections: () => typedInvoke('connections:list'),
-  getConnection: (connectionId: string) =>
-    typedInvoke('connections:get', { connectionId }),
+  getConnection: (connectionId: string) => typedInvoke('connections:get', { connectionId }),
   createConnection: (name: string, type: DatabaseType, options: DBConnectionOptions) =>
     typedInvoke('connections:create', { name, type, options }),
   updateConnection: (
     connectionId: string,
     name: string,
     type: DatabaseType,
-    options: DBConnectionOptions,
+    options: DBConnectionOptions
   ) => typedInvoke('connections:update', { connectionId, name, type, options }),
-  connect: (connectionId: string) =>
-    typedInvoke('connections:connect', { connectionId }),
-  disconnect: (connectionId: string) =>
-    typedInvoke('connections:disconnect', { connectionId }),
-  deleteConnection: (connectionId: string) =>
-    typedInvoke('connections:delete', { connectionId }),
+  connect: (connectionId: string) => typedInvoke('connections:connect', { connectionId }),
+  disconnect: (connectionId: string) => typedInvoke('connections:disconnect', { connectionId }),
+  deleteConnection: (connectionId: string) => typedInvoke('connections:delete', { connectionId }),
 
   // ── Query ──
   runQuery: (
     connectionId: string,
     query: string,
-    options?: { limit?: number; offset?: number; queryId?: string },
+    options?: { limit?: number; offset?: number; queryId?: string }
   ) =>
     typedInvoke('query:run', {
       connectionId,
       query,
       limit: options?.limit,
       offset: options?.offset,
-      queryId: options?.queryId,
+      queryId: options?.queryId
     }),
   runManyQueries: (
     connectionId: string,
     queries: string[],
-    options?: { limit?: number; offset?: number },
+    options?: { limit?: number; offset?: number }
   ) =>
     typedInvoke('query:runMany', {
       connectionId,
       queries,
       limit: options?.limit,
-      offset: options?.offset,
+      offset: options?.offset
     }),
   cancelQuery: (connectionId: string, queryId: string) =>
     typedInvoke('query:cancel', { connectionId, queryId }),
 
   // ── Schema ──
-  listSchemas: (connectionId: string) =>
-    typedInvoke('schema:list', { connectionId }),
+  listSchemas: (connectionId: string) => typedInvoke('schema:list', { connectionId }),
   listTables: (connectionId: string, schema: string) =>
     typedInvoke('schema:tables', { connectionId, schema }),
   listSchemasWithTables: (connectionId: string) =>
@@ -76,43 +71,44 @@ export const dbdeskAPI = {
     connectionId: string,
     schema: string,
     table: string,
-    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortRules' | 'filters'> = {},
+    options: Pick<TableDataOptions, 'limit' | 'offset' | 'sortRules' | 'filters'> = {}
   ) =>
     typedInvoke('table:data', {
       connectionId,
       schema,
       table,
-      ...options,
+      ...options
     }),
-  deleteTableRows: (
-    connectionId: string,
-    schema: string,
-    table: string,
-    rows: QueryResultRow[],
-  ) => typedInvoke('table:deleteRows', { connectionId, schema, table, rows }),
+  deleteTableRows: (connectionId: string, schema: string, table: string, rows: QueryResultRow[]) =>
+    typedInvoke('table:deleteRows', { connectionId, schema, table, rows }),
   updateTableCell: (
     connectionId: string,
     schema: string,
     table: string,
     columnToUpdate: string,
     newValue: unknown,
-    row: QueryResultRow,
-  ) => typedInvoke('table:updateCell', { connectionId, schema, table, columnToUpdate, newValue, row }),
-  insertTableRow: (connectionId: string, schema: string, table: string, values: Record<string, unknown>) =>
-    typedInvoke('table:insertRow', { connectionId, schema, table, values }),
+    row: QueryResultRow
+  ) =>
+    typedInvoke('table:updateCell', { connectionId, schema, table, columnToUpdate, newValue, row }),
+  insertTableRow: (
+    connectionId: string,
+    schema: string,
+    table: string,
+    values: Record<string, unknown>
+  ) => typedInvoke('table:insertRow', { connectionId, schema, table, values }),
 
   // ── Table Export / DDL ──
   exportTableAsCSV: (
     connectionId: string,
     schema: string,
     table: string,
-    options: Pick<ExportTableOptions, 'sortRules' | 'filters'> = {},
+    options: Pick<ExportTableOptions, 'sortRules' | 'filters'> = {}
   ) => typedInvoke('table:exportCSV', { connectionId, schema, table, ...options }),
   exportTableAsSQL: (
     connectionId: string,
     schema: string,
     table: string,
-    options: Pick<ExportTableOptions, 'sortRules' | 'filters'> = {},
+    options: Pick<ExportTableOptions, 'sortRules' | 'filters'> = {}
   ) => typedInvoke('table:exportSQL', { connectionId, schema, table, ...options }),
   deleteTable: (connectionId: string, schema: string, table: string) =>
     typedInvoke('table:delete', { connectionId, schema, table }),
@@ -120,16 +116,12 @@ export const dbdeskAPI = {
     typedInvoke('table:create', { connectionId, schema, table, columns }),
 
   // ── Workspace ──
-  loadWorkspace: (connectionId: string) =>
-    typedInvoke('workspace:load', { connectionId }),
-  saveWorkspace: (workspace: ConnectionWorkspace) =>
-    typedInvoke('workspace:save', { workspace }),
-  deleteWorkspace: (connectionId: string) =>
-    typedInvoke('workspace:delete', { connectionId }),
+  loadWorkspace: (connectionId: string) => typedInvoke('workspace:load', { connectionId }),
+  saveWorkspace: (workspace: ConnectionWorkspace) => typedInvoke('workspace:save', { workspace }),
+  deleteWorkspace: (connectionId: string) => typedInvoke('workspace:delete', { connectionId }),
 
   // ── Saved Queries ──
-  loadQueries: (connectionId: string) =>
-    typedInvoke('queries:load', { connectionId }),
+  loadQueries: (connectionId: string) => typedInvoke('queries:load', { connectionId }),
   saveQuery: (connectionId: string, id: string, name: string, content: string) =>
     typedInvoke('queries:save', { connectionId, id, name, content }),
   deleteQuery: (connectionId: string, queryId: string) =>
@@ -138,18 +130,15 @@ export const dbdeskAPI = {
     typedInvoke('queries:update', { connectionId, queryId, name, content }),
 
   // ── Dashboards ──
-  loadDashboards: (connectionId: string) =>
-    typedInvoke('dashboards:load', { connectionId }),
+  loadDashboards: (connectionId: string) => typedInvoke('dashboards:load', { connectionId }),
   getDashboard: (connectionId: string, dashboardId: string) =>
     typedInvoke('dashboards:get', { connectionId, dashboardId }),
   saveDashboard: (dashboard: DashboardConfig) => typedInvoke('dashboards:save', dashboard),
   deleteDashboard: (connectionId: string, dashboardId: string) =>
     typedInvoke('dashboards:delete', { connectionId, dashboardId }),
-  persistDashboard: (dashboardId: string) =>
-    typedInvoke('dashboards:persist', { dashboardId }),
+  persistDashboard: (dashboardId: string) => typedInvoke('dashboards:persist', { dashboardId }),
   persistAllDashboards: () => typedInvoke('dashboards:persist-all'),
-  exportDashboards: (connectionId?: string) =>
-    typedInvoke('dashboards:export', { connectionId }),
+  exportDashboards: (connectionId?: string) => typedInvoke('dashboards:export', { connectionId }),
   importDashboards: (dashboards: DashboardConfig[], overwrite?: boolean) =>
     typedInvoke('dashboards:import', { dashboards, overwrite }),
 
@@ -158,14 +147,41 @@ export const dbdeskAPI = {
   getToken: () => typedInvoke('auth:get-token'),
   logout: () => typedInvoke('auth:logout'),
 
+  onSessionInvalidated(callback: () => void): () => void {
+    const handler = () => callback()
+    ipcRenderer.on('auth:session-invalidated', handler)
+    return () => ipcRenderer.removeListener('auth:session-invalidated', handler)
+  },
+  onSessionRefreshed(
+    callback: (session: {
+      session: { id: string; expiresAt: string; token: string; userId: string }
+      user: { id: string; name: string; email: string; image: string | null }
+    }) => void
+  ): () => void {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      session: {
+        session: { id: string; expiresAt: string; token: string; userId: string }
+        user: { id: string; name: string; email: string; image: string | null }
+      }
+    ) => callback(session)
+    ipcRenderer.on('auth:session-refreshed', handler)
+    return () => ipcRenderer.removeListener('auth:session-refreshed', handler)
+  },
+
   // ── Updates ──
   checkForUpdate: () => typedInvoke('update:check'),
   downloadUpdate: () => typedInvoke('update:download'),
   installUpdate: () => typedInvoke('update:install'),
   getAppVersion: () => typedInvoke('update:get-version'),
 
-  onUpdateAvailable(callback: (data: { version: string; releaseNotes?: string }) => void): () => void {
-    const handler = (_event: Electron.IpcRendererEvent, data: { version: string; releaseNotes?: string }) => callback(data)
+  onUpdateAvailable(
+    callback: (data: { version: string; releaseNotes?: string }) => void
+  ): () => void {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { version: string; releaseNotes?: string }
+    ) => callback(data)
     ipcRenderer.on('update:available', handler)
     return () => ipcRenderer.removeListener('update:available', handler)
   },
@@ -190,7 +206,7 @@ export const dbdeskAPI = {
   maximizeWindow: () => ipcRenderer.invoke('window:maximize') as Promise<void>,
   closeWindow: () => ipcRenderer.invoke('window:close') as Promise<void>,
   moveWindow: (deltaX: number, deltaY: number) =>
-    ipcRenderer.invoke('window:move', { deltaX, deltaY }) as Promise<void>,
+    ipcRenderer.invoke('window:move', { deltaX, deltaY }) as Promise<void>
 }
 
 export type DbdeskAPI = typeof dbdeskAPI

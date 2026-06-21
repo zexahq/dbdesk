@@ -38,6 +38,17 @@ export const appMeta = sqliteTable('app_meta', {
   value: text('value').notNull()
 })
 
+export const authSessionCache = sqliteTable('auth_session_cache', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  userName: text('user_name').notNull(),
+  userEmail: text('user_email').notNull(),
+  userImage: text('user_image'),
+  sessionToken: text('session_token').notNull(),
+  sessionExpiresAt: integer('session_expires_at').notNull(),
+  cachedAt: integer('cached_at').notNull()
+})
+
 export const dashboards = sqliteTable('dashboards', {
   dashboardId: text('dashboard_id').primaryKey(),
   connectionId: text('connection_id')
