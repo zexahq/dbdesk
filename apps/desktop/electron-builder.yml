@@ -42,7 +42,7 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
-  identity: '-'
+  identity: ''
   hardenedRuntime: false
   target:
     - dmg
