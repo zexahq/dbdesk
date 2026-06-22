@@ -15,7 +15,7 @@
     "@octokit/rest": "^21.0.0",
     "better-auth": "^1.5.4",
     "clsx": "^2.1.1",
-    "fumadocs-core": "16.1.0",
+    "fumadocs-core": "16.10.5",
     "fumadocs-mdx": "14.0.3",
     "fumadocs-ui": "16.1.0",
     "lucide-react": "^0.552.0",
