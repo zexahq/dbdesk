@@ -20,25 +20,25 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.83",
-    "@better-auth/electron": "^1.6.20",
+    "@ai-sdk/google": "^3.0.10",
+    "@better-auth/electron": "^1.5.4",
     "@better-fetch/fetch": "1.3.1",
-    "@hono/node-server": "^2.0.0",
-    "@hono/zod-validator": "^0.8.0",
-    "ai": "^6.0.208",
-    "better-auth": "^1.6.20",
-    "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.26",
-    "pg": "^8.22.0",
-    "zod": "^4.4.3"
+    "@hono/node-server": "^1.19.9",
+    "@hono/zod-validator": "^0.7.6",
+    "ai": "^6.0.39",
+    "better-auth": "^1.5.4",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.11.4",
+    "pg": "^8.20.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@better-auth/cli": "^1.4.21",
-    "@types/node": "^26.0.0",
+    "@types/node": "^20.11.17",
     "@types/pg": "^8.20.0",
-    "drizzle-kit": "^0.31.10",
-    "tsx": "^4.22.4",
-    "typescript": "^5.9.3"
+    "drizzle-kit": "^0.31.8",
+    "tsx": "^4.7.1",
+    "typescript": "^5.8.3"
   }
 }

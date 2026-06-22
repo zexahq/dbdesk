@@ -6,7 +6,7 @@
 
 import { AxisBottom, AxisLeft } from '@visx/axis'
 import { Brush } from '@visx/brush'
-import type { BrushProps } from '@visx/brush'
+import type BaseBrush from '@visx/brush/lib/BaseBrush'
 import { Grid } from '@visx/grid'
 import { Group } from '@visx/group'
 import { PatternLines } from '@visx/pattern'
@@ -60,11 +60,8 @@ function ScatterChart({
   chartId
 }: ScatterChartProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null)
-  type BaseBrushRef = NonNullable<BrushProps['innerRef']>['current']
-  const brushRef = useRef<BaseBrushRef>(null)
-  const pendingBrushRef = useRef<{ xMin: number; xMax: number; yMin: number; yMax: number } | null>(
-    null
-  )
+  const brushRef = useRef<BaseBrush | null>(null)
+  const pendingBrushRef = useRef<{ xMin: number; xMax: number; yMin: number; yMax: number } | null>(null)
 
   // Filter data based on zoom state
   const displayData = useMemo(() => {
@@ -283,16 +280,7 @@ function ScatterChart({
               height={yMax}
               margin={margin}
               handleSize={8}
-              resizeTriggerAreas={[
-                'left',
-                'right',
-                'top',
-                'bottom',
-                'topLeft',
-                'topRight',
-                'bottomLeft',
-                'bottomRight'
-              ]}
+              resizeTriggerAreas={['left', 'right', 'top', 'bottom', 'topLeft', 'topRight', 'bottomLeft', 'bottomRight']}
               brushDirection="both"
               onChange={handleBrushChange}
               onClick={() => {
@@ -312,7 +300,9 @@ function ScatterChart({
           )}
         </Group>
       </svg>
-      {tooltip && <ChartTooltip visible x={tooltip.x} y={tooltip.y} content={tooltip.content} />}
+      {tooltip && (
+        <ChartTooltip visible x={tooltip.x} y={tooltip.y} content={tooltip.content} />
+      )}
     </div>
   )
 }

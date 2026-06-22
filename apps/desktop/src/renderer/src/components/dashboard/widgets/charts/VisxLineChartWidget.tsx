@@ -6,7 +6,7 @@
 
 import { AxisBottom, AxisLeft } from '@visx/axis'
 import { Brush } from '@visx/brush'
-import type { BrushProps } from '@visx/brush'
+import type BaseBrush from '@visx/brush/lib/BaseBrush'
 import { curveMonotoneX } from '@visx/curve'
 import { Grid } from '@visx/grid'
 import { Group } from '@visx/group'
@@ -62,8 +62,7 @@ function LineChart({
   chartId
 }: LineChartProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null)
-  type BaseBrushRef = NonNullable<BrushProps['innerRef']>['current']
-  const brushRef = useRef<BaseBrushRef>(null)
+  const brushRef = useRef<BaseBrush | null>(null)
   const pendingBrushRef = useRef<{ startIndex: number; endIndex: number } | null>(null)
 
   // Apply zoom filtering if provided
@@ -303,7 +302,9 @@ function LineChart({
           )}
         </Group>
       </svg>
-      {tooltip && <ChartTooltip visible x={tooltip.x} y={tooltip.y} content={tooltip.content} />}
+      {tooltip && (
+        <ChartTooltip visible x={tooltip.x} y={tooltip.y} content={tooltip.content} />
+      )}
     </div>
   )
 }
