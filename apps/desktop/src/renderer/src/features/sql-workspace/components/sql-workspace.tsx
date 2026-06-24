@@ -123,7 +123,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
                   </div>
                 </div>
               ) : activeTab?.kind === 'table' ? (
-                <TableView profile={profile} tabId={activeTab.id} />
+                <TableView key={activeTab.id} profile={profile} tabId={activeTab.id} />
               ) : activeTab?.kind === 'query' ? (
                 <QueryView profile={profile} tabId={activeTab.id} />
               ) : activeTab?.kind === 'dashboard' ? (
