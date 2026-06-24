@@ -43,7 +43,7 @@
     "@visx/scale": "^3.12.0",
     "@visx/shape": "^3.12.0",
     "better-auth": "^1.6.20",
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^5.0.0",
     "better-sqlite3": "^12.8.0",
     "bindings": "^1.5.0",
     "file-uri-to-path": "^2.0.0",
