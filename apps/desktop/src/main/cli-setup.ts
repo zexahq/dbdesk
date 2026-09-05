@@ -4,7 +4,16 @@
  * Uses ELECTRON_RUN_AS_NODE=1 so no external Node.js is needed.
  */
 import { execSync } from 'node:child_process'
-import { existsSync, mkdirSync, symlinkSync, writeFileSync, chmodSync, rmSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import { getDb } from '@dbdesk/db'
@@ -57,21 +66,33 @@ export function isCliInstalled(): boolean {
     if (row?.value === 'true') return true
 
     // Fallback: check if the target binary exists and points to us
-    const { path: targetPath } = getInstallTarget()
+    return isOursTarget(getInstallTarget().path)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * True only when the install target exists AND was created by DBDesk:
+ * a symlink pointing at our bundle (unix) or our generated wrapper (win32).
+ * Never true for foreign files that happen to share the path.
+ */
+function isOursTarget(targetPath: string): boolean {
+  if (!existsSync(targetPath)) return false
+  try {
     if (process.platform === 'win32') {
-      return existsSync(targetPath)
-    } else {
-      if (!existsSync(targetPath)) return false
-      try {
-        const linkTarget = execSync(`readlink "${targetPath}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'ignore']
-        }).trim()
-        return linkTarget.includes('dbdesk') || linkTarget.includes('DBDesk')
-      } catch {
-        return false
-      }
+      const stat = lstatSync(targetPath)
+      if (!stat.isFile()) return false
+      const content = readFileSync(targetPath, 'utf-8')
+      return content.includes('ELECTRON_RUN_AS_NODE') && content.includes('resources')
     }
+    const stat = lstatSync(targetPath)
+    if (!stat.isSymbolicLink()) return false
+    const linkTarget = execSync(`readlink "${targetPath}"`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore']
+    }).trim()
+    return linkTarget.includes('dbdesk') || linkTarget.includes('DBDesk')
   } catch {
     return false
   }
@@ -230,9 +251,19 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
 export function uninstallCli(): { ok: true } | { ok: false; error: string } {
   try {
     const { path: targetPath } = getInstallTarget()
-    if (existsSync(targetPath)) {
-      rmSync(targetPath)
+    if (!existsSync(targetPath)) {
+      markCliChanged()
+      return { ok: true }
     }
+    if (!isOursTarget(targetPath)) {
+      return {
+        ok: false,
+        error:
+          `"${targetPath}" was not installed by DBDesk, so it was left alone. ` +
+          `Remove it manually if you are sure it is safe.`
+      }
+    }
+    rmSync(targetPath)
     markCliChanged()
     return { ok: true }
   } catch (err) {

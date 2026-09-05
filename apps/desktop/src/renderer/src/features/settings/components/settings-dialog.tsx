@@ -2,6 +2,7 @@ import { Info, RefreshCw, TerminalSquare } from 'lucide-react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useEffect, useState } from 'react'
 import dbdeskLogo from '@renderer/assets/dbdesk-logo.svg'
+import { Button } from '@renderer/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -54,10 +55,11 @@ export function SettingsDialog() {
   }, [open])
 
   const active = NAV.find((item) => item.id === section) ?? NAV[0]
+  const dialogClass = 'overflow-hidden p-0 md:max-h-[500px] md:max-w-[700px] lg:max-w-[800px]'
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && closeSettings()}>
-      <DialogContent className="overflow-hidden p-0 md:max-h-[500px] md:max-w-[700px] lg:max-w-[800px]">
+      <DialogContent className={dialogClass}>
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">Customize your settings here.</DialogDescription>
         <SidebarProvider className="items-start">
@@ -99,6 +101,20 @@ export function SettingsDialog() {
                 <p className="text-xs text-muted-foreground">{active?.blurb}</p>
               </div>
             </header>
+            <div className="flex shrink-0 gap-1 overflow-x-auto px-4 pb-2 md:hidden">
+              {NAV.map((item) => (
+                <Button
+                  key={item.id}
+                  size="sm"
+                  variant={item.id === section ? 'default' : 'outline'}
+                  className="h-7 shrink-0 text-xs"
+                  onClick={() => setSection(item.id)}
+                >
+                  <item.icon className="size-3.5" />
+                  {item.name}
+                </Button>
+              ))}
+            </div>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-0">
               {section === 'cli' && <CliSection />}
               {section === 'updates' && <UpdatesSection version={version} />}
