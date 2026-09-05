@@ -1,5 +1,5 @@
-import { existsSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { runAction } from '../lib/output'
 import { CliError } from '../lib/errors'
 import type { Command } from 'commander'
@@ -27,7 +27,11 @@ export function registerInitCommand(program: Command): void {
   program
     .command('init')
     .description('Write an AGENTS.md snippet so agents in this project use dbdesk correctly')
-    .option('--path <dir>', 'directory to write AGENTS.md into (default: current directory)', process.cwd())
+    .option(
+      '--path <dir>',
+      'directory to write AGENTS.md into (default: current directory)',
+      process.cwd()
+    )
     .option('--print', 'print the snippet instead of writing')
     .option('--force', 'overwrite an existing AGENTS.md')
     .option('--format <format>', 'output format: table (default) or json', 'table')
@@ -44,6 +48,7 @@ export function registerInitCommand(program: Command): void {
             'Re-run with --force to overwrite, or --print to review the snippet first.'
           )
         }
+        mkdirSync(dirname(dest), { recursive: true })
         writeFileSync(dest, SNIPPET)
         return {
           written: dest,
