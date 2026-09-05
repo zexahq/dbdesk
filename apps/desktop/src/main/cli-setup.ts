@@ -36,7 +36,8 @@ export function getInstallTarget(): { dir: string; path: string } {
       return { dir, path: join(dir, 'dbdesk') }
     }
     case 'win32': {
-      const dir = join(process.env.LOCALAPPDATA || join(app.getPath('home'), 'AppData', 'Local'), 'Programs', 'dbdesk')
+      const base = process.env.LOCALAPPDATA || join(app.getPath('home'), 'AppData', 'Local')
+      const dir = join(base, 'Programs', 'dbdesk')
       return { dir, path: join(dir, 'dbdesk.cmd') }
     }
     default:
@@ -135,7 +136,10 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
   const shellScript = getShellScript()
 
   if (!existsSync(shellScript)) {
-    return { ok: false, error: `CLI shell script not found at ${shellScript}. Please reinstall DBDesk.` }
+    return {
+      ok: false,
+      error: `CLI shell script not found at ${shellScript}. Please reinstall DBDesk.`
+    }
   }
 
   try {
@@ -162,7 +166,9 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
         } catch {
           return {
             ok: false,
-            error: `Cannot create "${dir}". Run: sudo mkdir -p "${dir}" && sudo chown $(whoami) "${dir}"`
+            error:
+              `Cannot create "${dir}". ` +
+              `Run: sudo mkdir -p "${dir}" && sudo chown $(whoami) "${dir}"`
           }
         }
 
@@ -197,7 +203,9 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
         // so no external Node.js installation is needed.
         const cliJs = join(getCliDir(), 'dist', 'index.js')
         const nodeModules = join(getCliDir(), 'node_modules')
-        const cmdContent = `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\nset NODE_PATH=${nodeModules}\r\n"${process.execPath}" "${cliJs}" %*`
+        const cmdContent =
+          `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\nset NODE_PATH=${nodeModules}\r\n` +
+          `"${process.execPath}" "${cliJs}" %*`
         writeFileSync(targetPath, cmdContent)
 
         break
