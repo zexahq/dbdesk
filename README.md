@@ -6,7 +6,6 @@
   />
 </h1>
 
-
 **The cleanest database management tool you've been waiting for.**
 
 A fast, intuitive, and UI/UX-focused desktop application for managing your databases. Built for developers who want a simple yet powerful interface without the bloat.
@@ -52,6 +51,18 @@ chmod +x dbdesk-*.AppImage
 ### Windows
 
 Download and run the installer from the releases page. The installer will handle setup automatically.
+
+## ⌨️ CLI
+
+Use DBDesk from the terminal — or let your AI agents (Claude Code, Cursor, Codex, OpenCode) drive it: connections, read-only queries, and dashboards as code.
+
+```bash
+npm i -g dbdesk
+dbdesk connection add --name prod --host localhost --database mydb --user app
+dbdesk dashboard apply -f dashboard.yaml
+```
+
+See the [`dbdesk` package](https://www.npmjs.com/package/dbdesk) ([docs](packages/cli/README.md)) for the full reference. The desktop app can also install the CLI for you under Settings → Command Line.
 
 ## 🛠️ Tech Stack
 

@@ -1,5 +1,6 @@
 import { registerAdapterHandlers } from './adapter-handlers'
 import { registerAuthHandlers } from './auth-handlers'
+import { registerCliHandlers } from './cli-handlers'
 import { registerConnectionHandlers } from './connection-handlers'
 import { registerDashboardHandlers } from './dashboard-handlers'
 import { registerQueryHandlers } from './query-handlers'
@@ -12,6 +13,7 @@ import { registerWorkspaceHandlers } from './workspace-handlers'
 export function registerAllIpcHandlers() {
   registerAdapterHandlers()
   registerAuthHandlers()
+  registerCliHandlers()
   registerConnectionHandlers()
   registerDashboardHandlers()
   registerQueryHandlers()

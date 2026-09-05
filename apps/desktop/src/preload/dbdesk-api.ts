@@ -201,6 +201,12 @@ export const dbdeskAPI = {
     return () => ipcRenderer.removeListener('update:error', handler)
   },
 
+  // ── CLI ──
+  getCliStatus: () => typedInvoke('cli:get-status'),
+  installCli: () => typedInvoke('cli:install'),
+  uninstallCli: () => typedInvoke('cli:uninstall'),
+  dismissCliPrompt: () => typedInvoke('cli:dismiss-prompt'),
+
   // ── Window Controls ──
   minimizeWindow: () => ipcRenderer.invoke('window:minimize') as Promise<void>,
   maximizeWindow: () => ipcRenderer.invoke('window:maximize') as Promise<void>,
