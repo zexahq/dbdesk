@@ -20,8 +20,10 @@ const program = new Command()
 
 program
   .name('dbdesk')
-  .description('DBDesk CLI — manage Postgres connections, run queries, and build dashboards from the terminal')
-  .version(cliVersion(), '-v, --version', "output the dbdesk version")
+  .description(
+    'DBDesk CLI — manage Postgres connections, run queries, and build dashboards from the terminal'
+  )
+  .version(cliVersion(), '-v, --version', 'output the dbdesk version')
   .option('--quiet', 'suppress update notices and warnings')
   .addHelpText(
     'after',
