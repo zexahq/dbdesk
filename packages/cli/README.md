@@ -14,10 +14,9 @@ Requires Node.js 20+. No DBDesk desktop app required — the CLI works standalon
 ## Quickstart
 
 ```bash
-# Add a database (password via env so it stays out of shell history)
-export DBDESK_PASSWORD=...
+# Add a database (no password needed — the user fills it in via the desktop app)
 dbdesk connection add --name prod --host localhost --database mydb --user app
-dbdesk connection test prod
+dbdesk connection test prod   # fails until the password is filled in; that's expected
 
 # Explore
 dbdesk schema tree --connection prod
@@ -95,7 +94,7 @@ Agents: always pass `--format json`, check `ok` first, and start from `schema tr
 ## Safety
 
 - The CLI is read-only for your data: `INSERT`/`UPDATE`/`DELETE`/DDL are rejected everywhere, including saved queries and dashboard widgets. Writes happen in the desktop app.
-- Connection passwords are never printed. Prefer `DBDESK_PASSWORD` env or `--password-stdin` over `--password`.
+- Connection passwords are never printed and cannot be set through the CLI — `connection add` is passwordless by design; the password is filled in via the desktop app.
 - CLI and desktop share one local SQLite file and migrate it forward automatically.
 
 ## Links

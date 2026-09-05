@@ -1,6 +1,21 @@
-import { initDatabase, getDb, closeDatabase, connectionProfiles, dashboards, savedQueries, eq, and } from '@dbdesk/db'
+import {
+  initDatabase,
+  getDb,
+  closeDatabase,
+  connectionProfiles,
+  dashboards,
+  savedQueries,
+  eq,
+  and
+} from '@dbdesk/db'
 import { dashboardConfigSchema } from '@dbdesk/shared/schemas'
-import type { ConnectionProfile, DashboardConfig, Widget, SavedQuery, SQLConnectionOptions } from '@dbdesk/shared/types'
+import type {
+  ConnectionProfile,
+  DashboardConfig,
+  Widget,
+  SavedQuery,
+  SQLConnectionOptions
+} from '@dbdesk/shared/types'
 import { getDbPath } from './db-path'
 import { ensureMigrated } from './migrate'
 import { CliError } from './errors'
@@ -107,19 +122,20 @@ export function addConnection(opts: {
   port?: number
   database: string
   user: string
-  password?: string
   sslMode?: string
 }): ConnectionProfile {
   ensureDb()
   const now = new Date()
   const id = crypto.randomUUID()
 
+  // Passwordless by design: the CLI never accepts secrets. The password is
+  // filled in later via the desktop app; until then the stored value is empty.
   const options: SQLConnectionOptions = {
     host: opts.host,
     port: opts.port ?? 5432,
     database: opts.database,
     user: opts.user,
-    password: opts.password ?? '',
+    password: '',
     sslMode: (opts.sslMode as SQLConnectionOptions['sslMode']) ?? 'disable'
   }
 
@@ -153,10 +169,7 @@ export function removeConnection(idOrName: string): boolean {
   const conn = getConnection(idOrName)
   if (!conn) throw new CliError('not-found', `Connection "${idOrName}" not found.`)
 
-  const result = getDb()
-    .delete(connectionProfiles)
-    .where(eq(connectionProfiles.id, conn.id))
-    .run()
+  const result = getDb().delete(connectionProfiles).where(eq(connectionProfiles.id, conn.id)).run()
 
   return result.changes > 0
 }
@@ -209,11 +222,7 @@ export function listDashboards(connectionId: string): DashboardConfig[] {
 
 export function getDashboard(dashboardId: string): DashboardConfig | undefined {
   ensureDb()
-  const row = getDb()
-    .select()
-    .from(dashboards)
-    .where(eq(dashboards.dashboardId, dashboardId))
-    .get()
+  const row = getDb().select().from(dashboards).where(eq(dashboards.dashboardId, dashboardId)).get()
 
   if (!row) return undefined
   try {
@@ -262,10 +271,7 @@ export function createDashboard(
 
 export function deleteDashboard(dashboardId: string): boolean {
   ensureDb()
-  const result = getDb()
-    .delete(dashboards)
-    .where(eq(dashboards.dashboardId, dashboardId))
-    .run()
+  const result = getDb().delete(dashboards).where(eq(dashboards.dashboardId, dashboardId)).run()
 
   return result.changes > 0
 }

@@ -6,7 +6,12 @@ import { CliError } from '../lib/errors'
 import { isReadOnlyQuery } from '@dbdesk/shared/adapters'
 import type { Command } from 'commander'
 
-function readSql(opts: { query?: string; file?: string; saved?: string; connection: string }): string {
+function readSql(opts: {
+  query?: string
+  file?: string
+  saved?: string
+  connection: string
+}): string {
   if (opts.saved) {
     const saved = getSavedQuery(resolveConnection(opts.connection).id, opts.saved)
     if (!saved) {
@@ -83,8 +88,13 @@ export function registerQueryCommands(program: Command): void {
           const adapter = await getAdapter(conn)
           const result =
             limit === 0
-              ? await adapter.runQuery(queryText)
-              : await adapter.runQuery(queryText, { limit, offset, includeTotalRowCount: true })
+              ? await adapter.runQuery(queryText, { readOnly: true })
+              : await adapter.runQuery(queryText, {
+                  limit,
+                  offset,
+                  includeTotalRowCount: true,
+                  readOnly: true
+                })
 
           if (format === 'json') {
             return {
@@ -97,7 +107,9 @@ export function registerQueryCommands(program: Command): void {
             }
           }
           if (result.totalRowCount !== undefined && result.totalRowCount > result.rows.length) {
-            warn(`Showing ${result.rows.length} of ${result.totalRowCount} rows. Re-run with --offset to page.`)
+            warn(
+              `Showing ${result.rows.length} of ${result.totalRowCount} rows. Re-run with --offset to page.`
+            )
           }
           return result.rows
         })

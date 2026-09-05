@@ -116,8 +116,12 @@ export function registerSavedQueryCommands(program: Command): void {
         const adapter = await getAdapter(conn)
         const result =
           limit === 0
-            ? await adapter.runQuery(saved.content)
-            : await adapter.runQuery(saved.content, { limit, includeTotalRowCount: true })
+            ? await adapter.runQuery(saved.content, { readOnly: true })
+            : await adapter.runQuery(saved.content, {
+                limit,
+                includeTotalRowCount: true,
+                readOnly: true
+              })
         if (format === 'json') {
           return {
             name: saved.name,

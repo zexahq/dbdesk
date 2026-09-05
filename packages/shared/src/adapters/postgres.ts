@@ -110,21 +110,42 @@ export class PostgresAdapter implements SQLAdapter {
 
     const normalizedQuery = normalizeQuery(query)
     const queryId = options?.queryId
+    const readOnly = options?.readOnly === true
 
-    if (queryId) {
+    // A dedicated client is required for cancellation and for read-only
+    // enforcement (the query runs inside a READ ONLY transaction, so
+    // Postgres rejects writes the parser cannot see). Regular queries keep
+    // using pool.query() for efficient connection multiplexing.
+    if (queryId || readOnly) {
       const client = await pool.connect()
+      let result: QueryResult | undefined
+      let failure: unknown
+      let failed = false
       try {
-        const pidResult = await client.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
-        const pid = pidResult.rows[0]?.pid
-        if (typeof pid === 'number') {
-          this.activeQueries.set(queryId, pid)
+        if (readOnly) {
+          await client.query('START TRANSACTION READ ONLY')
+        }
+        if (queryId) {
+          const pidResult = await client.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+          const pid = pidResult.rows[0]?.pid
+          if (typeof pid === 'number') {
+            this.activeQueries.set(queryId, pid)
+          }
         }
 
-        return this._runPaginated(normalizedQuery, options, start, client)
+        result = await this._runPaginated(normalizedQuery, options, start, client)
+      } catch (error) {
+        failed = true
+        failure = error
       } finally {
-        this.activeQueries.delete(queryId)
+        if (queryId) this.activeQueries.delete(queryId)
+        if (readOnly) {
+          await client.query('ROLLBACK').catch(() => {})
+        }
         client.release()
       }
+      if (failed) throw failure
+      return result as QueryResult
     }
 
     return this._runPaginated(normalizedQuery, options, start, pool)
@@ -148,7 +169,12 @@ export class PostgresAdapter implements SQLAdapter {
         const start = performance.now()
 
         try {
-          const result = await this.executeNormalizedQueryOnClient(client, normalizedQuery, options, start)
+          const result = await this.executeNormalizedQueryOnClient(
+            client,
+            normalizedQuery,
+            options,
+            start
+          )
           results.push({
             query: normalizedQuery,
             result,

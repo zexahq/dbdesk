@@ -14,11 +14,14 @@ npm i -g dbdesk        # or: npx dbdesk <command>
 dbdesk doctor          # verify install, data file, and environment
 ```
 
-If no connection exists yet, add one (password via env to avoid shell history):
+If no connection exists yet, add one. The CLI never accepts passwords —
+connections are added without one, and the user fills it in via the desktop
+app (you cannot do that part; tell them):
 
 ```bash
-export DBDESK_PASSWORD=...
 dbdesk connection add --name prod --host localhost --database mydb --user app --format json
+dbdesk connection show prod --format json      # check "hasPassword"
+# → ask the user to open the connection in DBDesk and fill in the password
 dbdesk connection test prod
 ```
 
@@ -112,5 +115,5 @@ dbdesk schema tree --connection <project> --format json
 ## Safety
 
 - CLI is read-only for user data: `INSERT/UPDATE/DELETE/DDL` are rejected. Writes go through the desktop app.
-- Connection passwords are never printed. Pass them via `DBDESK_PASSWORD` env or `--password-stdin`.
+- Connection passwords are never printed and can never be set through the CLI. `connection show` exposes only `hasPassword` (true/false).
 - The CLI and desktop app share one local SQLite file; both run migrations forward automatically. If `doctor` reports a schema mismatch, update dbdesk.
