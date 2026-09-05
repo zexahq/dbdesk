@@ -1,6 +1,6 @@
 {
   "name": "dbdesk",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "DBDesk CLI — manage Postgres connections, run queries, and build dashboards from the terminal",
   "license": "MIT",
   "homepage": "https://github.com/zexahq/dbdesk",
