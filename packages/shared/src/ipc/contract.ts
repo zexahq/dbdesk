@@ -278,6 +278,20 @@ export interface IpcContract {
     payload: { dashboards: DashboardConfig[]; overwrite?: boolean }
     result: { imported: number; skipped: number }
   }
+
+  // CLI installation
+  'cli:get-status': {
+    payload: void
+    result: { installed: boolean; promptDismissed: boolean }
+  }
+  'cli:install': {
+    payload: void
+    result: { ok: boolean; error?: string }
+  }
+  'cli:dismiss-prompt': {
+    payload: void
+    result: void
+  }
 }
 
 /** Union of all IPC channel names */

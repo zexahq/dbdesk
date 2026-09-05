@@ -4,6 +4,7 @@ import { Toaster } from '@renderer/components/ui/sonner'
 import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
 import { MainSidebar } from '@renderer/components/shell/main-sidebar'
 import { AuthOverlay } from '@renderer/features/auth/components/auth-overlay'
+import { CliInstallPrompt } from '@renderer/components/shell/cli-install-prompt'
 import { useUpdateToast } from '@renderer/shared/hooks/use-update-toast'
 import { redirect } from '@tanstack/react-router'
 
@@ -25,6 +26,7 @@ const RootLayout = () => {
       </div>
       <AuthOverlay />
       <Toaster position="top-right" />
+      <CliInstallPrompt />
     </>
   )
 }

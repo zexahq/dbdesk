@@ -1,0 +1,29 @@
+{
+  "name": "@dbdesk/cli",
+  "version": "0.1.7",
+  "private": true,
+  "bin": {
+    "dbdesk": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc --noEmit && node esbuild.config.js",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@dbdesk/db": "workspace:*",
+    "@dbdesk/shared": "workspace:*",
+    "better-sqlite3": "^12.8.0",
+    "commander": "^13.1.0",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@dbdesk/tsconfig": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.19.13",
+    "@types/pg": "^8.11.15",
+    "esbuild": "^0.25.12",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
+  }
+}
