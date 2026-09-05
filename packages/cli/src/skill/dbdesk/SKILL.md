@@ -16,7 +16,8 @@ dbdesk doctor          # verify install, data file, and environment
 
 If no connection exists yet, add one. The CLI never accepts passwords —
 connections are added without one, and the user fills it in via the desktop
-app (you cannot do that part; tell them):
+app (you cannot do that part; tell them). Standalone alternative that keeps
+you out of secrets: a `~/.pgpass` file, which the driver reads automatically.
 
 ```bash
 dbdesk connection add --name prod --host localhost --database mydb --user app --format json
@@ -29,7 +30,9 @@ Tip: `export DBDESK_CONNECTION=prod` once to skip `--connection` on every comman
 
 ## Output contract
 
-Always pass `--format json`. Every command returns the same envelope:
+Always pass `--format json`. Every command returns the same envelope
+(exception: document-output commands print raw text by default — `skill print`
+and `dashboard export` in yaml mode; both accept `--format json`):
 
 ```json
 { "ok": true, "data": ..., "meta": { "command": "...", "version": "...", "duration_ms": 12 } }

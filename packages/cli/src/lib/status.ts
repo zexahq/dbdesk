@@ -1,38 +1,55 @@
 import { getDbPath } from './db-path'
 import { listConnections, listDashboards } from './db-access'
 import { cliVersion } from './paths'
+import { writeData, type OutputFormat } from './output'
 
-/** Human-readable summary for bare `dbdesk` (no subcommand). */
-export async function printStatusSummary(): Promise<void> {
+interface StatusSummary {
+  version: string
+  dbPath: string
+  connections: { name: string; dashboards: number }[]
+}
+
+function buildSummary(): StatusSummary {
+  const connections = listConnections()
+  return {
+    version: cliVersion(),
+    dbPath: getDbPath(),
+    connections: connections.map((c) => ({
+      name: c.name,
+      dashboards: listDashboards(c.id).length
+    }))
+  }
+}
+
+/** Summary for bare `dbdesk` (no subcommand): human text or JSON envelope. */
+export async function printStatusSummary(format: OutputFormat = 'table'): Promise<void> {
+  if (format === 'json') {
+    writeData(buildSummary(), 'json')
+    return
+  }
+
   const version = cliVersion()
   console.log(`dbdesk v${version}`)
 
-  let dbPath: string
+  let summary: StatusSummary
   try {
-    dbPath = getDbPath()
-  } catch (err) {
-    console.log(`\n${err instanceof Error ? err.message : String(err)}`)
-    return
-  }
-  console.log(`Data: ${dbPath}`)
-
-  try {
-    const connections = listConnections()
-    console.log(
-      `Connections: ${connections.length > 0 ? connections.map((c) => c.name).join(', ') : '(none yet)'}`
-    )
-    if (connections.length === 0) {
-      console.log('\nGet started: dbdesk connection add --help')
-      return
-    }
-    const first = connections[0]
-    if (first) {
-      const dashboards = listDashboards(first.id)
-      console.log(`Dashboards on "${first.name}": ${dashboards.length}`)
-    }
-    console.log('\nNext: dbdesk schema tree --connection <name> | dbdesk --help')
+    summary = buildSummary()
   } catch (err) {
     console.log(`\n${err instanceof Error ? err.message : String(err)}`)
     console.log('Get started: dbdesk connection add --help')
+    return
   }
+  console.log(`Data: ${summary.dbPath}`)
+
+  if (summary.connections.length === 0) {
+    console.log('Connections: (none yet)')
+    console.log('\nGet started: dbdesk connection add --help')
+    return
+  }
+  console.log(`Connections: ${summary.connections.map((c) => c.name).join(', ')}`)
+  const first = summary.connections[0]
+  if (first) {
+    console.log(`Dashboards on "${first.name}": ${first.dashboards}`)
+  }
+  console.log('\nNext: dbdesk schema tree --connection <name> | dbdesk --help')
 }

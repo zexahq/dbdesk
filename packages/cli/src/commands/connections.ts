@@ -118,7 +118,7 @@ export function registerConnectionCommands(program: Command): void {
             type: profile.type,
             message:
               `Connection "${opts.name}" added without a password. ` +
-              `Open it in the DBDesk desktop app to fill in the password, ` +
+              `Fill it in via the DBDesk desktop app (or use a ~/.pgpass entry), ` +
               `then verify with "dbdesk connection test ${opts.name}".`
           }
         })

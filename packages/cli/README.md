@@ -14,9 +14,9 @@ Requires Node.js 20+. No DBDesk desktop app required — the CLI works standalon
 ## Quickstart
 
 ```bash
-# Add a database (no password needed — the user fills it in via the desktop app)
+# Add a database (no password needed — see below)
 dbdesk connection add --name prod --host localhost --database mydb --user app
-dbdesk connection test prod   # fails until the password is filled in; that's expected
+dbdesk connection test prod
 
 # Explore
 dbdesk schema tree --connection prod
@@ -49,7 +49,7 @@ Tip: `export DBDESK_CONNECTION=prod` once to skip `--connection` on every comman
 | `open`                                               | Open the DBDesk desktop app                                                               |
 | `status` (bare `dbdesk`)                             | Version, data path, connection summary                                                    |
 
-Run any command with `--help` for flags. `dbdesk <cmd> --format json` returns a stable envelope:
+Run any command with `--help` for flags. `dbdesk <cmd> --format json` returns a stable envelope (data on stdout, diagnostics on stderr). Document-output commands print raw text by default: `skill print` and `dashboard export` (both accept `--format json` for the envelope instead).
 
 ```json
 { "ok": true, "data": ..., "meta": { "command": "...", "version": "...", "duration_ms": 12 } }
@@ -94,7 +94,10 @@ Agents: always pass `--format json`, check `ok` first, and start from `schema tr
 ## Safety
 
 - The CLI is read-only for your data: `INSERT`/`UPDATE`/`DELETE`/DDL are rejected everywhere, including saved queries and dashboard widgets. Writes happen in the desktop app.
-- Connection passwords are never printed and cannot be set through the CLI — `connection add` is passwordless by design; the password is filled in via the desktop app.
+- Connection passwords are never printed and cannot be set through the CLI — `connection add` is passwordless by design. Fill the password in via the desktop app, or go fully standalone with a `~/.pgpass` file (`chmod 600`), which libpq picks up automatically:
+  ```bash
+  echo "myhost:5432:mydb:myuser:secret" >> ~/.pgpass && chmod 600 ~/.pgpass
+  ```
 - CLI and desktop share one local SQLite file and migrate it forward automatically.
 
 ## Links

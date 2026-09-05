@@ -1,8 +1,17 @@
-import { existsSync, mkdirSync, readFileSync, symlinkSync, copyFileSync, lstatSync, readdirSync, statSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+  copyFileSync,
+  lstatSync,
+  readdirSync,
+  statSync
+} from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { skillDir } from '../lib/paths'
-import { runAction } from '../lib/output'
+import { runAction, warn, writeData, reportError } from '../lib/output'
 import { CliError } from '../lib/errors'
 import type { Command } from 'commander'
 
@@ -69,13 +78,30 @@ function isInstalled(linkPath: string, source: string): boolean {
 }
 
 export function registerSkillCommands(program: Command): void {
-  const skillCmd = program.command('skill').description('Install the dbdesk guide for AI coding agents')
+  const skillCmd = program
+    .command('skill')
+    .description('Install the dbdesk guide for AI coding agents')
 
   skillCmd
     .command('print')
     .description('Print the agent guide (SKILL.md) to stdout')
-    .action(() => {
-      console.log(readFileSync(join(skillSourceDir(), 'SKILL.md'), 'utf-8'))
+    .option('--format <format>', 'output format: raw (default) or json', 'raw')
+    .action(async (opts: { format: string }) => {
+      const raw = typeof opts.format === 'string' ? opts.format.toLowerCase() : 'raw'
+      const format = raw === 'json' ? 'json' : 'raw'
+      if (raw !== 'json' && raw !== 'raw') {
+        warn(`Unknown format "${opts.format}". Valid formats: raw, json. Using raw.`)
+      }
+      try {
+        const content = readFileSync(join(skillSourceDir(), 'SKILL.md'), 'utf-8')
+        if (format === 'json') {
+          writeData({ content }, 'json')
+        } else {
+          console.log(content)
+        }
+      } catch (err) {
+        process.exit(reportError(err, format === 'json' ? 'json' : 'table'))
+      }
     })
 
   skillCmd
@@ -100,7 +126,12 @@ export function registerSkillCommands(program: Command): void {
   skillCmd
     .command('install')
     .description('Install the agent guide into AI coding agents (symlink; idempotent)')
-    .option('--agent <id>', 'agent to target (repeatable). Default: all detected.', collect, [] as string[])
+    .option(
+      '--agent <id>',
+      'agent to target (repeatable). Default: all detected.',
+      collect,
+      [] as string[]
+    )
     .option('--scope <scope>', 'global (default) or project (current directory)', 'global')
     .option('--copy', 'copy files instead of symlinking')
     .option('--format <format>', 'output format: table (default) or json', 'table')
@@ -112,7 +143,11 @@ export function registerSkillCommands(program: Command): void {
         const wanted = opts.agent.map((a) => a.toLowerCase())
         const unknown = wanted.filter((a) => !AGENTS.some((t) => t.id === a))
         if (unknown.length > 0) {
-          throw new CliError('usage', `Unknown agent(s): ${unknown.join(', ')}.`, `Valid agents: ${AGENTS.map((t) => t.id).join(', ')}.`)
+          throw new CliError(
+            'usage',
+            `Unknown agent(s): ${unknown.join(', ')}.`,
+            `Valid agents: ${AGENTS.map((t) => t.id).join(', ')}.`
+          )
         }
         const targets = AGENTS.filter((t) => wanted.length === 0 || wanted.includes(t.id))
         if (targets.length === 0) {
@@ -141,7 +176,12 @@ export function registerSkillCommands(program: Command): void {
               symlinkSync(source, dest)
             }
           }
-          return { agent: agent.id, scope: opts.scope, path: dest, action: opts.copy ? 'copied' : 'linked' }
+          return {
+            agent: agent.id,
+            scope: opts.scope,
+            path: dest,
+            action: opts.copy ? 'copied' : 'linked'
+          }
         })
         return results
       })

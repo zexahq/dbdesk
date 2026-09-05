@@ -178,7 +178,7 @@ export function registerDashboardCommands(program: Command): void {
           console.log(dashboardToDoc(dashboard, conn?.name ?? dashboard.connectionId))
         }
       } catch (err) {
-        process.exit(reportError(err, 'table'))
+        process.exit(reportError(err, format === 'json' ? 'json' : 'table'))
       }
     })
 

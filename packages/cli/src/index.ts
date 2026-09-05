@@ -72,17 +72,33 @@ registerOpenCommand(program)
 
 // Bare `dbdesk` (no subcommand): friendly status summary instead of help spam.
 // (A program-level .action() would shadow subcommands in commander, so we
-// branch before parsing.)
-const rawArgs = process.argv.slice(2)
-const isBare = rawArgs.length === 0 || (rawArgs.length === 1 && rawArgs[0] === '--quiet')
+// branch before parsing.) Only global flags may accompany it.
+function parseBareArgs(argv: string[]): { bare: boolean; format: 'table' | 'json' } {
+  let format: 'table' | 'json' = 'table'
+  const rest: string[] = []
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i] as string
+    if (arg === '--quiet') continue
+    if (arg === '--format' && typeof argv[i + 1] === 'string') {
+      const value = (argv[i + 1] as string).toLowerCase()
+      if (value === 'json' || value === 'table') format = value
+      i++
+      continue
+    }
+    rest.push(arg)
+  }
+  return { bare: rest.length === 0, format }
+}
+
+const { bare: isBare, format: bareFormat } = parseBareArgs(process.argv.slice(2))
 
 async function main(): Promise<void> {
   if (isBare) {
     beginCommand('status')
     try {
-      await printStatusSummary()
+      await printStatusSummary(bareFormat)
     } catch (err) {
-      process.exit(reportError(err, 'table'))
+      process.exit(reportError(err, bareFormat))
     }
     await cleanup()
     return
