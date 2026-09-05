@@ -204,6 +204,7 @@ export const dbdeskAPI = {
   // ── CLI ──
   getCliStatus: () => typedInvoke('cli:get-status'),
   installCli: () => typedInvoke('cli:install'),
+  uninstallCli: () => typedInvoke('cli:uninstall'),
   dismissCliPrompt: () => typedInvoke('cli:dismiss-prompt'),
 
   // ── Window Controls ──

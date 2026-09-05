@@ -136,6 +136,12 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
   const shellScript = getShellScript()
 
   if (!existsSync(shellScript)) {
+    if (!app.isPackaged) {
+      return {
+        ok: false,
+        error: 'CLI install is only available in packaged builds of DBDesk.'
+      }
+    }
     return {
       ok: false,
       error: `CLI shell script not found at ${shellScript}. Please reinstall DBDesk.`

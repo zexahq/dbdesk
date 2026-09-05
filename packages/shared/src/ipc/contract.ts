@@ -20,7 +20,7 @@ import type {
   TableFilterCondition,
   TableInfo,
   TableSortRule,
-  UpdateTableCellResult,
+  UpdateTableCellResult
 } from '../types'
 
 // ── IPC Contract ──
@@ -282,9 +282,13 @@ export interface IpcContract {
   // CLI installation
   'cli:get-status': {
     payload: void
-    result: { installed: boolean; promptDismissed: boolean }
+    result: { installed: boolean; promptDismissed: boolean; path: string }
   }
   'cli:install': {
+    payload: void
+    result: { ok: boolean; error?: string }
+  }
+  'cli:uninstall': {
     payload: void
     result: { ok: boolean; error?: string }
   }
