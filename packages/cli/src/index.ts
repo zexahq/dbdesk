@@ -10,6 +10,7 @@ import { registerSkillCommands } from './commands/skill'
 import { registerInitCommand } from './commands/init'
 import { registerOpenCommand } from './commands/open'
 import { shutdownDb } from './lib/db-access'
+import { CliError } from './lib/errors'
 import { disconnectAll } from './lib/adapter-pool'
 import { beginCommand, reportError } from './lib/output'
 import { cliVersion } from './lib/paths'
@@ -73,8 +74,13 @@ registerOpenCommand(program)
 // Bare `dbdesk` (no subcommand): friendly status summary instead of help spam.
 // (A program-level .action() would shadow subcommands in commander, so we
 // branch before parsing.) Only global flags may accompany it.
-function parseBareArgs(argv: string[]): { bare: boolean; format: 'table' | 'json' } {
+function parseBareArgs(argv: string[]): {
+  bare: boolean
+  format: 'table' | 'json'
+  invalidFormat?: string
+} {
   let format: 'table' | 'json' = 'table'
+  let invalidFormat: string | undefined
   const rest: string[] = []
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] as string
@@ -82,20 +88,28 @@ function parseBareArgs(argv: string[]): { bare: boolean; format: 'table' | 'json
     if (arg === '--format' && typeof argv[i + 1] === 'string') {
       const value = (argv[i + 1] as string).toLowerCase()
       if (value === 'json' || value === 'table') format = value
+      else invalidFormat = argv[i + 1] as string
       i++
       continue
     }
     rest.push(arg)
   }
-  return { bare: rest.length === 0, format }
+  return { bare: rest.length === 0, format, invalidFormat }
 }
 
-const { bare: isBare, format: bareFormat } = parseBareArgs(process.argv.slice(2))
+const { bare: isBare, format: bareFormat, invalidFormat } = parseBareArgs(process.argv.slice(2))
 
 async function main(): Promise<void> {
   if (isBare) {
     beginCommand('status')
     try {
+      if (invalidFormat !== undefined) {
+        throw new CliError(
+          'usage',
+          `Invalid format "${invalidFormat}".`,
+          'Valid formats: table, json.'
+        )
+      }
       await printStatusSummary(bareFormat)
     } catch (err) {
       process.exit(reportError(err, bareFormat))
