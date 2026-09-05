@@ -60,7 +60,7 @@ dbdesk table rows --connection prod --schema public --table users --limit 20 --f
 ```bash
 dbdesk query "SELECT status, count(*) FROM orders GROUP BY status" --connection prod --format json
 dbdesk query --file analysis.sql --connection prod --format csv > results.csv
-dbdesk saved-query save --connection prod --name weekly-revenue --query "SELECT ..." 
+dbdesk saved-query save --connection prod --name weekly-revenue --query "SELECT ..."
 dbdesk saved-query run weekly-revenue --connection prod --format json
 ```
 
