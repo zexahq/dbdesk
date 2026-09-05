@@ -32,7 +32,9 @@ function isOnPath(): { found: boolean; detail: string } {
 export function registerDoctorCommand(program: Command): void {
   program
     .command('doctor')
-    .description('Check the dbdesk installation, data file, and environment')
+    .description(
+      'Check the dbdesk installation, data file, and environment (exits 1 when a check fails)'
+    )
     .option('--format <format>', 'output format: table (default) or json', 'table')
     .action(async (opts: { format: string }) => {
       const format = safeFormat(opts.format, ['table', 'json'])
@@ -47,80 +49,91 @@ export function registerDoctorCommand(program: Command): void {
 }
 
 function buildReport(): { healthy: boolean; checks: Check[] } {
-        const checks: Check[] = []
+  const checks: Check[] = []
 
-        checks.push({ check: 'binary', status: 'ok', detail: `${process.argv[1] ?? 'dbdesk'} (v${cliVersion()})` })
-        checks.push({
-          check: 'node',
-          status: 'ok',
-          detail: process.version,
-        })
+  checks.push({
+    check: 'binary',
+    status: 'ok',
+    detail: `${process.argv[1] ?? 'dbdesk'} (v${cliVersion()})`
+  })
+  checks.push({
+    check: 'node',
+    status: 'ok',
+    detail: process.version
+  })
 
-        try {
-          const dbPath = getDbPath()
-          const readable = existsSync(dbPath)
-          checks.push({
-            check: 'data-file',
-            status: readable ? 'ok' : 'warn',
-            detail: readable ? dbPath : `${dbPath} (not created yet — runs on first command)`
-          })
-        } catch (err) {
-          checks.push({
-            check: 'data-file',
-            status: 'fail',
-            detail: err instanceof Error ? err.message : String(err)
-          })
-        }
+  try {
+    const dbPath = getDbPath()
+    const readable = existsSync(dbPath)
+    checks.push({
+      check: 'data-file',
+      status: readable ? 'ok' : 'warn',
+      detail: readable ? dbPath : `${dbPath} (not created yet — runs on first command)`
+    })
+  } catch (err) {
+    checks.push({
+      check: 'data-file',
+      status: 'fail',
+      detail: err instanceof Error ? err.message : String(err)
+    })
+  }
 
-        try {
-          const folder = migrationsDir()
-          const supported = supportedSchemaVersion(folder)
-          const current = currentSchemaVersion()
-          checks.push({
-            check: 'schema',
-            status: current > supported ? 'fail' : 'ok',
-            detail:
-              current > supported
-                ? `data is v${current}, this dbdesk supports v${supported} — update dbdesk`
-                : `v${current} (supported: v${supported})`
-          })
-        } catch (err) {
-          checks.push({
-            check: 'schema',
-            status: 'warn',
-            detail: err instanceof Error ? err.message : String(err)
-          })
-        }
+  try {
+    const folder = migrationsDir()
+    const supported = supportedSchemaVersion(folder)
+    const current = currentSchemaVersion()
+    checks.push({
+      check: 'schema',
+      status: current > supported ? 'fail' : 'ok',
+      detail:
+        current > supported
+          ? `data is v${current}, this dbdesk supports v${supported} — update dbdesk`
+          : `v${current} (supported: v${supported})`
+    })
+  } catch (err) {
+    checks.push({
+      check: 'schema',
+      status: 'warn',
+      detail: err instanceof Error ? err.message : String(err)
+    })
+  }
 
-        try {
-          const connections = listConnections()
-          checks.push({
-            check: 'connections',
-            status: 'ok',
-            detail: connections.length === 0 ? 'none yet — dbdesk connection add --help' : `${connections.length} saved`
-          })
-        } catch (err) {
-          checks.push({
-            check: 'connections',
-            status: 'fail',
-            detail: err instanceof Error ? err.message : String(err)
-          })
-        }
+  try {
+    const connections = listConnections()
+    checks.push({
+      check: 'connections',
+      status: 'ok',
+      detail:
+        connections.length === 0
+          ? 'none yet — dbdesk connection add --help'
+          : `${connections.length} saved`
+    })
+  } catch (err) {
+    checks.push({
+      check: 'connections',
+      status: 'fail',
+      detail: err instanceof Error ? err.message : String(err)
+    })
+  }
 
-        const pathCheck = isOnPath()
-        checks.push({
-          check: 'on-path',
-          status: pathCheck.found ? 'ok' : 'warn',
-          detail: pathCheck.detail
-        })
+  const pathCheck = isOnPath()
+  checks.push({
+    check: 'on-path',
+    status: pathCheck.found ? 'ok' : 'warn',
+    detail: pathCheck.detail
+  })
 
-        try {
-          skillDir()
-          checks.push({ check: 'skill', status: 'ok', detail: 'agent guide bundled (dbdesk skill print)' })
-        } catch {
-          checks.push({ check: 'skill', status: 'warn', detail: 'agent guide not found in this install' })
-        }
+  try {
+    skillDir()
+    checks.push({
+      check: 'skill',
+      status: 'ok',
+      detail: 'agent guide bundled (dbdesk skill print)'
+    })
+  } catch {
+    checks.push({ check: 'skill', status: 'warn', detail: 'agent guide not found in this install' })
+  }
 
-        const healthy = checks.every((c) => c.status !== 'fail')
-        return { healthy, checks }
+  const healthy = checks.every((c) => c.status !== 'fail')
+  return { healthy, checks }
 }

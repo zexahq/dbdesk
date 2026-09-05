@@ -24,7 +24,10 @@ asarUnpack:
   - '**/node_modules/bindings/**/*'
   - '**/node_modules/file-uri-to-path/**/*'
 extraResources:
-  - from: ../../packages/cli/dist
+  # Self-contained CLI package staged by `pnpm --filter=dbdesk run build`
+  # (dist + migrations + skill + package.json + prod node_modules).
+  # The desktop build scripts always build the CLI first.
+  - from: ../../packages/cli/bundled
     to: cli
     filter:
       - '**/*'

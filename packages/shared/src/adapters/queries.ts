@@ -142,7 +142,7 @@ export function buildTableDataQuery(options: TableDataOptions): {
   query: string
   params: SqlParameter[]
 } {
-  const { schema, table, filters, sortRules = [], limit = 50, offset = 0 } = options
+  const { schema, table, filters, sortRules = [], limit, offset = 0 } = options
 
   let query = `SELECT * FROM ${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
   const params: SqlParameter[] = []
@@ -166,8 +166,15 @@ export function buildTableDataQuery(options: TableDataOptions): {
     }
   }
 
-  query += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`
-  params.push(limit, offset)
+  // An explicit limit keeps paging cheap; an omitted limit returns all rows.
+  // (Postgres needs LIMIT ALL for a bare OFFSET.)
+  if (limit !== undefined) {
+    query += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`
+    params.push(limit, offset)
+  } else if (offset > 0) {
+    query += ` LIMIT ALL OFFSET $${paramCount}`
+    params.push(offset)
+  }
 
   return { query, params }
 }

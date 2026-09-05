@@ -1,4 +1,3 @@
-import { createInterface } from 'node:readline'
 import { listConnections, getConnection, addConnection, removeConnection, resolveConnection } from '../lib/db-access'
 import { getAdapter, disconnectAll } from '../lib/adapter-pool'
 import { runAction } from '../lib/output'
@@ -39,14 +38,53 @@ function readPasswordStdin(): Promise<string> {
 
 async function promptPassword(): Promise<string> {
   if (!process.stdin.isTTY) return ''
-  const rl = createInterface({ input: process.stdin, output: process.stdout })
-  try {
-    return await new Promise<string>((resolve) => {
-      rl.question('Password (empty for none): ', (answer) => resolve(answer.trim()))
-    })
-  } finally {
-    rl.close()
-  }
+  return promptPasswordHidden('Password (empty for none): ')
+}
+
+/**
+ * TTY password prompt with terminal echo disabled, so the credential never
+ * lands in scrollback or session recordings. Restores the terminal on
+ * completion, Ctrl+C, or interruption.
+ */
+function promptPasswordHidden(query: string): Promise<string> {
+  return new Promise((resolve) => {
+    const stdin = process.stdin
+    process.stdout.write(query)
+    stdin.setEncoding('utf8')
+    stdin.resume()
+
+    let password = ''
+    const wasRaw = stdin.isRaw
+    if (stdin.isTTY) stdin.setRawMode(true)
+
+    const cleanup = () => {
+      stdin.removeListener('data', onData)
+      if (stdin.isTTY) stdin.setRawMode(!!wasRaw)
+      stdin.pause()
+    }
+    const onData = (chunk: string) => {
+      for (const ch of chunk) {
+        if (ch === '\n' || ch === '\r' || ch === '\u0004') {
+          cleanup()
+          process.stdout.write('\n')
+          resolve(password.trim())
+          return
+        }
+        if (ch === '\u0003') {
+          cleanup()
+          process.stdout.write('\n')
+          resolve('')
+          return
+        }
+        if (ch === '\u007f' || ch === '\b') {
+          password = password.slice(0, -1)
+        } else {
+          password += ch
+        }
+      }
+    }
+    stdin.on('data', onData)
+  })
 }
 
 async function resolvePassword(opts: {

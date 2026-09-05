@@ -4,6 +4,7 @@ import {
   connectionRefOrEnv,
   resolveConnection,
   getConnection,
+  getSavedQuery,
   listDashboards,
   getDashboard,
   createDashboard,
@@ -74,9 +75,29 @@ function requireDashboard(id: string): DashboardConfig {
 
 function requireWidgetType(raw: string): WidgetType {
   if (!WIDGET_TYPES.includes(raw as WidgetType)) {
-    throw new CliError('usage', `Invalid widget type "${raw}". Valid types: ${WIDGET_TYPES.join(', ')}.`)
+    throw new CliError(
+      'usage',
+      `Invalid widget type "${raw}". Valid types: ${WIDGET_TYPES.join(', ')}.`
+    )
   }
   return raw as WidgetType
+}
+
+/** Reject widgets whose saved-query references don't exist on this connection. */
+function assertWidgetQueryIds(widgets: Widget[], connectionId: string): void {
+  const bad: string[] = []
+  for (const w of widgets) {
+    if (w.queryId && !getSavedQuery(connectionId, w.queryId)) {
+      bad.push(`"${w.title}": saved query "${w.queryId}" not found on this connection`)
+    }
+  }
+  if (bad.length > 0) {
+    throw new CliError(
+      'validation-failed',
+      `${bad.length} broken saved-query reference(s):`,
+      bad.join('\n')
+    )
+  }
 }
 
 export function registerDashboardCommands(program: Command): void {
@@ -179,8 +200,13 @@ export function registerDashboardCommands(program: Command): void {
           throw new CliError('validation-failed', err instanceof Error ? err.message : String(err))
         }
         if (parsed.errors.length > 0) {
-          throw new CliError('validation-failed', `${parsed.errors.length} problem(s) found:`, parsed.errors.join('\n'))
+          throw new CliError(
+            'validation-failed',
+            `${parsed.errors.length} problem(s) found:`,
+            parsed.errors.join('\n')
+          )
         }
+        assertWidgetQueryIds(parsed.widgets, parsed.connection.id)
         return {
           valid: true,
           dashboard: parsed.doc.dashboard.name,
@@ -207,10 +233,25 @@ export function registerDashboardCommands(program: Command): void {
           throw new CliError('validation-failed', err instanceof Error ? err.message : String(err))
         }
         if (parsed.errors.length > 0) {
-          throw new CliError('validation-failed', `${parsed.errors.length} problem(s) found:`, parsed.errors.join('\n'))
+          throw new CliError(
+            'validation-failed',
+            `${parsed.errors.length} problem(s) found:`,
+            parsed.errors.join('\n')
+          )
         }
+        assertWidgetQueryIds(parsed.widgets, parsed.connection.id)
 
         const { doc, connection, widgets } = parsed
+        if (opts.dashboard) {
+          const target = requireDashboard(opts.dashboard)
+          if (target.connectionId !== connection.id) {
+            throw new CliError(
+              'validation-failed',
+              `Dashboard "${target.name}" belongs to a different connection than "${doc.dashboard.connection}".`,
+              'Omit --dashboard to create/update by name on the file\'s connection, or fix "dashboard.connection" in the file.'
+            )
+          }
+        }
         const existing = opts.dashboard
           ? requireDashboard(opts.dashboard)
           : listDashboards(connection.id).find((d) => d.name === doc.dashboard.name)
@@ -245,7 +286,11 @@ export function registerDashboardCommands(program: Command): void {
               updatedAt: new Date()
             })
           : (() => {
-              const created = createDashboard(connection.id, doc.dashboard.name, doc.dashboard.description)
+              const created = createDashboard(
+                connection.id,
+                doc.dashboard.name,
+                doc.dashboard.description
+              )
               return saveDashboard({ ...created, layout, widgets, updatedAt: new Date() })
             })()
 
@@ -263,7 +308,10 @@ export function registerDashboardCommands(program: Command): void {
     .option('--query <sql>', 'inline read-only SQL query')
     .option('--query-id <id>', 'reference a saved query by ID')
     .option('--position <x,y,w,h>', 'grid position (default: 0,0,6,4)')
-    .option('--settings <key=value...>', 'widget settings (repeatable: --settings a=1 --settings b=x)')
+    .option(
+      '--settings <key=value...>',
+      'widget settings (repeatable: --settings a=1 --settings b=x)'
+    )
     .option('--format <format>', 'output format: table (default) or json', 'table')
     .action(
       (opts: {
@@ -287,17 +335,25 @@ export function registerDashboardCommands(program: Command): void {
               throw new CliError(
                 'validation-failed',
                 `Dashboard belongs to a different connection.`,
-                'Omit --connection or pass the dashboard\'s own connection.'
+                "Omit --connection or pass the dashboard's own connection."
               )
             }
           }
 
           const { widgets, errors } = buildWidgets([
-            { type, title: opts.title, query: opts.query, queryId: opts.queryId, position: opts.position, settings: parseSettings(opts.settings) }
+            {
+              type,
+              title: opts.title,
+              query: opts.query,
+              queryId: opts.queryId,
+              position: opts.position,
+              settings: parseSettings(opts.settings)
+            }
           ])
           if (errors.length > 0) {
             throw new CliError('validation-failed', errors.join('\n'))
           }
+          assertWidgetQueryIds(widgets, dashboard.connectionId)
           const widget = widgets[0] as Widget
 
           const updated = saveDashboard({
@@ -322,7 +378,9 @@ export function registerDashboardCommands(program: Command): void {
         if (filtered.length === dashboard.widgets.length) {
           throw new CliError('not-found', `Widget "${opts.widget}" not found in dashboard.`)
         }
-        return dashboardSummary(saveDashboard({ ...dashboard, widgets: filtered, updatedAt: new Date() }))
+        return dashboardSummary(
+          saveDashboard({ ...dashboard, widgets: filtered, updatedAt: new Date() })
+        )
       })
     )
 
@@ -354,7 +412,10 @@ export function registerDashboardCommands(program: Command): void {
           }
           const existing = dashboard.widgets[index] as Widget
           if (opts.query !== undefined && !isReadOnlyQuery(opts.query)) {
-            throw new CliError('validation-failed', 'Widget queries must be read-only (SELECT/SHOW).')
+            throw new CliError(
+              'validation-failed',
+              'Widget queries must be read-only (SELECT/SHOW).'
+            )
           }
           const updated: Widget = {
             ...existing,
@@ -367,7 +428,9 @@ export function registerDashboardCommands(program: Command): void {
           }
           const next = [...dashboard.widgets]
           next[index] = updated
-          return dashboardSummary(saveDashboard({ ...dashboard, widgets: next, updatedAt: new Date() }))
+          return dashboardSummary(
+            saveDashboard({ ...dashboard, widgets: next, updatedAt: new Date() })
+          )
         })
     )
 }

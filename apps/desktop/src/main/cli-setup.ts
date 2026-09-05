@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import { app } from 'electron'
 import { getDb } from '@dbdesk/db'
 import { appMeta } from '@dbdesk/db'
+import { eq } from '@dbdesk/db'
 
 const META_KEY_INSTALLED = 'cli:installed'
 const META_KEY_PROMPT_DISMISSED = 'cli:prompt_dismissed'
@@ -22,7 +23,7 @@ function getShellScript(): string {
   return join(getCliDir(), 'dbdesk.sh')
 }
 
-function getInstallTarget(): { dir: string; path: string } {
+export function getInstallTarget(): { dir: string; path: string } {
   const platform = process.platform
 
   switch (platform) {
@@ -192,10 +193,11 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
           return { ok: false, error: `Cannot create "${dir}".` }
         }
 
-        // Create a .cmd wrapper that runs the shell script via Git Bash or WSL
-        // For Windows, we create a .cmd file that uses node to run the CLI directly
-        const cliJs = join(getCliDir(), 'index.js')
-        const cmdContent = `@echo off\r\n"${process.execPath}" "${cliJs}" %*`
+        // .cmd wrapper that runs the packaged Electron binary in Node mode,
+        // so no external Node.js installation is needed.
+        const cliJs = join(getCliDir(), 'dist', 'index.js')
+        const nodeModules = join(getCliDir(), 'node_modules')
+        const cmdContent = `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\nset NODE_PATH=${nodeModules}\r\n"${process.execPath}" "${cliJs}" %*`
         writeFileSync(targetPath, cmdContent)
 
         break
@@ -211,7 +213,6 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
     return { ok: false, error: String(err) }
   }
 }
-
 export function uninstallCli(): { ok: true } | { ok: false; error: string } {
   try {
     const { path: targetPath } = getInstallTarget()
@@ -224,5 +225,3 @@ export function uninstallCli(): { ok: true } | { ok: false; error: string } {
     return { ok: false, error: String(err) }
   }
 }
-
-import { eq } from '@dbdesk/db'

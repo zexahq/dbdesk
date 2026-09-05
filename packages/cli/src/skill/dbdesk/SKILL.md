@@ -35,6 +35,7 @@ Always pass `--format json`. Every command returns the same envelope:
 ```
 
 Check `ok` first. Exit codes: 0 ok, 2 usage/validation, 3 connection failed, 4 not found, 5 db error.
+`doctor` prints the full check list even when unhealthy and exits 1 if any check fails — `data.healthy` mirrors the exit code.
 
 ## Commands
 

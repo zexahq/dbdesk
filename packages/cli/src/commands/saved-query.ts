@@ -56,22 +56,31 @@ export function registerSavedQueryCommands(program: Command): void {
     .option('--query <sql>', 'SQL text (SELECT/SHOW only)')
     .option('-f, --file <path>', 'read SQL from a file')
     .option('--format <format>', 'output format: table (default) or json', 'table')
-    .action((opts: { connection?: string; name: string; query?: string; file?: string; format: string }) =>
-      runAction(opts, ['table', 'json'], () => {
-        const content = opts.file ? readFileSync(opts.file, 'utf-8').trim() : (opts.query ?? '').trim()
-        if (!content) {
-          throw new CliError('usage', 'No SQL provided.', 'Pass --query <sql> or --file <path>.')
-        }
-        if (!isReadOnlyQuery(content)) {
-          throw new CliError(
-            'usage',
-            'Only SELECT and SHOW queries can be saved.',
-            'Use the DBDesk desktop app for write operations.'
-          )
-        }
-        const connectionId = resolveConnection(connectionRefOrEnv(opts.connection)).id
-        return saveSavedQuery(connectionId, opts.name, content)
-      })
+    .action(
+      (opts: {
+        connection?: string
+        name: string
+        query?: string
+        file?: string
+        format: string
+      }) =>
+        runAction(opts, ['table', 'json'], () => {
+          const content = opts.file
+            ? readFileSync(opts.file, 'utf-8').trim()
+            : (opts.query ?? '').trim()
+          if (!content) {
+            throw new CliError('usage', 'No SQL provided.', 'Pass --query <sql> or --file <path>.')
+          }
+          if (!isReadOnlyQuery(content)) {
+            throw new CliError(
+              'usage',
+              'Only SELECT and SHOW queries can be saved.',
+              'Use the DBDesk desktop app for write operations.'
+            )
+          }
+          const connectionId = resolveConnection(connectionRefOrEnv(opts.connection)).id
+          return saveSavedQuery(connectionId, opts.name, content)
+        })
     )
 
   sqCmd
@@ -95,13 +104,27 @@ export function registerSavedQueryCommands(program: Command): void {
             'Use "dbdesk saved-query list" to see available queries.'
           )
         }
+        // Revalidate stored SQL on every run: saved queries share storage
+        // with the desktop app, which can store non-read-only statements.
+        if (!isReadOnlyQuery(saved.content)) {
+          throw new CliError(
+            'usage',
+            `Saved query "${saved.name}" is not read-only and cannot run via the CLI.`,
+            'Run it from the DBDesk desktop app instead.'
+          )
+        }
         const adapter = await getAdapter(conn)
         const result =
           limit === 0
             ? await adapter.runQuery(saved.content)
             : await adapter.runQuery(saved.content, { limit, includeTotalRowCount: true })
         if (format === 'json') {
-          return { name: saved.name, columns: result.columns, rowCount: result.rowCount, rows: result.rows }
+          return {
+            name: saved.name,
+            columns: result.columns,
+            rowCount: result.rowCount,
+            rows: result.rows
+          }
         }
         return result.rows
       })

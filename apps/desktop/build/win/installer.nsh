@@ -1,10 +1,13 @@
 !macro customInstall
-  ; Create the CLI wrapper batch file
+  ; Create the CLI wrapper batch file. Runs the packaged Electron binary
+  ; in Node mode so no external Node.js installation is needed.
   SetOutPath "$INSTDIR"
   
   FileOpen $0 "$INSTDIR\dbdesk.cmd" w
   FileWrite $0 '@echo off$\r$\n'
-  FileWrite $0 'node "$INSTDIR\resources\cli\index.js" %*$\r$\n'
+  FileWrite $0 'set ELECTRON_RUN_AS_NODE=1$\r$\n'
+  FileWrite $0 'set NODE_PATH=$INSTDIR\resources\cli\node_modules$\r$\n'
+  FileWrite $0 '"$INSTDIR\dbdesk.exe" "$INSTDIR\resources\cli\dist\index.js" %*$\r$\n'
   FileClose $0
   
   ; Add to PATH for current user

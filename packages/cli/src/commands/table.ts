@@ -16,43 +16,53 @@ export function registerTableCommands(program: Command): void {
     .option('-l, --limit <number>', 'max rows to return (default 100, 0 = no limit)', '100')
     .option('--offset <number>', 'rows to skip (for paging through results)', '0')
     .option('--format <format>', 'output format: table (default), json, or csv', 'table')
-    .action((opts: { connection?: string; schema: string; table: string; limit: string; offset: string; format: string }) =>
-      runAction(opts, ['table', 'json', 'csv'], async (format) => {
-        const limit = parseInt(opts.limit, 10)
-        const offset = parseInt(opts.offset, 10)
-        if (Number.isNaN(limit) || limit < 0) {
-          throw new CliError('usage', `Invalid limit "${opts.limit}". Use 0 for no limit.`)
-        }
-        if (Number.isNaN(offset) || offset < 0) {
-          throw new CliError('usage', `Invalid offset "${opts.offset}".`)
-        }
-        if (limit === 0) {
-          warn('No row limit set (limit 0). Large tables can produce very large output.')
-        }
+    .action(
+      (opts: {
+        connection?: string
+        schema: string
+        table: string
+        limit: string
+        offset: string
+        format: string
+      }) =>
+        runAction(opts, ['table', 'json', 'csv'], async (format) => {
+          const limit = parseInt(opts.limit, 10)
+          const offset = parseInt(opts.offset, 10)
+          if (Number.isNaN(limit) || limit < 0) {
+            throw new CliError('usage', `Invalid limit "${opts.limit}". Use 0 for no limit.`)
+          }
+          if (Number.isNaN(offset) || offset < 0) {
+            throw new CliError('usage', `Invalid offset "${opts.offset}".`)
+          }
+          if (limit === 0) {
+            warn('No row limit set (limit 0). Large tables can produce very large output.')
+          }
 
-        const conn = resolveConnection(connectionRefOrEnv(opts.connection))
-        const adapter = await getAdapter(conn)
-        const result = await adapter.fetchTableData({
-          schema: opts.schema,
-          table: opts.table,
-          limit: limit === 0 ? 100000 : limit,
-          offset
-        })
-
-        if (format === 'json') {
-          return {
+          const conn = resolveConnection(connectionRefOrEnv(opts.connection))
+          const adapter = await getAdapter(conn)
+          const result = await adapter.fetchTableData({
             schema: opts.schema,
             table: opts.table,
-            columns: result.columns,
-            rowCount: result.rowCount,
-            totalCount: result.totalCount,
-            rows: result.rows
+            limit: limit === 0 ? undefined : limit,
+            offset
+          })
+
+          if (format === 'json') {
+            return {
+              schema: opts.schema,
+              table: opts.table,
+              columns: result.columns,
+              rowCount: result.rowCount,
+              totalCount: result.totalCount,
+              rows: result.rows
+            }
           }
-        }
-        if (result.totalCount > result.rows.length) {
-          warn(`Showing ${result.rows.length} of ${result.totalCount} rows. Re-run with --offset to page.`)
-        }
-        return result.rows
-      })
+          if (result.totalCount > result.rows.length) {
+            warn(
+              `Showing ${result.rows.length} of ${result.totalCount} rows. Re-run with --offset to page.`
+            )
+          }
+          return result.rows
+        })
     )
 }

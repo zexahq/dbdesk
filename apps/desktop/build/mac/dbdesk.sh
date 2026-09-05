@@ -17,7 +17,10 @@ function realpath_portable() {
 
 # This script lives at: {app}/resources/cli/dbdesk.sh
 SCRIPT_DIR="$(realpath_portable "$0")"
-CLI="$SCRIPT_DIR/index.js"
+CLI="$SCRIPT_DIR/dist/index.js"
+
+# Bundled production dependencies live beside the bundle.
+export NODE_PATH="$SCRIPT_DIR/node_modules${NODE_PATH:+:$NODE_PATH}"
 
 if [ ! -f "$CLI" ]; then
   echo "Error: DBDesk CLI bundle not found at $CLI" >&2
