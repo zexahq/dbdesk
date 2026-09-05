@@ -61,19 +61,32 @@ cpSync(join(root, 'skill'), join(bundled, 'skill'), { recursive: true })
 cpSync(join(root, 'package.json'), join(bundled, 'package.json'))
 
 const workspaceRequire = createRequire(join(root, 'package.json'))
-const copyExternal = (name, subpaths) => {
-  const src = dirname(workspaceRequire.resolve(`${name}/package.json`))
+// Resolve helper deps from better-sqlite3's own tree (deterministic versions,
+// mirroring Node's resolution) — never from the hoisted root.
+const bs3dir = dirname(workspaceRequire.resolve('better-sqlite3/package.json'))
+const bs3Require = createRequire(join(bs3dir, 'package.json'))
+// Copy a whole package dir (dereferenced) or selected subpaths.
+const copyExternal = (pkgDir, name, subpaths) => {
   for (const sub of subpaths) {
-    cpSync(join(src, sub), join(bundled, 'node_modules', name, sub), {
+    cpSync(join(pkgDir, sub), join(bundled, 'node_modules', name, sub), {
       recursive: true,
       dereference: true
     })
   }
 }
+// Copy a package's main entry file (resolved, not guessed) + its package.json.
+const copyExternalMain = (fromRequire, name) => {
+  const pkgDir = dirname(fromRequire.resolve(`${name}/package.json`))
+  copyExternal(pkgDir, name, ['package.json'])
+  const mainFile = fromRequire.resolve(name)
+  const rel = mainFile.slice(pkgDir.length + 1)
+  mkdirSync(join(bundled, 'node_modules', name, dirname(rel)), { recursive: true })
+  cpSync(mainFile, join(bundled, 'node_modules', name, rel))
+}
 // Compiled binding (Electron ABI) + JS wrapper deps.
-copyExternal('better-sqlite3', ['package.json', 'lib', 'build/Release/better_sqlite3.node'])
-copyExternal('bindings', ['package.json', 'bindings.js'])
-copyExternal('file-uri-to-path', ['package.json', 'index.js'])
+copyExternal(bs3dir, 'better-sqlite3', ['package.json', 'lib', 'build/Release/better_sqlite3.node'])
+copyExternalMain(bs3Require, 'bindings')
+copyExternalMain(bs3Require, 'file-uri-to-path')
 console.log('Desktop bundle staged to bundled/')
 
 console.log('CLI bundled to dist/index.js')
