@@ -1,4 +1,10 @@
-import { listConnections, getConnection, addConnection, removeConnection, resolveConnection } from '../lib/db-access'
+import {
+  listConnections,
+  getConnection,
+  addConnection,
+  removeConnection,
+  resolveConnection
+} from '../lib/db-access'
 import { getAdapter, disconnectAll } from '../lib/adapter-pool'
 import { runAction } from '../lib/output'
 import { CliError } from '../lib/errors'
@@ -47,33 +53,38 @@ async function promptPassword(): Promise<string> {
  * completion, Ctrl+C, or interruption.
  */
 function promptPasswordHidden(query: string): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const stdin = process.stdin
     process.stdout.write(query)
     stdin.setEncoding('utf8')
     stdin.resume()
 
     let password = ''
+    let settled = false
     const wasRaw = stdin.isRaw
     if (stdin.isTTY) stdin.setRawMode(true)
 
     const cleanup = () => {
       stdin.removeListener('data', onData)
+      stdin.removeListener('end', onEnd)
       if (stdin.isTTY) stdin.setRawMode(!!wasRaw)
       stdin.pause()
+    }
+    const done = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      process.stdout.write('\n')
+      fn()
     }
     const onData = (chunk: string) => {
       for (const ch of chunk) {
         if (ch === '\n' || ch === '\r' || ch === '\u0004') {
-          cleanup()
-          process.stdout.write('\n')
-          resolve(password.trim())
+          done(() => resolve(password.trim()))
           return
         }
         if (ch === '\u0003') {
-          cleanup()
-          process.stdout.write('\n')
-          resolve('')
+          done(() => reject(new CliError('cancelled', 'Cancelled. No connection was saved.')))
           return
         }
         if (ch === '\u007f' || ch === '\b') {
@@ -83,7 +94,11 @@ function promptPasswordHidden(query: string): Promise<string> {
         }
       }
     }
+    const onEnd = () => {
+      done(() => resolve(password.trim()))
+    }
     stdin.on('data', onData)
+    stdin.on('end', onEnd)
   })
 }
 
@@ -148,9 +163,16 @@ export function registerConnectionCommands(program: Command): void {
     .option('-p, --port <port>', 'database port', '5432')
     .requiredOption('-d, --database <name>', 'database name')
     .requiredOption('-u, --user <user>', 'database user')
-    .option('-w, --password <password>', 'database password (prefer DBDESK_PASSWORD env or --password-stdin)')
+    .option(
+      '-w, --password <password>',
+      'database password (prefer DBDESK_PASSWORD env or --password-stdin)'
+    )
     .option('--password-stdin', 'read the password from stdin')
-    .option('--ssl-mode <mode>', 'SSL mode: disable, allow, prefer, require, verify-ca, verify-full', 'disable')
+    .option(
+      '--ssl-mode <mode>',
+      'SSL mode: disable, allow, prefer, require, verify-ca, verify-full',
+      'disable'
+    )
     .option('--format <format>', 'output format: table (default) or json', 'table')
     .action(
       (opts: {

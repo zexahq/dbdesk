@@ -19,10 +19,10 @@
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "pnpm run build && electron-builder --dir",
     "build:win": "pnpm run build && electron-builder --win",
-    "build:mac": "pnpm --filter=./packages/cli run build && electron-vite build && electron-builder --mac",
-    "build:linux": "pnpm --filter=./packages/cli run build && electron-vite build && electron-builder --linux",
-    "build:win": "pnpm --filter=./packages/cli run build && pnpm run build && electron-builder --win",
-    "build:unpack": "pnpm --filter=./packages/cli run build && pnpm run build && electron-builder --dir",
+    "build:mac": "pnpm --dir ../../packages/cli run build && electron-vite build && electron-builder --mac",
+    "build:linux": "pnpm --dir ../../packages/cli run build && electron-vite build && electron-builder --linux",
+    "build:win": "pnpm --dir ../../packages/cli run build && pnpm run build && electron-builder --win",
+    "build:unpack": "pnpm --dir ../../packages/cli run build && pnpm run build && electron-builder --dir",
     "test": "vitest run"
   },
   "dependencies": {

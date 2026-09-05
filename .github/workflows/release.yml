@@ -52,6 +52,7 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
+          pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
           pnpm exec electron-builder --linux --publish always
 
@@ -92,6 +93,7 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
+          pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
           pnpm exec electron-builder --win --publish always
 
@@ -133,6 +135,7 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
+          pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
           pnpm exec electron-builder --mac --publish always
 

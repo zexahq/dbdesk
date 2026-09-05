@@ -83,12 +83,16 @@ function requireWidgetType(raw: string): WidgetType {
   return raw as WidgetType
 }
 
-/** Reject widgets whose saved-query references don't exist on this connection. */
+/** Reject widgets whose saved-query references are missing or not read-only. */
 function assertWidgetQueryIds(widgets: Widget[], connectionId: string): void {
   const bad: string[] = []
   for (const w of widgets) {
-    if (w.queryId && !getSavedQuery(connectionId, w.queryId)) {
+    if (!w.queryId) continue
+    const saved = getSavedQuery(connectionId, w.queryId)
+    if (!saved) {
       bad.push(`"${w.title}": saved query "${w.queryId}" not found on this connection`)
+    } else if (!isReadOnlyQuery(saved.content)) {
+      bad.push(`"${w.title}": saved query "${w.queryId}" is not read-only and cannot back a widget`)
     }
   }
   if (bad.length > 0) {
