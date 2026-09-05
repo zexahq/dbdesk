@@ -26,7 +26,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@better-auth/electron": "^1.6.20",
+    "@better-auth/core": "1.6.30",
+    "@better-auth/electron": "1.6.30",
     "@dbdesk/api-client": "workspace:*",
     "@dbdesk/db": "workspace:*",
     "@dbdesk/shared": "workspace:*",
@@ -44,7 +45,7 @@
     "@visx/responsive": "^3.12.0",
     "@visx/scale": "^3.12.0",
     "@visx/shape": "^3.12.0",
-    "better-auth": "^1.6.20",
+    "better-auth": "1.6.30",
     "js-yaml": "^4.1.1",
     "better-sqlite3": "^12.8.0",
     "bindings": "^1.5.0",
