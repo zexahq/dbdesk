@@ -1,36 +1,92 @@
 import { Command } from 'commander'
 import { registerConnectionCommands } from './commands/connections'
 import { registerSchemaCommands } from './commands/schema'
+import { registerTableCommands } from './commands/table'
 import { registerQueryCommands } from './commands/query'
+import { registerSavedQueryCommands } from './commands/saved-query'
 import { registerDashboardCommands } from './commands/dashboards'
+import { registerDoctorCommand } from './commands/doctor'
+import { registerSkillCommands } from './commands/skill'
+import { registerInitCommand } from './commands/init'
 import { registerOpenCommand } from './commands/open'
-import { shutdownDb, ensureDb } from './lib/db-access'
+import { shutdownDb } from './lib/db-access'
 import { disconnectAll } from './lib/adapter-pool'
+import { beginCommand, reportError } from './lib/output'
+import { cliVersion } from './lib/paths'
+import { maybeNotifyUpdate } from './lib/update-check'
+import { printStatusSummary } from './lib/status'
 
 const program = new Command()
 
 program
   .name('dbdesk')
-  .description('DBDesk CLI — manage databases and dashboards from the terminal')
-  .version('0.1.7')
+  .description('DBDesk CLI — manage Postgres connections, run queries, and build dashboards from the terminal')
+  .version(cliVersion(), '-v, --version', "output the dbdesk version")
+  .option('--quiet', 'suppress update notices and warnings')
   .addHelpText(
     'after',
     `
 Examples:
   $ dbdesk connection list
   $ dbdesk schema tree --connection prod
+  $ dbdesk table rows --connection prod --schema public --table users
   $ dbdesk query "SELECT * FROM users LIMIT 10" --connection prod
-  $ dbdesk dashboard create --name "Sales KPIs" --connection prod
-  $ dbdesk dashboard add-widget --type kpi --title "Users" \\
-      --query "SELECT count(*) FROM users" --connection prod --dashboard <id>
-  `
-  )
+  $ dbdesk dashboard apply -f dashboard.yaml
+  $ dbdesk doctor
 
-registerOpenCommand(program)
+Tip: set DBDESK_CONNECTION once to skip --connection on every command.
+AI agents: run \`dbdesk skill print\` for the full agent guide.
+`
+  )
+  .exitOverride((err) => {
+    if (
+      err.code === 'commander.displayHelp' ||
+      err.code === 'commander.helpDisplayed' ||
+      err.code === 'commander.displayVersion' ||
+      err.code === 'commander.version'
+    ) {
+      process.exit(0)
+    }
+    console.error(`Error [usage]: ${err.message}`)
+    process.exit(2)
+  })
+
+program.hook('preAction', async (_thisCommand, actionCommand) => {
+  beginCommand(actionCommand.name())
+  const quiet = Boolean(program.opts<{ quiet?: boolean }>().quiet)
+  await maybeNotifyUpdate(quiet)
+})
+
+registerDoctorCommand(program)
 registerConnectionCommands(program)
 registerSchemaCommands(program)
+registerTableCommands(program)
 registerQueryCommands(program)
+registerSavedQueryCommands(program)
 registerDashboardCommands(program)
+registerSkillCommands(program)
+registerInitCommand(program)
+registerOpenCommand(program)
+
+// Bare `dbdesk` (no subcommand): friendly status summary instead of help spam.
+// (A program-level .action() would shadow subcommands in commander, so we
+// branch before parsing.)
+const rawArgs = process.argv.slice(2)
+const isBare = rawArgs.length === 0 || (rawArgs.length === 1 && rawArgs[0] === '--quiet')
+
+async function main(): Promise<void> {
+  if (isBare) {
+    beginCommand('status')
+    try {
+      await printStatusSummary()
+    } catch (err) {
+      process.exit(reportError(err, 'table'))
+    }
+    await cleanup()
+    return
+  }
+  await program.parseAsync(process.argv)
+}
 
 async function cleanup(): Promise<void> {
   try {
@@ -53,7 +109,6 @@ program.hook('postAction', () => {
   cleanup().catch(() => {})
 })
 
-program.parseAsync().catch((err: unknown) => {
-  console.error(String(err))
-  cleanup().then(() => process.exit(1))
+main().catch((err: unknown) => {
+  process.exit(reportError(err, 'table'))
 })

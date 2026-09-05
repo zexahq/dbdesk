@@ -19,10 +19,10 @@
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "pnpm run build && electron-builder --dir",
     "build:win": "pnpm run build && electron-builder --win",
-    "build:mac": "pnpm --filter=@dbdesk/cli run build && electron-vite build && electron-builder --mac",
-    "build:linux": "pnpm --filter=@dbdesk/cli run build && electron-vite build && electron-builder --linux",
-    "build:win": "pnpm --filter=@dbdesk/cli run build && pnpm run build && electron-builder --win",
-    "build:unpack": "pnpm --filter=@dbdesk/cli run build && pnpm run build && electron-builder --dir",
+    "build:mac": "pnpm --filter=dbdesk run build && electron-vite build && electron-builder --mac",
+    "build:linux": "pnpm --filter=dbdesk run build && electron-vite build && electron-builder --linux",
+    "build:win": "pnpm --filter=dbdesk run build && pnpm run build && electron-builder --win",
+    "build:unpack": "pnpm --filter=dbdesk run build && pnpm run build && electron-builder --dir",
     "test": "vitest run"
   },
   "dependencies": {

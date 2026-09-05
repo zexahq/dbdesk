@@ -1,6 +1,64 @@
-import { listConnections, getConnection, addConnection, removeConnection } from '../lib/db-access'
-import { formatConnectionsTable, formatJson, formatResult } from '../lib/format'
+import { createInterface } from 'node:readline'
+import { listConnections, getConnection, addConnection, removeConnection, resolveConnection } from '../lib/db-access'
+import { getAdapter, disconnectAll } from '../lib/adapter-pool'
+import { runAction } from '../lib/output'
+import { CliError } from '../lib/errors'
 import type { Command } from 'commander'
+
+function safeProfile(conn: NonNullable<ReturnType<typeof getConnection>>) {
+  const opts = conn.options as unknown as Record<string, unknown>
+  return {
+    id: conn.id,
+    name: conn.name,
+    type: conn.type,
+    host: opts.host ?? null,
+    port: opts.port ?? null,
+    database: opts.database ?? null,
+    user: opts.user ?? null,
+    sslMode: opts.sslMode ?? 'disable',
+    createdAt: conn.createdAt,
+    updatedAt: conn.updatedAt,
+    lastConnectedAt: conn.lastConnectedAt ?? null
+  }
+}
+
+function readPasswordStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    if (process.stdin.isTTY) {
+      resolve('')
+      return
+    }
+    let data = ''
+    process.stdin.setEncoding('utf-8')
+    process.stdin.on('data', (chunk: string) => {
+      data += chunk
+    })
+    process.stdin.on('end', () => resolve(data.trim()))
+  })
+}
+
+async function promptPassword(): Promise<string> {
+  if (!process.stdin.isTTY) return ''
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  try {
+    return await new Promise<string>((resolve) => {
+      rl.question('Password (empty for none): ', (answer) => resolve(answer.trim()))
+    })
+  } finally {
+    rl.close()
+  }
+}
+
+async function resolvePassword(opts: {
+  password?: string
+  passwordStdin?: boolean
+}): Promise<string> {
+  if (opts.password !== undefined) return opts.password
+  if (opts.passwordStdin) return readPasswordStdin()
+  const env = process.env.DBDESK_PASSWORD
+  if (env !== undefined) return env
+  return promptPassword()
+}
 
 export function registerConnectionCommands(program: Command): void {
   const connCmd = program.command('connection').description('Manage database connections')
@@ -9,54 +67,53 @@ export function registerConnectionCommands(program: Command): void {
     .command('list')
     .description('List all saved database connections')
     .option('--format <format>', 'output format: table (default) or json', 'table')
-    .action((opts: { format: string }) => {
-      const connections = listConnections()
-      if (opts.format === 'json') {
-        console.log(formatResult(connections, 'json'))
-        return
-      }
-      console.log(formatConnectionsTable(connections))
-    })
+    .action((opts: { format: string }) =>
+      runAction(opts, ['table', 'json'], () =>
+        listConnections().map((c) => {
+          const o = c.options as unknown as Record<string, unknown>
+          return {
+            id: c.id,
+            name: c.name,
+            type: c.type,
+            host: o.host ?? '-',
+            port: o.port ?? '-',
+            database: o.database ?? '-',
+            user: o.user ?? '-'
+          }
+        })
+      )
+    )
 
   connCmd
     .command('show <name-or-id>')
-    .description('Show details for a specific connection')
-    .option('--format <format>', 'output format: table or json', 'json')
-    .action((nameOrId: string, opts: { format: string }) => {
-      const conn = getConnection(nameOrId)
-      if (!conn) {
-        console.error(`Connection "${nameOrId}" not found.`)
-        process.exit(1)
-      }
-
-      const safe = {
-        id: conn.id,
-        name: conn.name,
-        type: conn.type,
-        host: (conn.options as unknown as Record<string, unknown>).host,
-        port: (conn.options as unknown as Record<string, unknown>).port,
-        database: (conn.options as unknown as Record<string, unknown>).database,
-        user: (conn.options as unknown as Record<string, unknown>).user,
-        sslMode: (conn.options as unknown as Record<string, unknown>).sslMode ?? 'disable',
-        createdAt: conn.createdAt,
-        updatedAt: conn.updatedAt,
-        lastConnectedAt: conn.lastConnectedAt
-      }
-
-      console.log(formatJson(safe))
-    })
+    .description('Show details for a connection (passwords are never shown)')
+    .option('--format <format>', 'output format: table (default) or json', 'table')
+    .action((nameOrId: string, opts: { format: string }) =>
+      runAction(opts, ['table', 'json'], () => {
+        const conn = getConnection(nameOrId)
+        if (!conn) {
+          throw new CliError(
+            'not-found',
+            `Connection "${nameOrId}" not found.`,
+            'Use "dbdesk connection list" to see available connections.'
+          )
+        }
+        return safeProfile(conn)
+      })
+    )
 
   connCmd
     .command('add')
-    .description('Add a new database connection')
+    .description('Add a new Postgres connection')
     .requiredOption('-n, --name <name>', 'connection name (e.g. "Production")')
     .requiredOption('--host <host>', 'database host', 'localhost')
     .option('-p, --port <port>', 'database port', '5432')
     .requiredOption('-d, --database <name>', 'database name')
     .requiredOption('-u, --user <user>', 'database user')
-    .option('-w, --password <password>', 'database password')
+    .option('-w, --password <password>', 'database password (prefer DBDESK_PASSWORD env or --password-stdin)')
+    .option('--password-stdin', 'read the password from stdin')
     .option('--ssl-mode <mode>', 'SSL mode: disable, allow, prefer, require, verify-ca, verify-full', 'disable')
-    .option('--format <format>', 'output format: json or table', 'json')
+    .option('--format <format>', 'output format: table (default) or json', 'table')
     .action(
       (opts: {
         name: string
@@ -65,48 +122,75 @@ export function registerConnectionCommands(program: Command): void {
         database: string
         user: string
         password?: string
+        passwordStdin?: boolean
         sslMode: string
         format: string
-      }) => {
-        try {
+      }) =>
+        runAction(opts, ['table', 'json'], async () => {
+          const port = parseInt(opts.port, 10)
+          if (Number.isNaN(port) || port <= 0 || port > 65535) {
+            throw new CliError('usage', `Invalid port "${opts.port}".`)
+          }
+          const password = await resolvePassword(opts)
           const profile = addConnection({
             name: opts.name,
             host: opts.host,
-            port: parseInt(opts.port, 10),
+            port,
             database: opts.database,
             user: opts.user,
-            password: opts.password,
+            password,
             sslMode: opts.sslMode
           })
-
-          console.log(
-            formatJson({
-              id: profile.id,
-              name: profile.name,
-              type: profile.type,
-              host: opts.host,
-              port: parseInt(opts.port, 10),
-              database: opts.database,
-              message: `Connection "${opts.name}" added successfully. Use "dbdesk connection list" to verify.`
-            })
-          )
-        } catch (err) {
-          console.error(String(err))
-          process.exit(1)
-        }
-      }
+          return {
+            id: profile.id,
+            name: profile.name,
+            type: profile.type,
+            message: `Connection "${opts.name}" added. Verify with "dbdesk connection test ${opts.name}".`
+          }
+        })
     )
 
   connCmd
     .command('remove <name-or-id>')
-    .description('Remove a database connection')
-    .action((nameOrId: string) => {
-      try {
+    .description('Remove a database connection (and its dashboards)')
+    .option('--format <format>', 'output format: table (default) or json', 'table')
+    .action((nameOrId: string, opts: { format: string }) =>
+      runAction(opts, ['table', 'json'], () => {
         removeConnection(nameOrId)
-        console.log(`Connection "${nameOrId}" removed.`)
-      } catch (err) {
-        console.error(String(err))
-        process.exit(1)
-      }
-    })
+        return { removed: nameOrId, message: `Connection "${nameOrId}" removed.` }
+      })
+    )
+
+  connCmd
+    .command('test [name-or-id]')
+    .description('Test connectivity for a connection')
+    .option('-c, --connection <name-or-id>', 'connection name or ID (or set DBDESK_CONNECTION)')
+    .option('--format <format>', 'output format: table (default) or json', 'table')
+    .action((nameOrId: string | undefined, opts: { connection?: string; format: string }) =>
+      runAction(opts, ['table', 'json'], async () => {
+        const ref = nameOrId ?? opts.connection ?? process.env.DBDESK_CONNECTION
+        if (!ref) {
+          throw new CliError(
+            'usage',
+            'No connection specified.',
+            'Pass a name/ID or set DBDESK_CONNECTION.'
+          )
+        }
+        const conn = resolveConnection(ref)
+        const adapter = await getAdapter(conn).catch((err: unknown) => {
+          throw new CliError(
+            'connection-failed',
+            `Could not connect to "${conn.name}": ${err instanceof Error ? err.message : String(err)}`,
+            'Check host/port/database/user and that the server accepts remote connections.'
+          )
+        })
+        const start = Date.now()
+        try {
+          await adapter.runQuery('SELECT 1')
+        } finally {
+          await disconnectAll().catch(() => {})
+        }
+        return { name: conn.name, reachable: true, latency_ms: Date.now() - start }
+      })
+    )
 }

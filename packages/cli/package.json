@@ -1,9 +1,24 @@
 {
-  "name": "@dbdesk/cli",
+  "name": "dbdesk",
   "version": "0.1.7",
-  "private": true,
+  "description": "DBDesk CLI — manage Postgres connections, run queries, and build dashboards from the terminal",
+  "license": "MIT",
+  "homepage": "https://github.com/zexahq/dbdesk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zexahq/dbdesk.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/zexahq/dbdesk/issues"
+  },
+  "keywords": ["postgres", "sql", "dashboard", "database", "cli"],
   "bin": {
     "dbdesk": "./dist/index.js"
+  },
+  "files": ["dist", "migrations", "skill"],
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
     "build": "tsc --noEmit && node esbuild.config.js",
@@ -11,15 +26,18 @@
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
-    "@dbdesk/db": "workspace:*",
-    "@dbdesk/shared": "workspace:*",
     "better-sqlite3": "^12.8.0",
     "commander": "^13.1.0",
+    "drizzle-orm": "^0.45.1",
+    "js-yaml": "^4.1.1",
     "pg": "^8.20.0"
   },
   "devDependencies": {
+    "@dbdesk/db": "workspace:*",
+    "@dbdesk/shared": "workspace:*",
     "@dbdesk/tsconfig": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.19.13",
     "@types/pg": "^8.11.15",
     "esbuild": "^0.25.12",

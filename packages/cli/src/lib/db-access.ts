@@ -2,6 +2,8 @@ import { initDatabase, getDb, closeDatabase, connectionProfiles, dashboards, sav
 import { dashboardConfigSchema } from '@dbdesk/shared/schemas'
 import type { ConnectionProfile, DashboardConfig, Widget, SavedQuery, SQLConnectionOptions } from '@dbdesk/shared/types'
 import { getDbPath } from './db-path'
+import { ensureMigrated } from './migrate'
+import { CliError } from './errors'
 
 let initialized = false
 
@@ -9,6 +11,7 @@ export function ensureDb(): void {
   if (initialized) return
   const dbPath = getDbPath()
   initDatabase(dbPath)
+  ensureMigrated()
   initialized = true
 }
 
@@ -67,19 +70,35 @@ export function getConnection(idOrName: string): ConnectionProfile | undefined {
 }
 
 export function resolveConnectionId(input: string): string {
-  const conn = getConnection(input)
-  if (!conn) {
-    throw new Error(`Connection "${input}" not found. Use "dbdesk connection list" to see available connections.`)
-  }
-  return conn.id
+  return resolveConnection(input).id
 }
 
 export function resolveConnection(input: string): ConnectionProfile {
   const conn = getConnection(input)
   if (!conn) {
-    throw new Error(`Connection "${input}" not found. Use "dbdesk connection list" to see available connections.`)
+    throw new CliError(
+      'not-found',
+      `Connection "${input}" not found.`,
+      'Use "dbdesk connection list" to see available connections.'
+    )
   }
   return conn
+}
+
+/**
+ * Connection reference from `--connection`, falling back to
+ * DBDESK_CONNECTION / DBDESK_CONNECTION so agents can set it once.
+ */
+export function connectionRefOrEnv(input: string | undefined): string {
+  const ref = input ?? process.env.DBDESK_CONNECTION ?? process.env.DBDESK_CONNECTION
+  if (!ref) {
+    throw new CliError(
+      'usage',
+      'No connection specified.',
+      'Pass --connection <name-or-id> or set DBDESK_CONNECTION.'
+    )
+  }
+  return ref
 }
 
 export function addConnection(opts: {
@@ -132,7 +151,7 @@ export function addConnection(opts: {
 export function removeConnection(idOrName: string): boolean {
   ensureDb()
   const conn = getConnection(idOrName)
-  if (!conn) throw new Error(`Connection "${idOrName}" not found.`)
+  if (!conn) throw new CliError('not-found', `Connection "${idOrName}" not found.`)
 
   const result = getDb()
     .delete(connectionProfiles)
@@ -299,4 +318,50 @@ export function listSavedQueries(connectionId: string): SavedQuery[] {
     name: r.name,
     content: r.content
   }))
+}
+
+export function getSavedQuery(connectionId: string, idOrName: string): SavedQuery | undefined {
+  ensureDb()
+  const rows = getDb()
+    .select()
+    .from(savedQueries)
+    .where(eq(savedQueries.connectionId, connectionId))
+    .all()
+
+  const row = rows.find((r: SavedQueryRow) => r.id === idOrName || r.name === idOrName)
+  if (!row) return undefined
+  return { id: row.id, name: row.name, content: row.content }
+}
+
+export function saveSavedQuery(connectionId: string, name: string, content: string): SavedQuery {
+  ensureDb()
+  const now = Date.now()
+  const existing = getSavedQuery(connectionId, name)
+
+  if (existing) {
+    getDb()
+      .update(savedQueries)
+      .set({ content, updatedAt: now })
+      .where(and(eq(savedQueries.connectionId, connectionId), eq(savedQueries.id, existing.id)))
+      .run()
+    return { id: existing.id, name, content }
+  }
+
+  const id = crypto.randomUUID()
+  getDb()
+    .insert(savedQueries)
+    .values({ connectionId, id, name, content, createdAt: now, updatedAt: now })
+    .run()
+  return { id, name, content }
+}
+
+export function removeSavedQuery(connectionId: string, idOrName: string): boolean {
+  ensureDb()
+  const existing = getSavedQuery(connectionId, idOrName)
+  if (!existing) return false
+  const result = getDb()
+    .delete(savedQueries)
+    .where(and(eq(savedQueries.connectionId, connectionId), eq(savedQueries.id, existing.id)))
+    .run()
+  return result.changes > 0
 }
