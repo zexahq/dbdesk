@@ -3,7 +3,11 @@ import { authManager } from '../lib/auth-manager'
 
 export function registerAuthHandlers() {
   typedHandle('auth:get-session', async () => {
-    const session = await authManager.getSession()
+    // Prefer cached session for fast startup, but fall back to a fresh server
+    // lookup when the Electron auth plugin has just handled a deep link and
+    // persisted its session before our local cache exists.
+    const cachedSession = authManager.getSession()
+    const session = cachedSession ?? (await authManager.getSessionFresh())
     console.log('[ipc] auth:get-session →', session ? `user=${session.user?.email}` : 'null')
     return session
   })

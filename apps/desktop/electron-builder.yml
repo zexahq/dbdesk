@@ -1,5 +1,5 @@
 appId: app.zexa.dbdesk
-productName: dbdesk
+productName: DBDesk
 directories:
   buildResources: build
 files:
@@ -42,7 +42,8 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
-  identity: null
+  identity: ''
+  hardenedRuntime: false
   target:
     - dmg
     - zip
