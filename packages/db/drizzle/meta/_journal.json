@@ -15,6 +15,13 @@
       "when": 1779341747945,
       "tag": "0001_swift_cobalt_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788674854161,
+      "tag": "0002_small_nova",
+      "breakpoints": true
     }
   ]
 }

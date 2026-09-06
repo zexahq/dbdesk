@@ -6,7 +6,6 @@ import icon from '../../resources/icon.png?asset'
 import './adapters'
 import { connectionManager } from './connectionManager'
 import { initDatabase, closeDatabase, runMigrations } from '@dbdesk/db'
-import { runDashboardYamlImportIfNeeded, runLegacyImportIfNeeded } from './db/legacy-import'
 import { registerAllIpcHandlers } from './ipc'
 import { authManager } from './lib/auth-manager'
 import { initDashboardStorage } from './dashboard-storage'
@@ -162,10 +161,6 @@ const getUserDataPath = (): string | undefined => {
   return undefined
 }
 
-// Capture the default userData path before overriding so the legacy import
-// can read JSON files from the old location when the path changes.
-const previousUserDataPath = app.getPath('userData')
-
 const userDataPath = getUserDataPath()
 if (userDataPath) {
   app.setPath('userData', userDataPath)
@@ -175,8 +170,6 @@ if (userDataPath) {
 // auth and IPC handlers can access local storage.
 initDatabase(join(app.getPath('userData'), 'dbdesk.sqlite'))
 runMigrations(join(__dirname, 'drizzle'))
-runLegacyImportIfNeeded(previousUserDataPath)
-runDashboardYamlImportIfNeeded(previousUserDataPath)
 
 authManager.setup(() => mainWindow)
 
