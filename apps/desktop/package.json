@@ -47,10 +47,10 @@
     "better-sqlite3": "^12.8.0",
     "bindings": "^1.5.0",
     "file-uri-to-path": "^2.0.0",
-    "monaco-sql-languages": "^0.15.1",
-    "pg": "^8.20.0",
-    "react-grid-layout": "^2.2.2",
-    "sql-formatter": "^15.8.0"
+    "monaco-sql-languages": "^1.0.0",
+    "pg": "^8.22.0",
+    "react-grid-layout": "^2.2.3",
+    "sql-formatter": "^15.8.1"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -80,9 +80,8 @@
     "@tanstack/react-query": "^5.94.5",
     "@tanstack/react-router": "^1.168.2",
     "@tanstack/react-table": "^8.21.3",
-    "@tanstack/router-plugin": "^1.167.3",
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "^25.2.2",
+    "@tanstack/router-plugin": "^1.168.18",
+    "@types/node": "^26.0.0",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

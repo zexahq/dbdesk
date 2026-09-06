@@ -9,6 +9,7 @@ import {
   persistDashboard,
   saveDashboard
 } from '../dashboard-storage'
+import { authManager } from '../lib/auth-manager'
 import { typedHandle } from './typed-handle'
 
 export function registerDashboardHandlers() {
@@ -21,8 +22,10 @@ export function registerDashboardHandlers() {
   })
 
   typedHandle('dashboards:save', async (dashboard) => {
+    const session = await authManager.getSession()
     const normalized: DashboardConfig = {
       ...(dashboard as DashboardConfig),
+      userId: (dashboard as DashboardConfig).userId ?? session?.user?.id,
       createdAt: dashboard.createdAt ? new Date(dashboard.createdAt) : new Date(),
       updatedAt: dashboard.updatedAt ? new Date(dashboard.updatedAt) : new Date()
     }
@@ -46,6 +49,12 @@ export function registerDashboardHandlers() {
   })
 
   typedHandle('dashboards:import', async ({ dashboards, overwrite }) => {
-    return importDashboards(dashboards as DashboardConfig[], overwrite ?? false)
+    const session = await authManager.getSession()
+    const userId = session?.user?.id
+    const stamped = (dashboards as DashboardConfig[]).map((dashboard) => ({
+      ...dashboard,
+      userId: dashboard.userId ?? userId
+    }))
+    return importDashboards(stamped, overwrite ?? false)
   })
 }
