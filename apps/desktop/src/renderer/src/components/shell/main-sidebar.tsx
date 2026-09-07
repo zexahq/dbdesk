@@ -1,7 +1,8 @@
 import { UserMenu } from '@renderer/features/auth/components/user-menu'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import type { SidebarViewMode } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
-import { DatabaseIcon, FileText, LayoutDashboard } from 'lucide-react'
+import { useSettingsStore } from '@renderer/features/settings/stores/settings-store'
+import { DatabaseIcon, FileText, LayoutDashboard, Settings } from 'lucide-react'
 import { cn } from '@renderer/shared/lib/utils'
 import { QuickPanel } from './quick-panel'
 import { Button } from '@renderer/components/ui/button'
@@ -50,6 +51,19 @@ export function MainSidebar() {
           )}
         </div>
         <div className="flex flex-col gap-2 items-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 cursor-pointer"
+                onClick={() => useSettingsStore.getState().openSettings()}
+              >
+                <Settings className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Settings</TooltipContent>
+          </Tooltip>
           <UserMenu />
         </div>
       </div>

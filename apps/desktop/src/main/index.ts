@@ -103,13 +103,6 @@ protocol.registerSchemesAsPrivileged([
 // Prevent the plugin from calling registerSchemesAsPrivileged again (would throw)
 protocol.registerSchemesAsPrivileged = () => {}
 
-// On Linux, if no OS keyring (gnome-keyring / kwallet) is available,
-// safeStorage.encryptString / decryptString will throw. Fall back to
-// in-memory plaintext encryption so @better-auth/electron still works.
-if (process.platform === 'linux' && !safeStorage.isEncryptionAvailable()) {
-  safeStorage.setUsePlainTextEncryption(true)
-}
-
 // Debug: log deep link events (these fire in the main process → visible in terminal)
 app.on('open-url', (_event, url) => {
   console.log('[deep-link] open-url received:', url)
@@ -184,6 +177,14 @@ authManager.setup(() => mainWindow)
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
+  // safeStorage must only be touched after app.ready: pre-ready
+  // isEncryptionAvailable() checks can create bogus "Chromium Safe Storage"
+  // keychain entries and spurious access prompts. On Linux without an OS
+  // keyring, fall back to in-memory plaintext so auth still works.
+  if (process.platform === 'linux' && !safeStorage.isEncryptionAvailable()) {
+    safeStorage.setUsePlainTextEncryption(true)
+  }
+
   // Initialize dashboard storage
   try {
     await initDashboardStorage()

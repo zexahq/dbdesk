@@ -16,6 +16,13 @@ export interface RunQueryOptions {
    */
   includeTotalRowCount?: boolean
   /**
+   * When true, the query runs inside a READ ONLY transaction on a dedicated
+   * client, so Postgres itself rejects any write (including writes hidden
+   * in CTE bodies or side-effecting functions that a parser could miss).
+   * Defaults to false.
+   */
+  readOnly?: boolean
+  /**
    * Opaque identifier supplied by the renderer so an in-flight query
    * can later be cancelled via `cancelQuery(queryId)`.
    */

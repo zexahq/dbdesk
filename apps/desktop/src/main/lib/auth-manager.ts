@@ -1,10 +1,30 @@
 import type { BrowserWindow } from 'electron'
+import { safeStorage } from 'electron'
 import { betterAuthClient } from './better-auth-client'
 import { getCachedSession, setCachedSession, clearCachedSession } from './session-cache'
 
 interface SessionResponse {
   session: { id: string; expiresAt: string; token: string; userId: string }
   user: { id: string; name: string; email: string; image: string | null }
+}
+
+/**
+ * Re-verify the cached session against the server at most once per day.
+ * This keeps startup free of keychain touches (safeStorage decrypts) in the
+ * common case, while still catching server-side revocation/expiry.
+ */
+const VERIFY_AFTER_MS = 24 * 60 * 60 * 1000
+
+/**
+ * True when OS-level encryption is unusable (e.g. Linux without a keyring).
+ * Never throws; safe to call any time after app.ready().
+ */
+function isEncryptionUsable(): boolean {
+  try {
+    return safeStorage.isEncryptionAvailable()
+  } catch {
+    return false
+  }
 }
 
 let _getWindow: (() => BrowserWindow | null) | null = null
@@ -49,7 +69,7 @@ export const authManager = {
         bridges: true,
         csp: true,
         getWindow,
-        scheme: true,
+        scheme: true
       })
       console.log('[auth-manager] setupMain completed successfully')
     } catch (err) {
@@ -63,14 +83,17 @@ export const authManager = {
 
   /**
    * Fast session fetch — returns cached session from local SQLite immediately.
-   * Triggers a background server verification that updates the cache.
+   * Only triggers a background server verification when the cache is older
+   * than VERIFY_AFTER_MS, so everyday launches never touch the OS keychain.
    * Use this for startup — the user sees the UI instantly.
    */
   getSession(): SessionResponse | null {
     const cached = getCachedSession()
     if (cached) {
-      // Fire background verification
-      void this.verifySessionInBackground()
+      if (isEncryptionUsable() && Date.now() - cached.cachedAt > VERIFY_AFTER_MS) {
+        // Stale cache: re-verify in the background (may touch keychain once).
+        void this.verifySessionInBackground()
+      }
       return {
         session: {
           id: cached.id,
@@ -95,6 +118,13 @@ export const authManager = {
    * Returns the session or null.
    */
   async getSessionFresh(): Promise<SessionResponse | null> {
+    // Storage unusable (e.g. Linux without an OS keyring) is not the same as
+    // logged out: serve the cache without clearing it, and skip a network
+    // round-trip that could never authenticate anyway.
+    if (!isEncryptionUsable()) {
+      console.log('[auth-manager] getSessionFresh: encryption unavailable, serving cache')
+      return this.getSession()
+    }
     try {
       const session = await betterAuthClient.getSession()
       const result = unwrapData<SessionResponse>(session)
@@ -158,5 +188,5 @@ export const authManager = {
     } finally {
       clearCachedSession()
     }
-  },
+  }
 }

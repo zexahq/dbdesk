@@ -23,6 +23,16 @@ asarUnpack:
   - '**/node_modules/better-sqlite3/**/*'
   - '**/node_modules/bindings/**/*'
   - '**/node_modules/file-uri-to-path/**/*'
+extraResources:
+  # Self-contained CLI package staged by `pnpm --filter=dbdesk run build`
+  # (dist + migrations + skill + package.json + prod node_modules).
+  # The desktop build scripts always build the CLI first.
+  - from: ../../packages/cli/bundled
+    to: cli
+    filter:
+      - '**/*'
+  - from: build/mac/dbdesk.sh
+    to: cli/dbdesk.sh
 # Remove unnecessary Electron files
 removePackageKeywords: true
 publish:
@@ -41,6 +51,7 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  include: build/win/installer.nsh
 mac:
   identity: ''
   hardenedRuntime: false
