@@ -1,9 +1,13 @@
 version: 2
 
+# Single bot for dbdesk: Dependabot handles BOTH routine version updates and
+# security patches across npm and GitHub Actions.
+#
+# "dbdesk-bot" branding: the PR author account is always `dependabot[bot]`
+# (managed by GitHub, not renameable). The name is surfaced through the commit
+# prefix and PR labels below, which is as far as Dependabot customization goes.
 updates:
-  # ----------------------------
-  # JS / TS dependencies (pnpm)
-  # ----------------------------
+  # ---- JS/TS dependencies (pnpm workspace) ----------------------------------
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -11,71 +15,78 @@ updates:
       day: "sunday"
       time: "06:00"
       timezone: "Asia/Kolkata"
-
-    # Limit how noisy Dependabot gets
-    open-pull-requests-limit: 5
-
-    # Keep PRs clean & readable
+    open-pull-requests-limit: 10
     commit-message:
-      prefix: "deps"
+      prefix: "dbdesk-bot"
       include: "scope"
-
-    # Group related updates together
+    labels:
+      - "dependencies"
+      - "dbdesk-bot"
+    rebase-strategy: "auto"
     groups:
       electron:
         patterns:
           - "electron"
           - "electron-*"
           - "@electron-toolkit/*"
-
       radix-ui:
         patterns:
           - "@radix-ui/*"
-
       tanstack:
         patterns:
           - "@tanstack/*"
-
       monaco:
         patterns:
           - "monaco-*"
           - "@monaco-editor/*"
-
       build-tooling:
         patterns:
           - "vite"
           - "@vitejs/*"
           - "electron-vite"
+          - "electron-builder"
           - "typescript"
           - "eslint*"
           - "prettier*"
           - "tailwindcss"
           - "@tailwindcss/*"
-
+          - "turbo"
       react:
         patterns:
           - "react"
           - "react-dom"
           - "@types/react*"
-
-    # Be conservative where breakage is common
+      # Bundle all security patches into a single PR.
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
     ignore:
-      # Electron major bumps often require manual testing
+      # Disruptive tooling majors — bump manually when ready.
       - dependency-name: "electron"
         update-types: ["version-update:semver-major"]
-
-      # Tooling majors can be disruptive
       - dependency-name: "vite"
         update-types: ["version-update:semver-major"]
-
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
-    # Labels help triage PRs faster
+  # ---- GitHub Actions used in workflows -------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "dbdesk-bot"
+      include: "scope"
     labels:
       - "dependencies"
-      - "pnpm"
-      - "electron"
-
-    # Rebase automatically to avoid stale PRs
-    rebase-strategy: "auto"
+      - "github-actions"
+      - "dbdesk-bot"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
