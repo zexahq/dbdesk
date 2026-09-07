@@ -168,6 +168,7 @@ const isoDateOrDate = z.union([z.string(), z.date()])
 export const dashboardConfigSchema = z.object({
   dashboardId: z.string().min(1),
   connectionId: z.string().min(1),
+  userId: z.string().optional(),
   name: z.string().min(1),
   description: z.string().optional(),
   layout: dashboardLayoutSchema,

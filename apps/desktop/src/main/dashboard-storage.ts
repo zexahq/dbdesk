@@ -5,7 +5,7 @@
  * Layout and widgets are stored as JSON columns in the `dashboards` table.
  */
 
-import { and, eq, getDb, dashboards } from '@dbdesk/db'
+import { and, eq, isNull, getDb, dashboards } from '@dbdesk/db'
 import { dashboardConfigSchema } from '@dbdesk/shared/schemas'
 import type { DashboardConfig } from '@common/types'
 
@@ -13,21 +13,42 @@ const STORAGE_VERSION = '1.0.0'
 
 type DashboardRow = typeof dashboards.$inferSelect
 
+// The full JSON document persisted in the `config_json` column, kept in
+// tandem with the decomposed columns.
+const buildConfigJson = (dashboard: DashboardConfig, createdAt: Date, updatedAt: Date): string =>
+  JSON.stringify({
+    dashboardId: dashboard.dashboardId,
+    connectionId: dashboard.connectionId,
+    userId: dashboard.userId ?? undefined,
+    name: dashboard.name,
+    description: dashboard.description ?? undefined,
+    layout: dashboard.layout,
+    widgets: dashboard.widgets,
+    createdAt: createdAt.toISOString(),
+    updatedAt: updatedAt.toISOString()
+  })
+
 const rowToDashboard = (row: DashboardRow): DashboardConfig => {
+  // Prefer the full JSON document for content; columns stay authoritative for
+  // identity/linking (dashboardId, connectionId, userId).
+  const fromJson = row.configJson ? (JSON.parse(row.configJson) as Partial<DashboardConfig>) : null
+
   const parsed = dashboardConfigSchema.parse({
     dashboardId: row.dashboardId,
     connectionId: row.connectionId,
-    name: row.name,
-    description: row.description ?? undefined,
-    layout: JSON.parse(row.layoutJson),
-    widgets: JSON.parse(row.widgetsJson),
-    createdAt: new Date(row.createdAt).toISOString(),
-    updatedAt: new Date(row.updatedAt).toISOString()
+    userId: row.userId ?? fromJson?.userId ?? undefined,
+    name: fromJson?.name ?? row.name,
+    description: fromJson?.description ?? row.description ?? undefined,
+    layout: fromJson?.layout ?? JSON.parse(row.layoutJson),
+    widgets: fromJson?.widgets ?? JSON.parse(row.widgetsJson),
+    createdAt: fromJson?.createdAt ?? new Date(row.createdAt).toISOString(),
+    updatedAt: fromJson?.updatedAt ?? new Date(row.updatedAt).toISOString()
   })
 
   return {
     dashboardId: parsed.dashboardId,
     connectionId: parsed.connectionId,
+    userId: parsed.userId,
     name: parsed.name,
     description: parsed.description,
     layout: parsed.layout,
@@ -48,10 +69,24 @@ const toDate = (value: Date | string | undefined, fallback: Date): Date => {
 
 /**
  * Initialize the storage system. The SQLite database is initialized in the
- * main bootstrap; this is kept for API compatibility with previous callers.
+ * main bootstrap; this backfills `config_json` for rows persisted before the
+ * column existed so the full JSON stays in tandem with the columns.
  */
 export const initDashboardStorage = async (): Promise<void> => {
-  // No-op: SQLite is initialized via initDatabase() before this is called.
+  const legacyRows = getDb().select().from(dashboards).where(isNull(dashboards.configJson)).all()
+
+  for (const row of legacyRows) {
+    try {
+      const dashboard = rowToDashboard(row)
+      getDb()
+        .update(dashboards)
+        .set({ configJson: buildConfigJson(dashboard, dashboard.createdAt, dashboard.updatedAt) })
+        .where(eq(dashboards.dashboardId, row.dashboardId))
+        .run()
+    } catch (error) {
+      console.error(`Failed to backfill config_json for dashboard ${row.dashboardId}:`, error)
+    }
+  }
 }
 
 /**
@@ -103,6 +138,10 @@ export const getDashboard = async (
  * Save a dashboard (create or update).
  */
 export const saveDashboard = async (dashboard: DashboardConfig): Promise<DashboardConfig> => {
+  if (!dashboard.userId) {
+    throw new Error('Cannot save a dashboard without an authenticated user')
+  }
+  const userId = dashboard.userId
   const now = new Date()
   const existing = getDb()
     .select({ createdAt: dashboards.createdAt })
@@ -118,15 +157,19 @@ export const saveDashboard = async (dashboard: DashboardConfig): Promise<Dashboa
     updatedAt: now
   }
 
+  const configJson = buildConfigJson(updatedDashboard, createdAt, now)
+
   getDb()
     .insert(dashboards)
     .values({
       dashboardId: updatedDashboard.dashboardId,
       connectionId: updatedDashboard.connectionId,
+      userId,
       name: updatedDashboard.name,
       description: updatedDashboard.description ?? null,
       layoutJson: JSON.stringify(updatedDashboard.layout),
       widgetsJson: JSON.stringify(updatedDashboard.widgets),
+      configJson,
       createdAt: createdAt.getTime(),
       updatedAt: now.getTime()
     })
@@ -134,10 +177,12 @@ export const saveDashboard = async (dashboard: DashboardConfig): Promise<Dashboa
       target: dashboards.dashboardId,
       set: {
         connectionId: updatedDashboard.connectionId,
+        userId,
         name: updatedDashboard.name,
         description: updatedDashboard.description ?? null,
         layoutJson: JSON.stringify(updatedDashboard.layout),
         widgetsJson: JSON.stringify(updatedDashboard.widgets),
+        configJson,
         updatedAt: now.getTime()
       }
     })
@@ -215,6 +260,11 @@ export const importDashboards = async (
   const now = new Date()
 
   for (const dashboard of imports) {
+    const userId = dashboard.userId
+    if (!userId) {
+      skipped++
+      continue
+    }
     const existing = getDb()
       .select({ id: dashboards.dashboardId })
       .from(dashboards)
@@ -227,16 +277,19 @@ export const importDashboards = async (
     }
 
     const createdAt = toDate(dashboard.createdAt, now)
+    const configJson = buildConfigJson(dashboard, createdAt, now)
 
     getDb()
       .insert(dashboards)
       .values({
         dashboardId: dashboard.dashboardId,
         connectionId: dashboard.connectionId,
+        userId,
         name: dashboard.name,
         description: dashboard.description ?? null,
         layoutJson: JSON.stringify(dashboard.layout),
         widgetsJson: JSON.stringify(dashboard.widgets),
+        configJson,
         createdAt: createdAt.getTime(),
         updatedAt: now.getTime()
       })
@@ -244,10 +297,12 @@ export const importDashboards = async (
         target: dashboards.dashboardId,
         set: {
           connectionId: dashboard.connectionId,
+          userId,
           name: dashboard.name,
           description: dashboard.description ?? null,
           layoutJson: JSON.stringify(dashboard.layout),
           widgetsJson: JSON.stringify(dashboard.widgets),
+          configJson,
           updatedAt: now.getTime()
         }
       })

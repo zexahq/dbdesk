@@ -92,9 +92,6 @@ importers:
       file-uri-to-path:
         specifier: ^2.0.0
         version: 2.0.0
-      js-yaml:
-        specifier: ^4.1.1
-        version: 4.1.1
       monaco-sql-languages:
         specifier: ^0.15.1
         version: 0.15.1(antlr4ng-cli@1.0.7)(monaco-editor@0.55.1)
@@ -190,11 +187,8 @@ importers:
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tanstack/router-plugin':
-        specifier: ^1.167.3
-        version: 1.167.3(@tanstack/react-router@1.168.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0))
-      '@types/js-yaml':
-        specifier: ^4.0.9
-        version: 4.0.9
+        specifier: ^1.168.18
+        version: 1.168.18(@tanstack/react-router@1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4))
       '@types/node':
         specifier: ^25.2.2
         version: 25.3.2
@@ -3000,9 +2994,6 @@ packages:
 
   '@types/http-cache-semantics@4.2.0':
     resolution: {integrity: sha512-L3LgimLHXtGkWikKnsPg0/VFx9OGZaC+eN1u4r+OB1XRqH3meBIAVC2zr1WdMH+RHmnRkqliQAOHNJ/E0j/e0Q==}
-
-  '@types/js-yaml@4.0.9':
-    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -9929,8 +9920,6 @@ snapshots:
       '@types/unist': 3.0.3
 
   '@types/http-cache-semantics@4.2.0': {}
-
-  '@types/js-yaml@4.0.9': {}
 
   '@types/json-schema@7.0.15': {}
 
