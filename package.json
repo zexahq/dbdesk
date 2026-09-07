@@ -16,9 +16,9 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "prettier": "^3.8.1",
+    "prettier": "^3.9.6",
     "prettier-plugin-organize-imports": "^4.3.0",
-    "turbo": "^2.8.11",
+    "turbo": "^2.10.12",
     "typescript": "^5.9.2"
   },
   "pnpm": {
