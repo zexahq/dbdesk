@@ -52,8 +52,8 @@ Tip: `export DBDESK_CONNECTION=prod` once to skip `--connection` on every comman
 Run any command with `--help` for flags. `dbdesk <cmd> --format json` returns a stable envelope (data on stdout, diagnostics on stderr). Document-output commands print raw text by default: `skill print` and `dashboard export` (both accept `--format json` for the envelope instead).
 
 ```json
-{ "ok": true, "data": ..., "meta": { "command": "...", "version": "...", "duration_ms": 12 } }
-{ "ok": false, "error": { "code": "...", "message": "...", "hint": "..." }, "meta": {...} }
+{ "ok": true, "data": [{ "name": "prod", "type": "postgres" }], "meta": { "command": "list", "version": "0.1.11", "duration_ms": 12 } }
+{ "ok": false, "error": { "code": "not-found", "message": "Connection \"x\" not found.", "hint": "Use \"dbdesk connection list\" to see available connections." }, "meta": { "command": "show", "version": "0.1.11", "duration_ms": 8 } }
 ```
 
 Exit codes: `0` ok · `2` usage/validation · `3` connection failed · `4` not found · `5` db error.

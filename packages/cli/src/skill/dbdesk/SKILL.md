@@ -35,9 +35,9 @@ Always pass `--format json`. Every command returns the same envelope
 and `dashboard export` in yaml mode; both accept `--format json`):
 
 ```json
-{ "ok": true, "data": ..., "meta": { "command": "...", "version": "...", "duration_ms": 12 } }
+{ "ok": true, "data": [{ "name": "prod", "type": "postgres" }], "meta": { "command": "list", "version": "0.1.11", "duration_ms": 12 } }
 // or
-{ "ok": false, "error": { "code": "...", "message": "...", "hint": "..." }, "meta": {...} }
+{ "ok": false, "error": { "code": "not-found", "message": "Connection \"x\" not found.", "hint": "Use \"dbdesk connection list\" to see available connections." }, "meta": { "command": "show", "version": "0.1.11", "duration_ms": 8 } }
 ```
 
 Check `ok` first. Exit codes: 0 ok, 2 usage/validation, 3 connection failed, 4 not found, 5 db error.

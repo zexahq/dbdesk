@@ -68,7 +68,7 @@ function buildReport(): { healthy: boolean; checks: Check[] } {
     checks.push({
       check: 'data-file',
       status: readable ? 'ok' : 'warn',
-      detail: readable ? dbPath : `${dbPath} (not created yet — runs on first command)`
+      detail: readable ? 'present' : 'not created yet — runs on first command'
     })
   } catch (err) {
     checks.push({

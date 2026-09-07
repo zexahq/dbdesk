@@ -1,11 +1,9 @@
-import { getDbPath } from './db-path'
 import { listConnections, listDashboards } from './db-access'
 import { cliVersion } from './paths'
 import { writeData, type OutputFormat } from './output'
 
 interface StatusSummary {
   version: string
-  dbPath: string
   connections: { name: string; dashboards: number }[]
 }
 
@@ -13,7 +11,6 @@ function buildSummary(): StatusSummary {
   const connections = listConnections()
   return {
     version: cliVersion(),
-    dbPath: getDbPath(),
     connections: connections.map((c) => ({
       name: c.name,
       dashboards: listDashboards(c.id).length
@@ -39,7 +36,6 @@ export async function printStatusSummary(format: OutputFormat = 'table'): Promis
     console.log('Get started: dbdesk connection add --help')
     return
   }
-  console.log(`Data: ${summary.dbPath}`)
 
   if (summary.connections.length === 0) {
     console.log('Connections: (none yet)')
