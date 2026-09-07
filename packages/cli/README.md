@@ -47,7 +47,7 @@ Tip: `export DBDESK_CONNECTION=prod` once to skip `--connection` on every comman
 | `skill print\|status\|install`                       | Agent guide (see below)                                                                   |
 | `init`                                               | Write an `AGENTS.md` snippet for the current project                                      |
 | `open`                                               | Open the DBDesk desktop app                                                               |
-| `status` (bare `dbdesk`)                             | Version, data path, connection summary                                                    |
+| `status` (bare `dbdesk`)                             | Version and connection summary (data path intentionally omitted)                          |
 
 Run any command with `--help` for flags. `dbdesk <cmd> --format json` returns a stable envelope (data on stdout, diagnostics on stderr). Document-output commands print raw text by default: `skill print` and `dashboard export` (both accept `--format json` for the envelope instead).
 
