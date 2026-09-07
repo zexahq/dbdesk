@@ -6,7 +6,7 @@
 
 import { AxisBottom, AxisLeft } from '@visx/axis'
 import { Brush } from '@visx/brush'
-import type { BrushProps } from '@visx/brush'
+import type BaseBrush from '@visx/brush/lib/BaseBrush'
 import { Grid } from '@visx/grid'
 import { Group } from '@visx/group'
 import { PatternLines } from '@visx/pattern'
@@ -67,8 +67,7 @@ function BarChart({
   chartId
 }: BarChartProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null)
-  type BaseBrushRef = NonNullable<BrushProps['innerRef']>['current']
-  const brushRef = useRef<BaseBrushRef>(null)
+  const brushRef = useRef<BaseBrush | null>(null)
   const pendingBrushRef = useRef<{ startIndex: number; endIndex: number } | null>(null)
 
   // Apply zoom filtering if provided
@@ -104,7 +103,9 @@ function BarChart({
     if (displayData.length <= maxXLabels) {
       return displayData.map((d) => d.label)
     }
-    return displayData.filter((_, i) => i % xLabelStep === 0).map((d) => d.label)
+    return displayData
+      .filter((_, i) => i % xLabelStep === 0)
+      .map((d) => d.label)
   }, [displayData, maxXLabels, xLabelStep])
 
   // Get filtered tick values for y-axis (category labels in horizontal charts, or yValueLabels)
@@ -122,7 +123,9 @@ function BarChart({
       if (yValueLabels.length <= maxYLabels) {
         return yValueLabels.map((_, i) => i)
       }
-      return yValueLabels.map((_, i) => i).filter((i) => i % yLabelStep === 0)
+      return yValueLabels
+        .map((_, i) => i)
+        .filter((i) => i % yLabelStep === 0)
     }
     return undefined
   }, [displayData, isHorizontal, maxYLabels, yValueLabels, yLabelStep])
@@ -283,20 +286,12 @@ function BarChart({
               textAnchor: 'end' as const,
               dy: '0.33em'
             }}
-            tickValues={
-              isHorizontal
-                ? (filteredYTickValues as string[])
-                : yValueLabels
-                  ? (filteredYTickValues as number[])
-                  : undefined
-            }
+            tickValues={isHorizontal ? filteredYTickValues as string[] : (yValueLabels ? filteredYTickValues as number[] : undefined)}
             numTicks={!isHorizontal && !yValueLabels ? 5 : undefined}
             tickFormat={
               isHorizontal
                 ? (v) => truncateLabel(String(v))
-                : yValueLabels
-                  ? (v) => truncateLabel(yValueLabels[v as number] ?? '')
-                  : undefined
+                : (yValueLabels ? (v) => truncateLabel(yValueLabels[v as number] ?? '') : undefined)
             }
           />
           <AxisBottom
@@ -376,7 +371,9 @@ function BarChart({
           )}
         </Group>
       </svg>
-      {tooltip && <ChartTooltip visible x={tooltip.x} y={tooltip.y} content={tooltip.content} />}
+      {tooltip && (
+        <ChartTooltip visible x={tooltip.x} y={tooltip.y} content={tooltip.content} />
+      )}
     </div>
   )
 }
@@ -480,13 +477,7 @@ export function VisxBarChartWidget({
 
             return (
               <div className={`h-full w-full ${scrollClass}`}>
-                <div
-                  style={{
-                    width: containerWidth,
-                    height: containerHeight,
-                    minHeight: needsVerticalScroll ? containerHeight : '100%'
-                  }}
-                >
+                <div style={{ width: containerWidth, height: containerHeight, minHeight: needsVerticalScroll ? containerHeight : '100%' }}>
                   <BarChart
                     data={chartResult.data}
                     width={containerWidth}

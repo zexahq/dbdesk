@@ -20,6 +20,7 @@ autoUpdater.autoDownload = false
 autoUpdater.autoInstallOnAppQuit = true
 
 let updateAvailable = false
+let isDownloading = false
 
 function notifyAllWindows(channel: string, payload: unknown) {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -36,7 +37,7 @@ export function initAutoUpdater(): void {
     updateAvailable = true
     notifyAllWindows('update:available', {
       version: info.version,
-      releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined,
+      releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined
     })
   })
 
@@ -49,10 +50,12 @@ export function initAutoUpdater(): void {
   })
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
+    isDownloading = false
     notifyAllWindows('update:downloaded', { version: info.version })
   })
 
   autoUpdater.on('error', (err) => {
+    isDownloading = false
     console.error('[auto-updater]', err)
     notifyAllWindows('update:error', { message: err.message })
   })
@@ -67,13 +70,14 @@ export function initAutoUpdater(): void {
     () => {
       void autoUpdater.checkForUpdates().catch(() => {})
     },
-    4 * 60 * 60 * 1000,
+    4 * 60 * 60 * 1000
   )
 }
 
 /** Trigger manual download of a pending update. */
 export function downloadUpdate(): void {
-  if (updateAvailable) {
+  if (updateAvailable && !isDownloading) {
+    isDownloading = true
     void autoUpdater.downloadUpdate().catch(() => {})
   }
 }

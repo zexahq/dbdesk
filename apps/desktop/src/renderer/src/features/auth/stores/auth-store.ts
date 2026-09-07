@@ -13,15 +13,19 @@ export interface AuthState {
   token: string | null
   isLoading: boolean
   isAuthenticated: boolean
+  /** Set to true when the background session verification finds the session expired.
+   *  The user stays on the current page but sees a sign-in overlay. */
+  sessionExpired: boolean
 
   setUser: (user: AuthUser | null) => void
   setToken: (token: string | null) => void
   setIsLoading: (loading: boolean) => void
+  setSessionExpired: (expired: boolean) => void
   logout: () => void
 
   /**
    * Fetch session + token from the main process and update the store.
-   * Called on startup and whenever the main process signals a change.
+   * Returns instantly from the local cache — no network call on startup.
    */
   refreshSession: () => Promise<void>
 }
@@ -31,6 +35,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   isLoading: true,
   isAuthenticated: false,
+  sessionExpired: false,
 
   setUser: (user) =>
     set({
@@ -45,11 +50,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setIsLoading: (isLoading) => set({ isLoading }),
 
+  setSessionExpired: (sessionExpired) => set({ sessionExpired }),
+
   logout: () =>
     set({
       user: null,
       token: null,
-      isAuthenticated: false
+      isAuthenticated: false,
+      sessionExpired: false
     }),
 
   refreshSession: async () => {
@@ -64,20 +72,20 @@ export const useAuthStore = create<AuthState>((set) => ({
           user: session.user,
           token: tokenResult.token,
           isAuthenticated: true,
-          isLoading: false
+          isLoading: false,
+          sessionExpired: false
         })
       } else {
-        // Only clear auth state if we weren't already authenticated.
-        // After deep-link auth the token store write may still be in-flight,
-        // so getSession() can transiently return null. Preserve the user that
-        // was set directly by onAuthenticated; only logout() should clear it.
+        // No cached session — this is the first-time / logged-out flow.
+        // Don't clear auth state if already authenticated (deep-link race).
         const current = useAuthStore.getState()
         if (!current.isAuthenticated) {
           set({
             user: null,
             token: null,
             isAuthenticated: false,
-            isLoading: false
+            isLoading: false,
+            sessionExpired: false
           })
         } else {
           set({ isLoading: false })

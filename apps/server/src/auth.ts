@@ -13,6 +13,10 @@ export const auth = betterAuth({
     schema,
   }),
   plugins: [bearer(), electron()],
+  session: {
+    expiresIn: 60 * 60 * 24 * 365, // 1 year
+    updateAge: 60 * 60 * 24 * 30,  // refresh after 30 days of inactivity
+  },
   emailAndPassword: {
     enabled: true,
   },

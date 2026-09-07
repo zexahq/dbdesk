@@ -35,11 +35,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "^4.4.3"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@dbdesk/tsconfig": "workspace:*",
-    "@types/node": "^26.0.0",
-    "typescript": "^5.9.3"
+    "@types/node": "^22.19.13",
+    "typescript": "^5.9.2"
   }
 }
