@@ -24,7 +24,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@better-auth/electron": "^1.6.20",
+    "@better-auth/electron": "^1.7.3",
     "@dbdesk/api-client": "workspace:*",
     "@dbdesk/db": "workspace:*",
     "@dbdesk/shared": "workspace:*",

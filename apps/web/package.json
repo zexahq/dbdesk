@@ -11,7 +11,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@better-auth/electron": "^1.5.4",
+    "@better-auth/electron": "^1.7.3",
     "@octokit/rest": "^21.0.0",
     "better-auth": "^1.5.4",
     "clsx": "^2.1.1",
