@@ -48,7 +48,7 @@ const pendingIntrospections = new Map<string, Promise<TableInfo>>()
  * other consumers, such as the schema diagram.
  */
 export function getTableIntrospection(connectionId: string, schema: string, table: string) {
-  const key = `${connectionId}:${schema}:${table}`
+  const key = JSON.stringify([connectionId, schema, table])
   const pending = pendingIntrospections.get(key)
   if (pending) return pending
 

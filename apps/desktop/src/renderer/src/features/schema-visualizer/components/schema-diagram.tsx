@@ -7,10 +7,10 @@ import {
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { Input } from '@renderer/components/ui/input'
+import { getTableIntrospection } from '@renderer/features/sql-workspace/queries/schema'
+import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { mapWithConcurrency } from '@renderer/shared/lib/async'
 import { toast } from '@renderer/shared/lib/toast'
-import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
-import { getTableIntrospection } from '@renderer/features/sql-workspace/queries/schema'
 import {
   Background,
   BackgroundVariant,
