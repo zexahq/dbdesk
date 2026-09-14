@@ -12,7 +12,7 @@ Rules for agents:
 - Always pass \`--format json\` and check the \`ok\` field. Errors use \`{ ok: false, error: { code, message, hint } }\`.
 - Never guess schema: start with \`dbdesk schema tree --connection <name>\`, then \`dbdesk schema info --connection <name> --schema public --table <table>\`.
 - Only SELECT/SHOW via the CLI. Never INSERT/UPDATE/DELETE/DROP.
-- Dashboards are code: \`dbdesk dashboard export <id>\` to read, \`dbdesk dashboard apply -f dashboard.yaml\` to write. Validate first with \`dbdesk dashboard validate -f dashboard.yaml\`.
+- Dashboards are code: \`dbdesk dashboard export <id>\` to read, \`dbdesk dashboard apply -f dashboard.json\` to write. Validate first with \`dbdesk dashboard validate -f dashboard.json\`.
 - Full guide: \`dbdesk skill print\`.
 
 Quickstart:

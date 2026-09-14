@@ -11,7 +11,7 @@ import {
   deleteDashboard,
   saveDashboard
 } from '../lib/db-access'
-import { runAction, writeData, reportError, warn } from '../lib/output'
+import { runAction, reportError } from '../lib/output'
 import { CliError } from '../lib/errors'
 import {
   WIDGET_TYPES,
@@ -19,7 +19,7 @@ import {
   resolveWidgetPosition,
   buildWidgets,
   dashboardToDoc
-} from '../lib/dashboard-file'
+} from '../lib/dashboard-doc'
 import type { Command } from 'commander'
 import { isReadOnlyQuery } from '@dbdesk/shared/adapters'
 
@@ -161,24 +161,14 @@ export function registerDashboardCommands(program: Command): void {
 
   dashCmd
     .command('export <dashboard-id>')
-    .description('Export a dashboard to a declarative YAML file (pairs with apply)')
-    .option('--format <format>', 'output format: yaml (default) or json', 'yaml')
-    .action(async (dashboardId: string, opts: { format: string }) => {
-      const raw = typeof opts.format === 'string' ? opts.format.toLowerCase() : 'yaml'
-      const format = raw === 'json' ? 'json' : 'yaml'
-      if (raw !== 'yaml' && raw !== 'json') {
-        warn(`Unknown format "${opts.format}". Valid formats: yaml, json. Using yaml.`)
-      }
+    .description('Export a dashboard to a declarative JSON file (pairs with apply)')
+    .action(async (dashboardId: string) => {
       try {
         const dashboard = requireDashboard(dashboardId)
         const conn = getConnection(dashboard.connectionId)
-        if (format === 'json') {
-          writeData(dashboardSummary(dashboard), 'json')
-        } else {
-          console.log(dashboardToDoc(dashboard, conn?.name ?? dashboard.connectionId))
-        }
+        console.log(dashboardToDoc(dashboard, conn?.name ?? dashboard.connectionId))
       } catch (err) {
-        process.exit(reportError(err, format === 'json' ? 'json' : 'table'))
+        process.exit(reportError(err, 'table'))
       }
     })
 
@@ -193,7 +183,7 @@ export function registerDashboardCommands(program: Command): void {
   dashCmd
     .command('validate')
     .description('Validate a dashboard file without applying it')
-    .requiredOption('-f, --file <path>', 'dashboard YAML file ("-" reads stdin)')
+    .requiredOption('-f, --file <path>', 'dashboard JSON file ("-" reads stdin)')
     .option('--format <format>', 'output format: table (default) or json', 'table')
     .action((opts: { file: string; format: string }) =>
       runAction(opts, ['table', 'json'], () => {
@@ -223,8 +213,8 @@ export function registerDashboardCommands(program: Command): void {
 
   dashCmd
     .command('apply')
-    .description('Create or update a dashboard from a declarative YAML file (see export)')
-    .requiredOption('-f, --file <path>', 'dashboard YAML file ("-" reads stdin)')
+    .description('Create or update a dashboard from a declarative JSON file (see export)')
+    .requiredOption('-f, --file <path>', 'dashboard JSON file ("-" reads stdin)')
     .option('-d, --dashboard <dashboard-id>', 'update this dashboard instead of matching by name')
     .option('--dry-run', 'print the plan without saving anything')
     .option('--format <format>', 'output format: table (default) or json', 'table')

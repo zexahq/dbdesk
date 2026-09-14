@@ -34,7 +34,7 @@ Examples:
   $ dbdesk schema tree --connection prod
   $ dbdesk table rows --connection prod --schema public --table users
   $ dbdesk query "SELECT * FROM users LIMIT 10" --connection prod
-  $ dbdesk dashboard apply -f dashboard.yaml
+  $ dbdesk dashboard apply -f dashboard.json
   $ dbdesk doctor
 
 Tip: set DBDESK_CONNECTION once to skip --connection on every command.

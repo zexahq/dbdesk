@@ -1,5 +1,10 @@
-import yaml from 'js-yaml'
-import type { DashboardConfig, Widget, WidgetPosition, WidgetSettings, WidgetType } from '@dbdesk/shared/types'
+import type {
+  DashboardConfig,
+  Widget,
+  WidgetPosition,
+  WidgetSettings,
+  WidgetType
+} from '@dbdesk/shared/types'
 import { isReadOnlyQuery } from '@dbdesk/shared/adapters'
 import { warn } from './output'
 
@@ -14,7 +19,14 @@ export const WIDGET_TYPES: WidgetType[] = [
   'savedQueries'
 ]
 
-const QUERY_WIDGETS: WidgetType[] = ['kpi', 'table', 'barChart', 'lineChart', 'pieChart', 'scatterChart']
+const QUERY_WIDGETS: WidgetType[] = [
+  'kpi',
+  'table',
+  'barChart',
+  'lineChart',
+  'pieChart',
+  'scatterChart'
+]
 
 const RECOMMENDED_SETTINGS: Partial<Record<WidgetType, string[]>> = {
   kpi: ['valueField'],
@@ -37,7 +49,10 @@ export interface DashboardDoc {
     title: string
     query?: string
     queryId?: string
-    position?: [number, number, number, number] | { x: number; y: number; w: number; h: number } | string
+    position?:
+      | [number, number, number, number]
+      | { x: number; y: number; w: number; h: number }
+      | string
     settings?: Record<string, unknown>
   }>
 }
@@ -45,20 +60,22 @@ export interface DashboardDoc {
 export function parseDashboardDoc(raw: string): DashboardDoc {
   let parsed: unknown
   try {
-    parsed = yaml.load(raw)
+    parsed = JSON.parse(raw)
   } catch (err) {
-    throw new Error(`Invalid YAML: ${err instanceof Error ? err.message : String(err)}`)
+    throw new Error(`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`)
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Dashboard file must be a YAML mapping with "dashboard" and "widgets" keys.')
+    throw new Error('Dashboard file must be a JSON object with "dashboard" and "widgets" keys.')
   }
   const doc = parsed as Record<string, unknown>
   if (doc.version !== undefined && doc.version !== 1) {
-    throw new Error(`Unsupported dashboard file version "${String(doc.version)}". Expected version 1.`)
+    throw new Error(
+      `Unsupported dashboard file version "${String(doc.version)}". Expected version 1.`
+    )
   }
   const meta = doc.dashboard as Record<string, unknown> | undefined
   if (!meta || typeof meta !== 'object') {
-    throw new Error('Dashboard file is missing the "dashboard" mapping.')
+    throw new Error('Dashboard file is missing the "dashboard" object.')
   }
   if (typeof meta.name !== 'string' || meta.name.trim() === '') {
     throw new Error('Dashboard file: "dashboard.name" is required.')
@@ -67,7 +84,7 @@ export function parseDashboardDoc(raw: string): DashboardDoc {
     throw new Error('Dashboard file: "dashboard.connection" (name or ID) is required.')
   }
   if (!Array.isArray(doc.widgets)) {
-    throw new Error('Dashboard file: "widgets" must be a list (can be empty: widgets: []).')
+    throw new Error('Dashboard file: "widgets" must be an array (can be empty: "widgets": []).')
   }
   return {
     version: 1,
@@ -101,14 +118,22 @@ export function resolveWidgetPosition(raw: unknown): WidgetPosition {
   if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n) || n < 0)) {
     throw new Error('Widget position must be "x,y,w,h" with non-negative numbers (e.g. "0,0,6,4").')
   }
-  return { x: parts[0] as number, y: parts[1] as number, w: parts[2] as number, h: parts[3] as number }
+  return {
+    x: parts[0] as number,
+    y: parts[1] as number,
+    w: parts[2] as number,
+    h: parts[3] as number
+  }
 }
 
 /**
  * Validate doc widgets, returning errors (fatal) and collecting warnings.
  * Pure apart from warn() — safe for --dry-run.
  */
-export function buildWidgets(rawWidgets: DashboardDoc['widgets']): { widgets: Widget[]; errors: string[] } {
+export function buildWidgets(rawWidgets: DashboardDoc['widgets']): {
+  widgets: Widget[]
+  errors: string[]
+} {
   const errors: string[] = []
   const widgets: Widget[] = []
 
@@ -117,7 +142,7 @@ export function buildWidgets(rawWidgets: DashboardDoc['widgets']): { widgets: Wi
     const fail = (msg: string) => errors.push(`${label}: ${msg}`)
 
     if (!raw || typeof raw !== 'object') {
-      fail('must be a mapping with type/title.')
+      fail('must be an object with type/title.')
       return
     }
     if (!WIDGET_TYPES.includes(raw.type as WidgetType)) {
@@ -193,5 +218,5 @@ export function dashboardToDoc(dashboard: DashboardConfig, connectionName: strin
       settings: w.settings ?? {}
     }))
   }
-  return yaml.dump(doc, { lineWidth: 120 })
+  return JSON.stringify(doc, null, 2) + '\n'
 }

@@ -26,7 +26,7 @@ dbdesk schema info --connection prod --schema public --table users
 dbdesk query "SELECT status, count(*) FROM orders GROUP BY status" --connection prod
 
 # Build a dashboard from a file
-dbdesk dashboard apply -f dashboard.yaml
+dbdesk dashboard apply -f dashboard.json
 ```
 
 Tip: `export DBDESK_CONNECTION=prod` once to skip `--connection` on every command.
@@ -42,7 +42,7 @@ Tip: `export DBDESK_CONNECTION=prod` once to skip `--connection` on every comman
 | `query [sql]`                                        | Run read-only SQL (`--file`, `--saved`, `--format table\|json\|csv`)                      |
 | `saved-query list\|show\|save\|run\|remove`          | Reusable named queries                                                                    |
 | `dashboard list\|show\|create\|delete`               | Manage dashboards                                                                         |
-| `dashboard export\|validate\|apply -f file.yaml`     | Declarative dashboards as code                                                            |
+| `dashboard export\|validate\|apply -f file.json`     | Declarative dashboards as code                                                            |
 | `dashboard add-widget\|update-widget\|remove-widget` | Granular widget edits                                                                     |
 | `skill print\|status\|install`                       | Agent guide (see below)                                                                   |
 | `init`                                               | Write an `AGENTS.md` snippet for the current project                                      |
@@ -61,26 +61,27 @@ Exit codes: `0` ok · `2` usage/validation · `3` connection failed · `4` not f
 ## Dashboards as code
 
 ```bash
-dbdesk dashboard export <id> > dashboard.yaml   # read current state
-dbdesk dashboard validate -f dashboard.yaml     # check before applying
-dbdesk dashboard apply -f dashboard.yaml        # create or update (add --dry-run to preview)
+dbdesk dashboard export <id> > dashboard.json   # read current state
+dbdesk dashboard validate -f dashboard.json     # check before applying
+dbdesk dashboard apply -f dashboard.json        # create or update (add --dry-run to preview)
 ```
 
-```yaml
-version: 1
-dashboard:
-  name: Sales Overview
-  connection: prod
-widgets:
-  - type: barChart
-    title: Monthly Revenue
-    query: SELECT date_trunc('month', created_at) AS month, sum(amount) AS revenue FROM orders GROUP BY 1 ORDER BY 1
-    settings:
-      xAxisField: month
-      yAxisField: revenue
+```json
+{
+  "version": 1,
+  "dashboard": { "name": "Sales Overview", "connection": "prod" },
+  "widgets": [
+    {
+      "type": "barChart",
+      "title": "Monthly Revenue",
+      "query": "SELECT date_trunc('month', created_at) AS month, sum(amount) AS revenue FROM orders GROUP BY 1 ORDER BY 1",
+      "settings": { "xAxisField": "month", "yAxisField": "revenue" }
+    }
+  ]
+}
 ```
 
-Widget types: `kpi`, `table`, `barChart`, `lineChart`, `pieChart`, `scatterChart`, `notes`, `savedQueries`. See `skill/dbdesk/references/dashboard-yaml.md` for the full reference.
+Widget types: `kpi`, `table`, `barChart`, `lineChart`, `pieChart`, `scatterChart`, `notes`, `savedQueries`. See `skill/dbdesk/references/dashboard-json.md` for the full reference.
 
 ## For AI agents
 

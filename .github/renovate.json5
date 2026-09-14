@@ -1,0 +1,93 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  // Migrated from Dependabot (.github/dependabot.yml). Renovate handles BOTH
+  // routine version updates and security patches across npm (the pnpm workspace)
+  // and GitHub Actions.
+  //
+  // "dbdesk-bot" branding: the PR author account is decided by how Renovate runs
+  // (the Mend Renovate app authors PRs as `renovate[bot]`; a self-hosted bot uses
+  // its own account and neither is renameable). As with Dependabot, the branding
+  // is surfaced through the commit prefix and PR labels below.
+  extends: ["config:recommended"],
+
+  timezone: "Asia/Kolkata",
+  // Weekly, Sunday morning — approximates Dependabot's "sunday 06:00". Renovate
+  // cron requires "*" for the minutes field, so this is the 06:00–09:59 window.
+  schedule: ["* 6-9 * * 0"],
+
+  // Match Dependabot's open-pull-requests-limit (npm: 10). prHourlyLimit 0 removes
+  // Renovate's default hourly throttle so all scheduled PRs open within the window.
+  prConcurrentLimit: 10,
+  prHourlyLimit: 0,
+  rebaseWhen: "auto",
+
+  // Commit prefix "dbdesk-bot" with the "deps" scope, e.g. "dbdesk-bot(deps): ...".
+  semanticCommits: "enabled",
+  semanticCommitType: "dbdesk-bot",
+  semanticCommitScope: "deps",
+
+  labels: ["dependencies", "dbdesk-bot"],
+
+  packageRules: [
+    {
+      // Dependabot's include:scope used a "deps-dev" scope for dev dependencies.
+      matchDepTypes: ["devDependencies"],
+      semanticCommitScope: "deps-dev",
+    },
+    {
+      groupName: "electron",
+      // "electron-*" also captures electron-vite and electron-builder, matching
+      // Dependabot's first-match-wins behavior where the electron group came first.
+      matchPackageNames: ["electron", "electron-*", "@electron-toolkit/**"],
+    },
+    {
+      groupName: "radix-ui",
+      matchPackageNames: ["@radix-ui/**"],
+    },
+    {
+      groupName: "tanstack",
+      matchPackageNames: ["@tanstack/**"],
+    },
+    {
+      groupName: "monaco",
+      matchPackageNames: ["monaco-*", "@monaco-editor/**"],
+    },
+    {
+      groupName: "build-tooling",
+      matchPackageNames: [
+        "vite",
+        "@vitejs/**",
+        "typescript",
+        "eslint*",
+        "prettier*",
+        "tailwindcss",
+        "@tailwindcss/**",
+        "turbo",
+      ],
+    },
+    {
+      groupName: "react",
+      matchPackageNames: ["react", "react-dom", "@types/react*"],
+    },
+    {
+      // Bundle all GitHub Actions updates into a single PR and add its label.
+      matchManagers: ["github-actions"],
+      groupName: "github-actions",
+      addLabels: ["github-actions"],
+    },
+    {
+      // Disruptive tooling majors — bump manually when ready.
+      matchPackageNames: ["electron", "vite", "typescript"],
+      matchUpdateTypes: ["major"],
+      enabled: false,
+    },
+  ],
+
+  // Bundle security/vulnerability fixes together, mirroring Dependabot's
+  // single-PR security group.
+  vulnerabilityAlerts: {
+    groupName: "security",
+    labels: ["dependencies", "dbdesk-bot", "security"],
+  },
+}

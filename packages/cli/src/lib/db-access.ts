@@ -174,23 +174,34 @@ export function removeConnection(idOrName: string): boolean {
   return result.changes > 0
 }
 
-// Dashboard operations
+import { buildDashboardConfigJson } from '@dbdesk/shared/utils/dashboard-json'
+
+// Dashboard operations. The CLI operates in the local (userId '') scope:
+// it lists every dashboard on a connection regardless of owner, since it
+// has no user identity. Rows the desktop app later claims keep working here
+// because lookups are by dashboardId, not by owner.
 
 function rowToDashboard(row: typeof dashboards.$inferSelect): DashboardConfig {
+  // Prefer the full JSON document for content; columns stay authoritative
+  // for identity/linking (dashboardId, connectionId, userId).
+  const fromJson = row.configJson ? (JSON.parse(row.configJson) as Partial<DashboardConfig>) : null
+
   const parsed = dashboardConfigSchema.parse({
     dashboardId: row.dashboardId,
     connectionId: row.connectionId,
-    name: row.name,
-    description: row.description ?? undefined,
-    layout: JSON.parse(row.layoutJson),
-    widgets: JSON.parse(row.widgetsJson),
-    createdAt: new Date(row.createdAt).toISOString(),
-    updatedAt: new Date(row.updatedAt).toISOString()
+    userId: row.userId ?? fromJson?.userId ?? undefined,
+    name: fromJson?.name ?? row.name,
+    description: fromJson?.description ?? row.description ?? undefined,
+    layout: fromJson?.layout ?? JSON.parse(row.layoutJson),
+    widgets: fromJson?.widgets ?? JSON.parse(row.widgetsJson),
+    createdAt: fromJson?.createdAt ?? new Date(row.createdAt).toISOString(),
+    updatedAt: fromJson?.updatedAt ?? new Date(row.updatedAt).toISOString()
   })
 
   return {
     dashboardId: parsed.dashboardId,
     connectionId: parsed.connectionId,
+    userId: parsed.userId,
     name: parsed.name,
     description: parsed.description,
     layout: parsed.layout,
@@ -244,6 +255,7 @@ export function createDashboard(
   const dashboard: DashboardConfig = {
     dashboardId: id,
     connectionId,
+    userId: '',
     name,
     description,
     layout: { columns: 12, rowHeight: 48, margin: [8, 8] },
@@ -257,10 +269,12 @@ export function createDashboard(
     .values({
       dashboardId: id,
       connectionId,
+      userId: '',
       name,
       description: description ?? null,
       layoutJson: JSON.stringify(dashboard.layout),
       widgetsJson: JSON.stringify([]),
+      configJson: buildDashboardConfigJson(dashboard, now, now),
       createdAt: now.getTime(),
       updatedAt: now.getTime()
     })
@@ -279,20 +293,22 @@ export function deleteDashboard(dashboardId: string): boolean {
 export function saveDashboard(dashboard: DashboardConfig): DashboardConfig {
   ensureDb()
   const now = new Date()
+  const updated = { ...dashboard, updatedAt: now }
 
   getDb()
     .update(dashboards)
     .set({
-      name: dashboard.name,
-      description: dashboard.description ?? null,
-      layoutJson: JSON.stringify(dashboard.layout),
-      widgetsJson: JSON.stringify(dashboard.widgets),
+      name: updated.name,
+      description: updated.description ?? null,
+      layoutJson: JSON.stringify(updated.layout),
+      widgetsJson: JSON.stringify(updated.widgets),
+      configJson: buildDashboardConfigJson(updated, updated.createdAt, now),
       updatedAt: now.getTime()
     })
     .where(eq(dashboards.dashboardId, dashboard.dashboardId))
     .run()
 
-  return { ...dashboard, updatedAt: now }
+  return updated
 }
 
 export function updateDashboardWidgets(

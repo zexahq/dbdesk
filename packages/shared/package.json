@@ -33,6 +33,10 @@
     "./adapters": {
       "types": "./src/adapters/index.ts",
       "default": "./src/adapters/index.ts"
+    },
+    "./utils/dashboard-json": {
+      "types": "./src/utils/dashboard-json.ts",
+      "default": "./src/utils/dashboard-json.ts"
     }
   },
   "scripts": {

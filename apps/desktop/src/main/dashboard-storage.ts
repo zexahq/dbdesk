@@ -5,29 +5,37 @@
  * Layout and widgets are stored as JSON columns in the `dashboards` table.
  */
 
-import { and, eq, getDb, dashboards } from '@dbdesk/db'
+import { and, eq, isNull, getDb, dashboards } from '@dbdesk/db'
 import { dashboardConfigSchema } from '@dbdesk/shared/schemas'
+import { buildDashboardConfigJson as buildConfigJson } from '@dbdesk/shared/utils/dashboard-json'
 import type { DashboardConfig } from '@common/types'
+import { ValidationError } from './utils/errors'
 
 const STORAGE_VERSION = '1.0.0'
 
 type DashboardRow = typeof dashboards.$inferSelect
 
 const rowToDashboard = (row: DashboardRow): DashboardConfig => {
+  // Prefer the full JSON document for content; columns stay authoritative for
+  // identity/linking (dashboardId, connectionId, userId).
+  const fromJson = row.configJson ? (JSON.parse(row.configJson) as Partial<DashboardConfig>) : null
+
   const parsed = dashboardConfigSchema.parse({
     dashboardId: row.dashboardId,
     connectionId: row.connectionId,
-    name: row.name,
-    description: row.description ?? undefined,
-    layout: JSON.parse(row.layoutJson),
-    widgets: JSON.parse(row.widgetsJson),
-    createdAt: new Date(row.createdAt).toISOString(),
-    updatedAt: new Date(row.updatedAt).toISOString()
+    userId: row.userId ?? fromJson?.userId ?? undefined,
+    name: fromJson?.name ?? row.name,
+    description: fromJson?.description ?? row.description ?? undefined,
+    layout: fromJson?.layout ?? JSON.parse(row.layoutJson),
+    widgets: fromJson?.widgets ?? JSON.parse(row.widgetsJson),
+    createdAt: fromJson?.createdAt ?? new Date(row.createdAt).toISOString(),
+    updatedAt: fromJson?.updatedAt ?? new Date(row.updatedAt).toISOString()
   })
 
   return {
     dashboardId: parsed.dashboardId,
     connectionId: parsed.connectionId,
+    userId: parsed.userId,
     name: parsed.name,
     description: parsed.description,
     layout: parsed.layout,
@@ -42,26 +50,73 @@ const toDate = (value: Date | string | undefined, fallback: Date): Date => {
   return value instanceof Date ? value : new Date(value)
 }
 
+// ponytail: legacy rows have no owner signal; claim per connection until ownership metadata exists.
+const claimLegacyDashboards = (connectionId: string, userId: string): void => {
+  const legacyRows = getDb()
+    .select()
+    .from(dashboards)
+    .where(and(eq(dashboards.connectionId, connectionId), eq(dashboards.userId, '')))
+    .all()
+
+  for (const row of legacyRows) {
+    try {
+      const dashboard = rowToDashboard(row)
+      getDb()
+        .update(dashboards)
+        .set({
+          userId,
+          configJson: buildConfigJson(
+            { ...dashboard, userId },
+            dashboard.createdAt,
+            dashboard.updatedAt
+          )
+        })
+        .where(eq(dashboards.dashboardId, row.dashboardId))
+        .run()
+    } catch (error) {
+      console.error(`Failed to claim legacy dashboard ${row.dashboardId}:`, error)
+    }
+  }
+}
+
 // ============================================================================
 // PUBLIC API
 // ============================================================================
 
 /**
  * Initialize the storage system. The SQLite database is initialized in the
- * main bootstrap; this is kept for API compatibility with previous callers.
+ * main bootstrap; this backfills `config_json` for rows persisted before the
+ * column existed so the full JSON stays in tandem with the columns.
  */
 export const initDashboardStorage = async (): Promise<void> => {
-  // No-op: SQLite is initialized via initDatabase() before this is called.
+  const legacyRows = getDb().select().from(dashboards).where(isNull(dashboards.configJson)).all()
+
+  for (const row of legacyRows) {
+    try {
+      const dashboard = rowToDashboard(row)
+      getDb()
+        .update(dashboards)
+        .set({ configJson: buildConfigJson(dashboard, dashboard.createdAt, dashboard.updatedAt) })
+        .where(eq(dashboards.dashboardId, row.dashboardId))
+        .run()
+    } catch (error) {
+      console.error(`Failed to backfill config_json for dashboard ${row.dashboardId}:`, error)
+    }
+  }
 }
 
 /**
  * Load all dashboards for a specific connection.
  */
-export const loadDashboards = async (connectionId: string): Promise<DashboardConfig[]> => {
+export const loadDashboards = async (
+  connectionId: string,
+  userId: string
+): Promise<DashboardConfig[]> => {
+  claimLegacyDashboards(connectionId, userId)
   const rows = getDb()
     .select()
     .from(dashboards)
-    .where(eq(dashboards.connectionId, connectionId))
+    .where(and(eq(dashboards.connectionId, connectionId), eq(dashboards.userId, userId)))
     .all()
 
   const result: DashboardConfig[] = []
@@ -81,12 +136,20 @@ export const loadDashboards = async (connectionId: string): Promise<DashboardCon
  */
 export const getDashboard = async (
   connectionId: string,
-  dashboardId: string
+  dashboardId: string,
+  userId: string
 ): Promise<DashboardConfig | undefined> => {
+  claimLegacyDashboards(connectionId, userId)
   const row = getDb()
     .select()
     .from(dashboards)
-    .where(and(eq(dashboards.dashboardId, dashboardId), eq(dashboards.connectionId, connectionId)))
+    .where(
+      and(
+        eq(dashboards.dashboardId, dashboardId),
+        eq(dashboards.connectionId, connectionId),
+        eq(dashboards.userId, userId)
+      )
+    )
     .get()
 
   if (!row) return undefined
@@ -102,31 +165,44 @@ export const getDashboard = async (
 /**
  * Save a dashboard (create or update).
  */
-export const saveDashboard = async (dashboard: DashboardConfig): Promise<DashboardConfig> => {
+export const saveDashboard = async (
+  dashboard: DashboardConfig,
+  userId: string
+): Promise<DashboardConfig> => {
+  claimLegacyDashboards(dashboard.connectionId, userId)
   const now = new Date()
   const existing = getDb()
-    .select({ createdAt: dashboards.createdAt })
+    .select({ createdAt: dashboards.createdAt, userId: dashboards.userId })
     .from(dashboards)
     .where(eq(dashboards.dashboardId, dashboard.dashboardId))
     .get()
+
+  if (existing && existing.userId !== userId) {
+    throw new ValidationError('Cannot modify a dashboard owned by another user')
+  }
 
   const createdAt = existing ? new Date(existing.createdAt) : toDate(dashboard.createdAt, now)
 
   const updatedDashboard: DashboardConfig = {
     ...dashboard,
+    userId,
     createdAt,
     updatedAt: now
   }
+
+  const configJson = buildConfigJson(updatedDashboard, createdAt, now)
 
   getDb()
     .insert(dashboards)
     .values({
       dashboardId: updatedDashboard.dashboardId,
       connectionId: updatedDashboard.connectionId,
+      userId,
       name: updatedDashboard.name,
       description: updatedDashboard.description ?? null,
       layoutJson: JSON.stringify(updatedDashboard.layout),
       widgetsJson: JSON.stringify(updatedDashboard.widgets),
+      configJson,
       createdAt: createdAt.getTime(),
       updatedAt: now.getTime()
     })
@@ -134,10 +210,12 @@ export const saveDashboard = async (dashboard: DashboardConfig): Promise<Dashboa
       target: dashboards.dashboardId,
       set: {
         connectionId: updatedDashboard.connectionId,
+        userId,
         name: updatedDashboard.name,
         description: updatedDashboard.description ?? null,
         layoutJson: JSON.stringify(updatedDashboard.layout),
         widgetsJson: JSON.stringify(updatedDashboard.widgets),
+        configJson,
         updatedAt: now.getTime()
       }
     })
@@ -151,11 +229,19 @@ export const saveDashboard = async (dashboard: DashboardConfig): Promise<Dashboa
  */
 export const deleteDashboard = async (
   connectionId: string,
-  dashboardId: string
+  dashboardId: string,
+  userId: string
 ): Promise<boolean> => {
+  claimLegacyDashboards(connectionId, userId)
   const result = getDb()
     .delete(dashboards)
-    .where(and(eq(dashboards.dashboardId, dashboardId), eq(dashboards.connectionId, connectionId)))
+    .where(
+      and(
+        eq(dashboards.dashboardId, dashboardId),
+        eq(dashboards.connectionId, connectionId),
+        eq(dashboards.userId, userId)
+      )
+    )
     .run()
 
   return result.changes > 0
@@ -190,8 +276,8 @@ export const hasUnsavedChanges = (): boolean => false
 /**
  * Get all dashboards (for export/backup purposes).
  */
-export const getAllDashboards = async (): Promise<DashboardConfig[]> => {
-  const rows = getDb().select().from(dashboards).all()
+export const getAllDashboards = async (userId: string): Promise<DashboardConfig[]> => {
+  const rows = getDb().select().from(dashboards).where(eq(dashboards.userId, userId)).all()
   const result: DashboardConfig[] = []
   for (const row of rows) {
     try {
@@ -208,6 +294,7 @@ export const getAllDashboards = async (): Promise<DashboardConfig[]> => {
  */
 export const importDashboards = async (
   imports: DashboardConfig[],
+  userId: string,
   overwrite: boolean = false
 ): Promise<{ imported: number; skipped: number }> => {
   let imported = 0
@@ -215,39 +302,46 @@ export const importDashboards = async (
   const now = new Date()
 
   for (const dashboard of imports) {
+    claimLegacyDashboards(dashboard.connectionId, userId)
+    const ownedDashboard: DashboardConfig = { ...dashboard, userId }
     const existing = getDb()
-      .select({ id: dashboards.dashboardId })
+      .select({ id: dashboards.dashboardId, userId: dashboards.userId })
       .from(dashboards)
       .where(eq(dashboards.dashboardId, dashboard.dashboardId))
       .get()
 
-    if (existing && !overwrite) {
+    if (existing && (existing.userId !== userId || !overwrite)) {
       skipped++
       continue
     }
 
-    const createdAt = toDate(dashboard.createdAt, now)
+    const createdAt = toDate(ownedDashboard.createdAt, now)
+    const configJson = buildConfigJson(ownedDashboard, createdAt, now)
 
     getDb()
       .insert(dashboards)
       .values({
-        dashboardId: dashboard.dashboardId,
-        connectionId: dashboard.connectionId,
-        name: dashboard.name,
-        description: dashboard.description ?? null,
-        layoutJson: JSON.stringify(dashboard.layout),
-        widgetsJson: JSON.stringify(dashboard.widgets),
+        dashboardId: ownedDashboard.dashboardId,
+        connectionId: ownedDashboard.connectionId,
+        userId,
+        name: ownedDashboard.name,
+        description: ownedDashboard.description ?? null,
+        layoutJson: JSON.stringify(ownedDashboard.layout),
+        widgetsJson: JSON.stringify(ownedDashboard.widgets),
+        configJson,
         createdAt: createdAt.getTime(),
         updatedAt: now.getTime()
       })
       .onConflictDoUpdate({
         target: dashboards.dashboardId,
         set: {
-          connectionId: dashboard.connectionId,
-          name: dashboard.name,
-          description: dashboard.description ?? null,
-          layoutJson: JSON.stringify(dashboard.layout),
-          widgetsJson: JSON.stringify(dashboard.widgets),
+          connectionId: ownedDashboard.connectionId,
+          userId,
+          name: ownedDashboard.name,
+          description: ownedDashboard.description ?? null,
+          layoutJson: JSON.stringify(ownedDashboard.layout),
+          widgetsJson: JSON.stringify(ownedDashboard.widgets),
+          configJson,
           updatedAt: now.getTime()
         }
       })
@@ -263,13 +357,15 @@ export const importDashboards = async (
  * Export dashboards (optionally filtered by connection).
  */
 export const exportDashboards = async (
+  userId: string,
   connectionId?: string
 ): Promise<{
   version: string
   exportedAt: string
   dashboards: DashboardConfig[]
 }> => {
-  const all = await getAllDashboards()
+  if (connectionId) claimLegacyDashboards(connectionId, userId)
+  const all = await getAllDashboards(userId)
   const filtered = connectionId ? all.filter((d) => d.connectionId === connectionId) : all
 
   return {

@@ -32,7 +32,8 @@ Tip: `export DBDESK_CONNECTION=prod` once to skip `--connection` on every comman
 
 Always pass `--format json`. Every command returns the same envelope
 (exception: document-output commands print raw text by default — `skill print`
-and `dashboard export` in yaml mode; both accept `--format json`):
+prints raw markdown and `dashboard export` prints the raw JSON document; both
+accept `--format json`):
 
 ```json
 { "ok": true, "data": [{ "name": "prod", "type": "postgres" }], "meta": { "command": "list", "version": "0.1.11", "duration_ms": 12 } }
@@ -77,12 +78,12 @@ Only `SELECT`/`SHOW` are accepted. Page with `--limit` (default 100, `0` = no li
 Prefer the declarative file flow (one call instead of many):
 
 ```bash
-dbdesk dashboard export <id> > dashboard.yaml   # read current state
-dbdesk dashboard validate -f dashboard.yaml     # check before applying
-dbdesk dashboard apply -f dashboard.yaml --format json
+dbdesk dashboard export <id> > dashboard.json   # read current state
+dbdesk dashboard validate -f dashboard.json     # check before applying
+dbdesk dashboard apply -f dashboard.json --format json
 ```
 
-File format reference: `references/dashboard-yaml.md`.
+File format reference: `references/dashboard-json.md`.
 
 Granular commands still exist: `dashboard list|show|create|delete`, `dashboard add-widget|update-widget|remove-widget`.
 
@@ -102,9 +103,9 @@ dbdesk schema info --connection prod --schema public --table users --format json
 # 1. Inspect the data first
 dbdesk query "SELECT date_trunc('month', created_at) AS month, sum(amount) AS revenue FROM orders GROUP BY 1 ORDER BY 1" --connection prod --format json
 
-# 2. Write dashboard.yaml (see references/dashboard-yaml.md), then:
-dbdesk dashboard validate -f dashboard.yaml
-dbdesk dashboard apply -f dashboard.yaml --format json
+# 2. Write dashboard.json (see references/dashboard-json.md), then:
+dbdesk dashboard validate -f dashboard.json
+dbdesk dashboard apply -f dashboard.json --format json
 ```
 
 ### Add this project to DBDesk
