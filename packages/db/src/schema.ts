@@ -54,7 +54,7 @@ export const dashboards = sqliteTable('dashboards', {
   connectionId: text('connection_id')
     .notNull()
     .references(() => connectionProfiles.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull(),
+  userId: text('user_id').notNull().default(''),
   name: text('name').notNull(),
   description: text('description'),
   layoutJson: text('layout_json').notNull(),
