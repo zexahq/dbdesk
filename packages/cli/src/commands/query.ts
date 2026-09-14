@@ -72,12 +72,12 @@ export function registerQueryCommands(program: Command): void {
             )
           }
 
-          const limit = parseInt(opts.limit, 10)
-          const offset = parseInt(opts.offset, 10)
-          if (Number.isNaN(limit) || limit < 0) {
+          const limit = Number(opts.limit)
+          const offset = Number(opts.offset)
+          if (!Number.isInteger(limit) || limit < 0) {
             throw new CliError('usage', `Invalid limit "${opts.limit}". Use 0 for no limit.`)
           }
-          if (Number.isNaN(offset) || offset < 0) {
+          if (!Number.isInteger(offset) || offset < 0) {
             throw new CliError('usage', `Invalid offset "${opts.offset}".`)
           }
           if (limit === 0) {

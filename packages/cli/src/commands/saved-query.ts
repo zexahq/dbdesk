@@ -91,8 +91,8 @@ export function registerSavedQueryCommands(program: Command): void {
     .option('--format <format>', 'output format: table (default), json, or csv', 'table')
     .action((idOrName: string, opts: { connection?: string; limit: string; format: string }) =>
       runAction(opts, ['table', 'json', 'csv'], async (format) => {
-        const limit = parseInt(opts.limit, 10)
-        if (Number.isNaN(limit) || limit < 0) {
+        const limit = Number(opts.limit)
+        if (!Number.isInteger(limit) || limit < 0) {
           throw new CliError('usage', `Invalid limit "${opts.limit}". Use 0 for no limit.`)
         }
         const conn = resolveConnection(connectionRefOrEnv(opts.connection))

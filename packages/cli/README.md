@@ -52,8 +52,8 @@ Tip: `export DBDESK_CONNECTION=prod` once to skip `--connection` on every comman
 Run any command with `--help` for flags. `dbdesk <cmd> --format json` returns a stable envelope (data on stdout, diagnostics on stderr). Document-output commands print raw text by default: `skill print` and `dashboard export` (both accept `--format json` for the envelope instead).
 
 ```json
-{ "ok": true, "data": [{ "name": "prod", "type": "postgres" }], "meta": { "command": "list", "version": "0.1.11", "duration_ms": 12 } }
-{ "ok": false, "error": { "code": "not-found", "message": "Connection \"x\" not found.", "hint": "Use \"dbdesk connection list\" to see available connections." }, "meta": { "command": "show", "version": "0.1.11", "duration_ms": 8 } }
+{ "ok": true, "data": [{ "name": "prod", "type": "postgres" }], "meta": { "command": "list", "version": "0.1.12", "duration_ms": 12 } }
+{ "ok": false, "error": { "code": "not-found", "message": "Connection \"x\" not found.", "hint": "Use \"dbdesk connection list\" to see available connections." }, "meta": { "command": "show", "version": "0.1.12", "duration_ms": 8 } }
 ```
 
 Exit codes: `0` ok · `2` usage/validation · `3` connection failed · `4` not found · `5` db error.
@@ -95,7 +95,7 @@ Agents: always pass `--format json`, check `ok` first, and start from `schema tr
 ## Safety
 
 - The CLI is read-only for your data: `INSERT`/`UPDATE`/`DELETE`/DDL are rejected everywhere, including saved queries and dashboard widgets. Writes happen in the desktop app.
-- Connection passwords are never printed and cannot be set through the CLI — `connection add` is passwordless by design. Fill the password in via the desktop app, or go fully standalone with a `~/.pgpass` file (`chmod 600`), which libpq picks up automatically:
+- Connection passwords are never printed and cannot be set through the CLI — `connection add` is passwordless by design. Fill the password in via the desktop app, or go fully standalone with a `~/.pgpass` file (`chmod 600`), which the Postgres driver reads automatically:
   ```bash
   echo "myhost:5432:mydb:myuser:secret" >> ~/.pgpass && chmod 600 ~/.pgpass
   ```

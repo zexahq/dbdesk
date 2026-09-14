@@ -75,9 +75,10 @@ export function CliSection() {
 
       <div className="rounded-lg border p-4 flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <TerminalSquare className="size-4 text-muted-foreground" />
+          <TerminalSquare aria-hidden="true" className="size-4 text-muted-foreground" />
           <span className="text-sm font-medium">Status</span>
           <span
+            aria-live="polite"
             className={
               status == null
                 ? 'text-xs text-muted-foreground'
@@ -95,13 +96,27 @@ export function CliSection() {
             <code className="text-xs bg-muted px-1.5 py-0.5 rounded truncate flex-1 min-w-0">
               {status.path}
             </code>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleCopyPath}>
-              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={handleCopyPath}
+              aria-label={copied ? 'CLI path copied' : 'Copy CLI path'}
+            >
+              {copied ? (
+                <Check aria-hidden="true" className="size-3.5" />
+              ) : (
+                <Copy aria-hidden="true" className="size-3.5" />
+              )}
             </Button>
           </div>
         )}
 
-        {error && <p className="text-xs break-all text-destructive">{error}</p>}
+        {error && (
+          <p className="text-xs break-all text-destructive" role="alert">
+            {error}
+          </p>
+        )}
 
         <div className="flex gap-2">
           {status?.installed ? (
@@ -112,7 +127,12 @@ export function CliSection() {
               disabled={busy}
               onClick={handleUninstall}
             >
-              {busy && <Loader2 className="size-3.5 animate-spin" />}
+              {busy && (
+                <Loader2
+                  aria-hidden="true"
+                  className="size-3.5 animate-spin motion-reduce:animate-none"
+                />
+              )}
               Uninstall
             </Button>
           ) : (
@@ -122,7 +142,12 @@ export function CliSection() {
               disabled={busy || status == null}
               onClick={handleInstall}
             >
-              {busy && <Loader2 className="size-3.5 animate-spin" />}
+              {busy && (
+                <Loader2
+                  aria-hidden="true"
+                  className="size-3.5 animate-spin motion-reduce:animate-none"
+                />
+              )}
               Install
             </Button>
           )}

@@ -32,7 +32,7 @@ export function AboutSection({ version }: { version: string }) {
           target="_blank"
           rel="noreferrer"
         >
-          Report an issue
+          Report an Issue
         </a>
       </div>
     </div>

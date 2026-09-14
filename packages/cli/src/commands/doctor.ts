@@ -79,6 +79,24 @@ function buildReport(): { healthy: boolean; checks: Check[] } {
   }
 
   try {
+    const connections = listConnections()
+    checks.push({
+      check: 'connections',
+      status: 'ok',
+      detail:
+        connections.length === 0
+          ? 'none yet — dbdesk connection add --help'
+          : `${connections.length} saved`
+    })
+  } catch (err) {
+    checks.push({
+      check: 'connections',
+      status: 'fail',
+      detail: err instanceof Error ? err.message : String(err)
+    })
+  }
+
+  try {
     const folder = migrationsDir()
     const supported = supportedSchemaVersion(folder)
     const current = currentSchemaVersion()
@@ -94,24 +112,6 @@ function buildReport(): { healthy: boolean; checks: Check[] } {
     checks.push({
       check: 'schema',
       status: 'warn',
-      detail: err instanceof Error ? err.message : String(err)
-    })
-  }
-
-  try {
-    const connections = listConnections()
-    checks.push({
-      check: 'connections',
-      status: 'ok',
-      detail:
-        connections.length === 0
-          ? 'none yet — dbdesk connection add --help'
-          : `${connections.length} saved`
-    })
-  } catch (err) {
-    checks.push({
-      check: 'connections',
-      status: 'fail',
       detail: err instanceof Error ? err.message : String(err)
     })
   }

@@ -56,10 +56,11 @@ export function MainSidebar() {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Open Settings"
                 className="h-8 w-8 cursor-pointer"
                 onClick={() => useSettingsStore.getState().openSettings()}
               >
-                <Settings className="size-4" />
+                <Settings aria-hidden="true" className="size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">Settings</TooltipContent>

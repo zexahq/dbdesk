@@ -21,7 +21,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc --noEmit && node esbuild.config.js",
+    "build": "tsc --noEmit && node esbuild.config.mjs",
+    "test": "tsx --test src/lib/*.test.ts",
     "typecheck": "tsc --noEmit",
     "dev": "tsx src/index.ts"
   },

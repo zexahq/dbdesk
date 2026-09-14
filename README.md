@@ -59,7 +59,7 @@ Use DBDesk from the terminal — or let your AI agents (Claude Code, Cursor, Cod
 ```bash
 npm i -g dbdesk
 dbdesk connection add --name prod --host localhost --database mydb --user app
-dbdesk dashboard apply -f dashboard.yaml
+dbdesk dashboard apply -f dashboard.json
 ```
 
 See the [`dbdesk` package](https://www.npmjs.com/package/dbdesk) ([docs](packages/cli/README.md)) for the full reference. The desktop app can also install the CLI for you under Settings → Command Line.
@@ -79,7 +79,7 @@ See the [`dbdesk` package](https://www.npmjs.com/package/dbdesk) ([docs](package
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18+)
+- [Node.js](https://nodejs.org/) (v20+)
 - [pnpm](https://pnpm.io/) (v9+)
 
 ### Monorepo Structure

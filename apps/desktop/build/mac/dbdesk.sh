@@ -32,7 +32,7 @@ fi
 if [ "$(uname)" = "Darwin" ]; then
   # macOS: DBDesk.app/Contents/Resources/cli/dbdesk.sh → walk up to MacOS/
   CONTENTS_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-  ELECTRON="$CONTENTS_DIR/MacOS/dbdesk"
+  ELECTRON="$CONTENTS_DIR/MacOS/DBDesk"
 elif [ "$(uname)" = "Linux" ] && [ -f "/opt/dbdesk/dbdesk" ]; then
   ELECTRON="/opt/dbdesk/dbdesk"
 else

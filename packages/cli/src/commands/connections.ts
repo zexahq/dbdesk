@@ -8,6 +8,7 @@ import {
 import { getAdapter, disconnectAll } from '../lib/adapter-pool'
 import { runAction } from '../lib/output'
 import { CliError } from '../lib/errors'
+import { postgreSQLSslModeSchema } from '@dbdesk/shared/schemas'
 import type { Command } from 'commander'
 
 function safeProfile(conn: NonNullable<ReturnType<typeof getConnection>>) {
@@ -97,29 +98,41 @@ export function registerConnectionCommands(program: Command): void {
         format: string
       }) =>
         runAction(opts, ['table', 'json'], async () => {
-          const port = parseInt(opts.port, 10)
-          if (Number.isNaN(port) || port <= 0 || port > 65535) {
+          const port = Number(opts.port)
+          if (!Number.isInteger(port) || port <= 0 || port > 65535) {
             throw new CliError('usage', `Invalid port "${opts.port}".`)
+          }
+          const sslMode = postgreSQLSslModeSchema.safeParse(opts.sslMode)
+          if (!sslMode.success) {
+            throw new CliError('usage', `Invalid SSL mode "${opts.sslMode}".`)
+          }
+          for (const [field, value] of Object.entries({
+            name: opts.name,
+            host: opts.host,
+            database: opts.database,
+            user: opts.user
+          })) {
+            if (!value.trim()) throw new CliError('usage', `${field} cannot be empty.`)
           }
           // The CLI never accepts secrets: agents add the connection shell,
           // the user fills the password in the desktop app. Until then,
           // test/query commands fail with a clear connection error.
           const profile = addConnection({
-            name: opts.name,
-            host: opts.host,
+            name: opts.name.trim(),
+            host: opts.host.trim(),
             port,
-            database: opts.database,
-            user: opts.user,
-            sslMode: opts.sslMode
+            database: opts.database.trim(),
+            user: opts.user.trim(),
+            sslMode: sslMode.data
           })
           return {
             id: profile.id,
             name: profile.name,
             type: profile.type,
             message:
-              `Connection "${opts.name}" added without a password. ` +
+              `Connection "${profile.name}" added without a password. ` +
               `Fill it in via the DBDesk desktop app (or use a ~/.pgpass entry), ` +
-              `then verify with "dbdesk connection test ${opts.name}".`
+              `then verify with "dbdesk connection test ${profile.name}".`
           }
         })
     )

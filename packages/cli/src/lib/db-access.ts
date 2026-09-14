@@ -102,10 +102,10 @@ export function resolveConnection(input: string): ConnectionProfile {
 
 /**
  * Connection reference from `--connection`, falling back to
- * DBDESK_CONNECTION / DBDESK_CONNECTION so agents can set it once.
+ * DBDESK_CONNECTION so agents can set it once.
  */
 export function connectionRefOrEnv(input: string | undefined): string {
-  const ref = input ?? process.env.DBDESK_CONNECTION ?? process.env.DBDESK_CONNECTION
+  const ref = input ?? process.env.DBDESK_CONNECTION
   if (!ref) {
     throw new CliError(
       'usage',
@@ -294,6 +294,15 @@ export function saveDashboard(dashboard: DashboardConfig): DashboardConfig {
   ensureDb()
   const now = new Date()
   const updated = { ...dashboard, updatedAt: now }
+  const validated = dashboardConfigSchema.safeParse(updated)
+  if (!validated.success) {
+    throw new CliError(
+      'validation-failed',
+      validated.error.issues
+        .map((issue) => `${issue.path.join('.') || 'dashboard'}: ${issue.message}`)
+        .join('\n')
+    )
+  }
 
   getDb()
     .update(dashboards)

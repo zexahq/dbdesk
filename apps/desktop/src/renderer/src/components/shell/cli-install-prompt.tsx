@@ -13,13 +13,16 @@ export function CliInstallPrompt() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    window.dbdesk.getCliStatus().then(({ installed, promptDismissed }) => {
-      if (installed || promptDismissed) {
-        setStatus('hidden')
-      } else {
-        setStatus('prompt')
-      }
-    }).catch(() => setStatus('hidden'))
+    window.dbdesk
+      .getCliStatus()
+      .then(({ installed, promptDismissed }) => {
+        if (installed || promptDismissed) {
+          setStatus('hidden')
+        } else {
+          setStatus('prompt')
+        }
+      })
+      .catch(() => setStatus('hidden'))
   }, [])
 
   async function handleInstall() {
@@ -41,9 +44,13 @@ export function CliInstallPrompt() {
   if (status === 'loading' || status === 'hidden') return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border bg-card p-4 shadow-lg">
+    <div
+      className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border bg-card p-4 shadow-lg"
+      role="status"
+      aria-live="polite"
+    >
       <div className="flex items-start gap-3">
-        <Terminal className="size-5 text-primary shrink-0 mt-0.5" />
+        <Terminal aria-hidden="true" className="size-5 text-primary shrink-0 mt-0.5" />
 
         <div className="flex-1 min-w-0">
           {status === 'prompt' && (
@@ -52,33 +59,21 @@ export function CliInstallPrompt() {
                 Install <code className="text-xs bg-muted px-1 rounded">dbdesk</code> CLI
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Enables AI agents (Claude Code, OpenCode, Cursor) to explore your
-                databases, run queries, and create dashboards from the terminal.
+                Enables AI agents (Claude Code, OpenCode, Cursor) to explore your databases, run
+                queries, and create dashboards from the terminal.
               </p>
               <div className="flex gap-2 mt-3">
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="h-7 text-xs"
-                  onClick={handleInstall}
-                >
+                <Button size="sm" variant="default" className="h-7 text-xs" onClick={handleInstall}>
                   Install
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs"
-                  onClick={handleDismiss}
-                >
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleDismiss}>
                   Not now
                 </Button>
               </div>
             </>
           )}
 
-          {status === 'installing' && (
-            <p className="text-sm text-muted-foreground">Installing...</p>
-          )}
+          {status === 'installing' && <p className="text-sm text-muted-foreground">Installing…</p>}
 
           {status === 'done' && (
             <>
@@ -104,20 +99,10 @@ export function CliInstallPrompt() {
               <p className="text-sm font-medium text-destructive">Install failed</p>
               <p className="text-xs text-muted-foreground mt-1 truncate">{error}</p>
               <div className="flex gap-2 mt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  onClick={handleInstall}
-                >
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleInstall}>
                   Retry
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs"
-                  onClick={handleDismiss}
-                >
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleDismiss}>
                   Dismiss
                 </Button>
               </div>
@@ -129,10 +114,11 @@ export function CliInstallPrompt() {
           <button
             type="button"
             title="Dismiss"
+            aria-label="Dismiss CLI installation prompt"
             onClick={handleDismiss}
             className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 cursor-pointer"
           >
-            <X className="size-3.5" />
+            <X aria-hidden="true" className="size-3.5" />
           </button>
         )}
       </div>

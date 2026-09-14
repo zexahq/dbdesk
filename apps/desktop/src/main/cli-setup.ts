@@ -3,24 +3,21 @@
  * Creates a symlink/wrapper so `dbdesk` is available on the user's PATH.
  * Uses ELECTRON_RUN_AS_NODE=1 so no external Node.js is needed.
  */
-import { execSync } from 'node:child_process'
 import {
   chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
   readFileSync,
+  readlinkSync,
   rmSync,
   symlinkSync,
   writeFileSync
 } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { app } from 'electron'
-import { getDb } from '@dbdesk/db'
-import { appMeta } from '@dbdesk/db'
-import { eq } from '@dbdesk/db'
+import { appMeta, eq, getDb } from '@dbdesk/db'
 
-const META_KEY_INSTALLED = 'cli:installed'
 const META_KEY_PROMPT_DISMISSED = 'cli:prompt_dismissed'
 
 function getCliDir(): string {
@@ -56,20 +53,30 @@ export function getInstallTarget(): { dir: string; path: string } {
 
 export function isCliInstalled(): boolean {
   try {
-    // Check our app_meta flag first
-    const row = getDb()
-      .select({ value: appMeta.value })
-      .from(appMeta)
-      .where(eq(appMeta.key, META_KEY_INSTALLED))
-      .get()
-
-    if (row?.value === 'true') return true
-
-    // Fallback: check if the target binary exists and points to us
     return isOursTarget(getInstallTarget().path)
   } catch {
     return false
   }
+}
+
+function targetExists(targetPath: string): boolean {
+  try {
+    lstatSync(targetPath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function windowsWrapper(): string {
+  const cliJs = join(getCliDir(), 'dist', 'index.js')
+  const nodeModules = join(getCliDir(), 'node_modules')
+  return (
+    '@echo off\r\n' +
+    'set "ELECTRON_RUN_AS_NODE=1"\r\n' +
+    `set "NODE_PATH=${nodeModules}"\r\n` +
+    `"${process.execPath}" "${cliJs}" %*\r\n`
+  )
 }
 
 /**
@@ -78,21 +85,17 @@ export function isCliInstalled(): boolean {
  * Never true for foreign files that happen to share the path.
  */
 function isOursTarget(targetPath: string): boolean {
-  if (!existsSync(targetPath)) return false
   try {
+    if (!targetExists(targetPath)) return false
     if (process.platform === 'win32') {
       const stat = lstatSync(targetPath)
       if (!stat.isFile()) return false
-      const content = readFileSync(targetPath, 'utf-8')
-      return content.includes('ELECTRON_RUN_AS_NODE') && content.includes('resources')
+      return readFileSync(targetPath, 'utf-8') === windowsWrapper()
     }
     const stat = lstatSync(targetPath)
     if (!stat.isSymbolicLink()) return false
-    const linkTarget = execSync(`readlink "${targetPath}"`, {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore']
-    }).trim()
-    return linkTarget.includes('dbdesk') || linkTarget.includes('DBDesk')
+    const linkTarget = resolve(dirname(targetPath), readlinkSync(targetPath))
+    return linkTarget === getShellScript()
   } catch {
     return false
   }
@@ -127,31 +130,6 @@ export function dismissCliPrompt(): void {
   }
 }
 
-export function markCliChanged(): void {
-  try {
-    const installed = isCliActuallyOnPath()
-    getDb()
-      .insert(appMeta)
-      .values({ key: META_KEY_INSTALLED, value: String(installed) })
-      .onConflictDoUpdate({
-        target: appMeta.key,
-        set: { value: String(installed) }
-      })
-      .run()
-  } catch {
-    // Non-critical
-  }
-}
-
-function isCliActuallyOnPath(): boolean {
-  try {
-    execSync('which dbdesk', { stdio: 'ignore', encoding: 'utf-8' })
-    return true
-  } catch {
-    return false
-  }
-}
-
 export function installCli(): { ok: true } | { ok: false; error: string } {
   const platform = process.platform
   const shellScript = getShellScript()
@@ -169,23 +147,33 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
     }
   }
 
+  if (platform === 'linux' && process.env.APPIMAGE) {
+    return {
+      ok: false,
+      error: 'AppImage cannot install a persistent CLI. Install dbdesk globally with npm instead.'
+    }
+  }
+
+  const target = getInstallTarget()
+  if (targetExists(target.path)) {
+    if (!isOursTarget(target.path)) {
+      return {
+        ok: false,
+        error: `"${target.path}" already exists and was not installed by DBDesk. It was left alone.`
+      }
+    }
+    try {
+      rmSync(target.path)
+    } catch {
+      return { ok: false, error: `Cannot replace existing "${target.path}".` }
+    }
+  }
+
   try {
     switch (platform) {
       case 'darwin':
       case 'linux': {
-        const { dir, path: targetPath } = getInstallTarget()
-
-        // Remove existing symlink/file if it's not ours
-        if (existsSync(targetPath)) {
-          try {
-            rmSync(targetPath)
-          } catch {
-            return {
-              ok: false,
-              error: `Cannot remove existing "${targetPath}". Run: sudo rm "${targetPath}"`
-            }
-          }
-        }
+        const { dir, path: targetPath } = target
 
         // Ensure the bin directory exists
         try {
@@ -201,8 +189,8 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
 
         // Create symlink
         try {
-          symlinkSync(shellScript, targetPath)
           chmodSync(shellScript, 0o755)
+          symlinkSync(shellScript, targetPath)
         } catch (err) {
           const msg = String(err)
           if (msg.includes('EACCES') || msg.includes('permission denied')) {
@@ -218,7 +206,7 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
       }
 
       case 'win32': {
-        const { dir, path: targetPath } = getInstallTarget()
+        const { dir, path: targetPath } = target
 
         try {
           mkdirSync(dir, { recursive: true })
@@ -226,14 +214,7 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
           return { ok: false, error: `Cannot create "${dir}".` }
         }
 
-        // .cmd wrapper that runs the packaged Electron binary in Node mode,
-        // so no external Node.js installation is needed.
-        const cliJs = join(getCliDir(), 'dist', 'index.js')
-        const nodeModules = join(getCliDir(), 'node_modules')
-        const cmdContent =
-          `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\nset NODE_PATH=${nodeModules}\r\n` +
-          `"${process.execPath}" "${cliJs}" %*`
-        writeFileSync(targetPath, cmdContent)
+        writeFileSync(targetPath, windowsWrapper())
 
         break
       }
@@ -242,7 +223,6 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
         return { ok: false, error: `Unsupported platform: ${platform}` }
     }
 
-    markCliChanged()
     return { ok: true }
   } catch (err) {
     return { ok: false, error: String(err) }
@@ -251,10 +231,7 @@ export function installCli(): { ok: true } | { ok: false; error: string } {
 export function uninstallCli(): { ok: true } | { ok: false; error: string } {
   try {
     const { path: targetPath } = getInstallTarget()
-    if (!existsSync(targetPath)) {
-      markCliChanged()
-      return { ok: true }
-    }
+    if (!targetExists(targetPath)) return { ok: true }
     if (!isOursTarget(targetPath)) {
       return {
         ok: false,
@@ -264,7 +241,6 @@ export function uninstallCli(): { ok: true } | { ok: false; error: string } {
       }
     }
     rmSync(targetPath)
-    markCliChanged()
     return { ok: true }
   } catch (err) {
     return { ok: false, error: String(err) }

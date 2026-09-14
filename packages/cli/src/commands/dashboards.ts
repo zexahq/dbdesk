@@ -11,7 +11,7 @@ import {
   deleteDashboard,
   saveDashboard
 } from '../lib/db-access'
-import { runAction, reportError } from '../lib/output'
+import { runAction, reportError, warn, writeData } from '../lib/output'
 import { CliError } from '../lib/errors'
 import {
   WIDGET_TYPES,
@@ -162,13 +162,20 @@ export function registerDashboardCommands(program: Command): void {
   dashCmd
     .command('export <dashboard-id>')
     .description('Export a dashboard to a declarative JSON file (pairs with apply)')
-    .action(async (dashboardId: string) => {
+    .option('--format <format>', 'output format: raw (default) or json', 'raw')
+    .action(async (dashboardId: string, opts: { format: string }) => {
+      const raw = opts.format.toLowerCase()
+      const format = raw === 'json' ? 'json' : 'table'
+      if (raw !== 'json' && raw !== 'raw') {
+        warn(`Unknown format "${opts.format}". Valid formats: raw, json. Using raw.`)
+      }
       try {
         const dashboard = requireDashboard(dashboardId)
         const conn = getConnection(dashboard.connectionId)
-        console.log(dashboardToDoc(dashboard, conn?.name ?? dashboard.connectionId))
+        const document = dashboardToDoc(dashboard, conn?.name ?? dashboard.connectionId)
+        writeData(format === 'json' ? JSON.parse(document) : document.trimEnd(), format)
       } catch (err) {
-        process.exit(reportError(err, 'table'))
+        process.exit(reportError(err, format))
       }
     })
 

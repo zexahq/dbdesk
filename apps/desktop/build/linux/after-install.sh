@@ -17,15 +17,20 @@ fi
 ########################################
 # 2. Create dbdesk CLI command
 ########################################
-rm -f "$BIN_PATH"
+if [ -e "$BIN_PATH" ] || [ -L "$BIN_PATH" ]; then
+  if [ ! -L "$BIN_PATH" ] || [ "$(readlink "$BIN_PATH")" != "$CLI_SH" ]; then
+    echo "WARNING: $BIN_PATH is not managed by DBDesk; leaving it unchanged"
+    exit 0
+  fi
+fi
 
 if [ -f "$CLI_SH" ]; then
-  ln -s "$CLI_SH" "$BIN_PATH"
+  ln -sfn "$CLI_SH" "$BIN_PATH"
   chmod +x "$CLI_SH"
   echo "dbdesk CLI installed at $BIN_PATH"
 elif [ -f "$APP_DIR/$APP_NAME" ]; then
   # Fallback: point to the Electron binary directly
-  ln -s "$APP_DIR/$APP_NAME" "$BIN_PATH"
+  ln -sfn "$APP_DIR/$APP_NAME" "$BIN_PATH"
   chmod +x "$BIN_PATH"
   echo "dbdesk launcher installed at $BIN_PATH (CLI bundle not found)"
 else

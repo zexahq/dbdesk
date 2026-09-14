@@ -75,7 +75,9 @@ src/main/
 │   ├── typed-handle.ts         # typedHandle() with Zod validation
 │   ├── adapter-handlers.ts
 │   ├── auth-handlers.ts
+│   ├── cli-handlers.ts
 │   ├── connection-handlers.ts
+│   ├── dashboard-handlers.ts
 │   ├── query-handlers.ts
 │   ├── saved-query-handlers.ts
 │   ├── schema-handlers.ts
@@ -194,10 +196,10 @@ src/
 
 ### IPC Architecture
 
-- Typed contract in `packages/shared/src/ipc/contract.ts` — defines all 36 channels with payload/result types
+- Typed contract in `packages/shared/src/ipc/contract.ts` — defines all 49 channels with payload/result types
 - Main process: `typedHandle()` in `apps/desktop/src/main/ipc/typed-handle.ts` — registers handlers with Zod validation per channel
 - Preload: `typedInvoke()` in `apps/desktop/src/preload/typed-ipc.ts` — type-safe IPC bridge
-- 9 domain handler files: adapter, auth, connection, query, saved-query, schema, table, update, workspace
+- 11 domain handler files: adapter, auth, CLI, connection, dashboard, query, saved-query, schema, table, update, workspace
 
 ### Auth Flow
 

@@ -69,6 +69,8 @@ export function SettingsDialog() {
                 <img
                   src={dbdeskLogo}
                   alt="DBDesk"
+                  width={20}
+                  height={20}
                   className="w-5 h-5 brightness-0 dark:brightness-100"
                 />
                 <span className="text-sm font-medium">DBDesk</span>
@@ -84,7 +86,7 @@ export function SettingsDialog() {
                           isActive={item.id === section}
                           onClick={() => setSection(item.id)}
                         >
-                          <item.icon />
+                          <item.icon aria-hidden="true" />
                           <span>{item.name}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -110,7 +112,7 @@ export function SettingsDialog() {
                   className="h-7 shrink-0 text-xs"
                   onClick={() => setSection(item.id)}
                 >
-                  <item.icon className="size-3.5" />
+                  <item.icon aria-hidden="true" className="size-3.5" />
                   {item.name}
                 </Button>
               ))}

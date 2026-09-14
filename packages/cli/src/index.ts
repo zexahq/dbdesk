@@ -19,6 +19,11 @@ import { printStatusSummary } from './lib/status'
 
 const program = new Command()
 
+function wantsJsonOutput(argv = process.argv.slice(2)): boolean {
+  const index = argv.lastIndexOf('--format')
+  return argv[index + 1]?.toLowerCase() === 'json' || argv.includes('--format=json')
+}
+
 program
   .name('dbdesk')
   .description(
@@ -41,6 +46,11 @@ Tip: set DBDESK_CONNECTION once to skip --connection on every command.
 AI agents: run \`dbdesk skill print\` for the full agent guide.
 `
   )
+  .configureOutput({
+    writeErr: (text) => {
+      if (!wantsJsonOutput()) process.stderr.write(text)
+    }
+  })
   .exitOverride((err) => {
     if (
       err.code === 'commander.displayHelp' ||
@@ -50,7 +60,10 @@ AI agents: run \`dbdesk skill print\` for the full agent guide.
     ) {
       process.exit(0)
     }
-    console.error(`Error [usage]: ${err.message}`)
+    if (wantsJsonOutput()) {
+      beginCommand('dbdesk')
+      process.exit(reportError(new CliError('usage', err.message), 'json'))
+    }
     process.exit(2)
   })
 
@@ -90,6 +103,12 @@ function parseBareArgs(argv: string[]): {
       if (value === 'json' || value === 'table') format = value
       else invalidFormat = argv[i + 1] as string
       i++
+      continue
+    }
+    if (arg.startsWith('--format=')) {
+      const value = arg.slice('--format='.length).toLowerCase()
+      if (value === 'json' || value === 'table') format = value
+      else invalidFormat = arg.slice('--format='.length)
       continue
     }
     rest.push(arg)

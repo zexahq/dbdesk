@@ -32,8 +32,15 @@ export function runMigrations(migrationsFolder?: string): void {
       if (existsSync(join(bundled, 'meta', '_journal.json'))) return bundled
       return resolve(__dirname, '../drizzle')
     })()
-  migrate(getDb(), { migrationsFolder: folder })
   const supported = supportedSchemaVersion(folder)
+  const current = currentSchemaVersion()
+  if (supported > 0 && current > supported) {
+    throw new Error(
+      `Database schema v${current} is newer than this app supports (v${supported}). Update DBDesk before opening it.`
+    )
+  }
+
+  migrate(getDb(), { migrationsFolder: folder })
   if (supported > 0) {
     getSqlite().pragma(`user_version = ${supported}`)
   }

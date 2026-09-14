@@ -5,8 +5,8 @@
 
   FileOpen $0 "$INSTDIR\dbdesk.cmd" w
   FileWrite $0 '@echo off$\r$\n'
-  FileWrite $0 'set ELECTRON_RUN_AS_NODE=1$\r$\n'
-  FileWrite $0 'set NODE_PATH=$INSTDIR\resources\cli\node_modules$\r$\n'
+  FileWrite $0 'set "ELECTRON_RUN_AS_NODE=1"$\r$\n'
+  FileWrite $0 'set "NODE_PATH=$INSTDIR\resources\cli\node_modules"$\r$\n'
   FileWrite $0 '"$INSTDIR\dbdesk.exe" "$INSTDIR\resources\cli\dist\index.js" %*$\r$\n'
   FileClose $0
 

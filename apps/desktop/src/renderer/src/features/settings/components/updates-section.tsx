@@ -22,7 +22,7 @@ export function UpdatesSection({ version }: { version: string }) {
       <div className="rounded-lg border p-4 flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">DBDesk v{version || '…'}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5" aria-live="polite">
             {updateState.status === 'idle' && 'You are up to date.'}
             {updateState.status === 'available' && `v${updateState.version} is available.`}
             {updateState.status === 'downloading' && `Downloading v… ${updateState.percent}%`}
@@ -32,15 +32,17 @@ export function UpdatesSection({ version }: { version: string }) {
         </div>
         {updateState.status === 'available' && (
           <Button size="sm" className="h-7 text-xs" onClick={() => window.dbdesk.downloadUpdate()}>
-            <ArrowDownToLine className="size-3.5" />
+            <ArrowDownToLine aria-hidden="true" className="size-3.5" />
             Download
           </Button>
         )}
-        {updateState.status === 'downloading' && <Loader2 className="size-4 animate-spin" />}
+        {updateState.status === 'downloading' && (
+          <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+        )}
         {updateState.status === 'downloaded' && (
           <Button size="sm" className="h-7 text-xs" onClick={() => window.dbdesk.installUpdate()}>
-            <RefreshCw className="size-3.5" />
-            Restart to install
+            <RefreshCw aria-hidden="true" className="size-3.5" />
+            Restart to Install
           </Button>
         )}
       </div>
@@ -53,8 +55,13 @@ export function UpdatesSection({ version }: { version: string }) {
           disabled={checking}
           onClick={handleCheck}
         >
-          {checking && <Loader2 className="size-3.5 animate-spin" />}
-          Check for updates
+          {checking && (
+            <Loader2
+              aria-hidden="true"
+              className="size-3.5 animate-spin motion-reduce:animate-none"
+            />
+          )}
+          Check for Updates
         </Button>
       </div>
     </div>

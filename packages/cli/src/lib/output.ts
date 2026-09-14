@@ -33,7 +33,11 @@ interface Meta {
 }
 
 function meta(): Meta {
-  const base: Meta = { command: commandName, version: cliVersion(), duration_ms: Date.now() - startedAt }
+  const base: Meta = {
+    command: commandName,
+    version: cliVersion(),
+    duration_ms: Date.now() - startedAt
+  }
   const taken = takeWarnings()
   if (taken.length > 0) base.warnings = taken
   return base
@@ -67,17 +71,16 @@ export function toTable(data: unknown): string {
 }
 
 export function toCsv(data: unknown): string {
+  const cell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
   const rows = Array.isArray(data) ? data : [data]
   if (rows.length === 0) return ''
   if (typeof rows[0] !== 'object' || rows[0] === null) {
-    return rows.map((v) => JSON.stringify(String(v ?? ''))).join('\n')
+    return rows.map(cell).join('\n')
   }
   const keys = Object.keys(rows[0] as Record<string, unknown>)
-  const header = keys.join(',')
+  const header = keys.map(cell).join(',')
   const body = rows
-    .map((r) =>
-      keys.map((k) => JSON.stringify(String((r as Record<string, unknown>)[k] ?? ''))).join(',')
-    )
+    .map((r) => keys.map((k) => cell((r as Record<string, unknown>)[k])).join(','))
     .join('\n')
   return header + '\n' + body
 }
@@ -116,7 +119,11 @@ export function reportError(err: unknown, format: OutputFormat): number {
         JSON.stringify(
           {
             ok: false,
-            error: { code: err.code, message: err.message, ...(err.hint ? { hint: err.hint } : {}) },
+            error: {
+              code: err.code,
+              message: err.message,
+              ...(err.hint ? { hint: err.hint } : {})
+            },
             meta: meta()
           },
           null,
@@ -143,7 +150,10 @@ export function reportError(err: unknown, format: OutputFormat): number {
   return 5
 }
 
-export function safeFormat(raw: unknown, allowed: OutputFormat[] = ['table', 'json']): OutputFormat {
+export function safeFormat(
+  raw: unknown,
+  allowed: OutputFormat[] = ['table', 'json']
+): OutputFormat {
   const value = typeof raw === 'string' ? raw.toLowerCase() : 'table'
   if ((allowed as string[]).includes(value)) return value as OutputFormat
   return 'table'
@@ -159,7 +169,11 @@ export async function runAction(
   fn: (format: OutputFormat) => unknown | Promise<unknown>
 ): Promise<void> {
   const format = safeFormat(opts.format, allowed)
-  if (typeof opts.format === 'string' && format === 'table' && !(allowed as string[]).includes(opts.format.toLowerCase())) {
+  if (
+    typeof opts.format === 'string' &&
+    format === 'table' &&
+    !(allowed as string[]).includes(opts.format.toLowerCase())
+  ) {
     warn(`Unknown format "${opts.format}". Valid formats: ${allowed.join(', ')}. Using table.`)
   }
   try {

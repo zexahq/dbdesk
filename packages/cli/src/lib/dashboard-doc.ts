@@ -1,12 +1,6 @@
-import type {
-  DashboardConfig,
-  Widget,
-  WidgetPosition,
-  WidgetSettings,
-  WidgetType
-} from '@dbdesk/shared/types'
+import type { DashboardConfig, Widget, WidgetPosition, WidgetType } from '@dbdesk/shared/types'
 import { isReadOnlyQuery } from '@dbdesk/shared/adapters'
-import { warn } from './output'
+import { dashboardLayoutSchema, widgetSchema } from '@dbdesk/shared/schemas'
 
 export const WIDGET_TYPES: WidgetType[] = [
   'kpi',
@@ -28,13 +22,7 @@ const QUERY_WIDGETS: WidgetType[] = [
   'scatterChart'
 ]
 
-const RECOMMENDED_SETTINGS: Partial<Record<WidgetType, string[]>> = {
-  kpi: ['valueField'],
-  barChart: ['xAxisField', 'yAxisField'],
-  lineChart: ['xAxisField', 'yAxisField'],
-  pieChart: ['labelField', 'valueField'],
-  scatterChart: ['xAxisField', 'yAxisField']
-}
+const dashboardDocLayoutSchema = dashboardLayoutSchema.partial()
 
 export interface DashboardDoc {
   version: 1
@@ -86,16 +74,33 @@ export function parseDashboardDoc(raw: string): DashboardDoc {
   if (!Array.isArray(doc.widgets)) {
     throw new Error('Dashboard file: "widgets" must be an array (can be empty: "widgets": []).')
   }
+  if (meta.description !== undefined && typeof meta.description !== 'string') {
+    throw new Error('Dashboard file: "dashboard.description" must be a string.')
+  }
+
+  let layout: DashboardDoc['dashboard']['layout']
+  if (meta.layout !== undefined) {
+    const parsedLayout = dashboardDocLayoutSchema.safeParse(meta.layout)
+    if (!parsedLayout.success) {
+      throw new Error(
+        parsedLayout.error.issues
+          .map(
+            (issue) =>
+              `dashboard.layout${issue.path.length ? `.${issue.path.join('.')}` : ''}: ${issue.message}`
+          )
+          .join('\n')
+      )
+    }
+    layout = parsedLayout.data
+  }
+
   return {
     version: 1,
     dashboard: {
       name: meta.name.trim(),
       description: typeof meta.description === 'string' ? meta.description : undefined,
       connection: meta.connection.trim(),
-      layout:
-        meta.layout && typeof meta.layout === 'object'
-          ? (meta.layout as DashboardDoc['dashboard']['layout'])
-          : undefined
+      layout
     },
     widgets: doc.widgets as DashboardDoc['widgets']
   }
@@ -115,8 +120,17 @@ export function resolveWidgetPosition(raw: unknown): WidgetPosition {
   } else {
     throw new Error('Widget position must be "x,y,w,h", [x, y, w, h], or {x, y, w, h}.')
   }
-  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n) || n < 0)) {
-    throw new Error('Widget position must be "x,y,w,h" with non-negative numbers (e.g. "0,0,6,4").')
+  if (
+    parts.length !== 4 ||
+    parts.some((n) => !Number.isInteger(n)) ||
+    parts[0]! < 0 ||
+    parts[1]! < 0 ||
+    parts[2]! < 1 ||
+    parts[3]! < 1
+  ) {
+    throw new Error(
+      'Widget position must use integers, with x/y >= 0 and w/h >= 1 (e.g. "0,0,6,4").'
+    )
   }
   return {
     x: parts[0] as number,
@@ -127,8 +141,7 @@ export function resolveWidgetPosition(raw: unknown): WidgetPosition {
 }
 
 /**
- * Validate doc widgets, returning errors (fatal) and collecting warnings.
- * Pure apart from warn() — safe for --dry-run.
+ * Validate document widgets without mutating storage; safe for --dry-run.
  */
 export function buildWidgets(rawWidgets: DashboardDoc['widgets']): {
   widgets: Widget[]
@@ -163,7 +176,27 @@ export function buildWidgets(rawWidgets: DashboardDoc['widgets']): {
       return
     }
 
-    const settings = (raw.settings ?? {}) as Record<string, unknown>
+    if (raw.query !== undefined && (typeof raw.query !== 'string' || !raw.query.trim())) {
+      fail('"query" must be a non-empty string.')
+      return
+    }
+    if (raw.queryId !== undefined && (typeof raw.queryId !== 'string' || !raw.queryId.trim())) {
+      fail('"queryId" must be a non-empty string.')
+      return
+    }
+    if (raw.query && raw.queryId) {
+      fail('use either "query" or "queryId", not both.')
+      return
+    }
+    if (
+      raw.settings !== undefined &&
+      (typeof raw.settings !== 'object' || raw.settings === null || Array.isArray(raw.settings))
+    ) {
+      fail('"settings" must be an object.')
+      return
+    }
+
+    const settings = { ...(raw.settings ?? {}) }
 
     if (QUERY_WIDGETS.includes(type)) {
       if (!raw.query && !raw.queryId) {
@@ -174,27 +207,36 @@ export function buildWidgets(rawWidgets: DashboardDoc['widgets']): {
         fail('widget queries must be read-only (SELECT/SHOW).')
         return
       }
-      for (const key of RECOMMENDED_SETTINGS[type] ?? []) {
-        if (settings[key] === undefined) {
-          warn(`${label} (${type} "${raw.title}"): recommended setting "${key}" is missing.`)
-        }
-      }
     } else if (type === 'notes') {
       if (typeof settings.content !== 'string' || settings.content.trim() === '') {
         fail('notes widgets require "settings.content".')
         return
       }
+    } else if (type === 'savedQueries' && settings.content === undefined) {
+      settings.content = ''
     }
 
-    widgets.push({
+    if (!QUERY_WIDGETS.includes(type) && (raw.query || raw.queryId)) {
+      fail(`${type} widgets do not accept "query" or "queryId".`)
+      return
+    }
+
+    const widget = widgetSchema.safeParse({
       id: crypto.randomUUID(),
       type,
       title: raw.title.trim(),
-      queryId: raw.queryId ?? null,
-      customQuery: raw.query,
+      queryId: raw.queryId?.trim() ?? null,
+      customQuery: raw.query?.trim(),
       position,
-      settings: settings as WidgetSettings
+      settings
     })
+    if (!widget.success) {
+      fail(
+        widget.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ')
+      )
+      return
+    }
+    widgets.push(widget.data as Widget)
   })
 
   return { widgets, errors }
@@ -212,8 +254,7 @@ export function dashboardToDoc(dashboard: DashboardConfig, connectionName: strin
     widgets: dashboard.widgets.map((w: Widget) => ({
       type: w.type,
       title: w.title,
-      ...(w.customQuery ? { query: w.customQuery } : {}),
-      ...(w.queryId ? { queryId: w.queryId } : {}),
+      ...(w.customQuery ? { query: w.customQuery } : w.queryId ? { queryId: w.queryId } : {}),
       position: [w.position.x, w.position.y, w.position.w, w.position.h],
       settings: w.settings ?? {}
     }))

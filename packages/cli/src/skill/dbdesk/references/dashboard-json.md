@@ -59,9 +59,9 @@ optional (defaults shown). `position` is optional (default `0,0,6,4`).
 | `table`        | query                             | `columns`, `pageSize`, `sortable`, `filterable`                                         |
 | `barChart`     | query, `xAxisField`, `yAxisField` | `colorField`, `showLegend`, `showGrid`, `orientation` (vertical/horizontal)             |
 | `lineChart`    | query, `xAxisField`, `yAxisField` | `colorField`, `showLegend`, `showGrid`                                                  |
-| `pieChart`     | query, `labelField`, `valueField` | `showLegend`, `showTable`                                                               |
+| `pieChart`     | query, `labelField`               | `showLegend`, `showTable`                                                               |
 | `scatterChart` | query, `xAxisField`, `yAxisField` | `labelField`, `showGrid`                                                                |
 | `notes`        | `settings.content`                | —                                                                                       |
-| `savedQueries` | `queryId` or `settings.content`   | —                                                                                       |
+| `savedQueries` | —                                 | —                                                                                       |
 
-Missing recommended settings produce warnings, not errors. Unknown types and missing queries are errors.
+Missing required settings, unknown types, and missing queries are errors.
