@@ -12,28 +12,36 @@ import {
 import { authManager } from '../lib/auth-manager'
 import { typedHandle } from './typed-handle'
 
+const getAuthenticatedUserId = async (): Promise<string> => {
+  const userId = (await authManager.getSession())?.user?.id
+  if (!userId) {
+    throw new Error('You must be signed in to manage dashboards')
+  }
+  return userId
+}
+
 export function registerDashboardHandlers() {
   typedHandle('dashboards:load', async ({ connectionId }) => {
-    return loadDashboards(connectionId)
+    return loadDashboards(connectionId, await getAuthenticatedUserId())
   })
 
   typedHandle('dashboards:get', async ({ connectionId, dashboardId }) => {
-    return getDashboard(connectionId, dashboardId)
+    return getDashboard(connectionId, dashboardId, await getAuthenticatedUserId())
   })
 
   typedHandle('dashboards:save', async (dashboard) => {
-    const session = await authManager.getSession()
+    const userId = await getAuthenticatedUserId()
     const normalized: DashboardConfig = {
       ...(dashboard as DashboardConfig),
-      userId: (dashboard as DashboardConfig).userId ?? session?.user?.id,
+      userId,
       createdAt: dashboard.createdAt ? new Date(dashboard.createdAt) : new Date(),
       updatedAt: dashboard.updatedAt ? new Date(dashboard.updatedAt) : new Date()
     }
-    return saveDashboard(normalized)
+    return saveDashboard(normalized, userId)
   })
 
   typedHandle('dashboards:delete', async ({ connectionId, dashboardId }) => {
-    return deleteDashboard(connectionId, dashboardId)
+    return deleteDashboard(connectionId, dashboardId, await getAuthenticatedUserId())
   })
 
   typedHandle('dashboards:persist', async ({ dashboardId }) => {
@@ -45,16 +53,11 @@ export function registerDashboardHandlers() {
   })
 
   typedHandle('dashboards:export', async (payload) => {
-    return exportDashboards(payload?.connectionId)
+    return exportDashboards(await getAuthenticatedUserId(), payload?.connectionId)
   })
 
   typedHandle('dashboards:import', async ({ dashboards, overwrite }) => {
-    const session = await authManager.getSession()
-    const userId = session?.user?.id
-    const stamped = (dashboards as DashboardConfig[]).map((dashboard) => ({
-      ...dashboard,
-      userId: dashboard.userId ?? userId
-    }))
-    return importDashboards(stamped, overwrite ?? false)
+    const userId = await getAuthenticatedUserId()
+    return importDashboards(dashboards as DashboardConfig[], userId, overwrite ?? false)
   })
 }

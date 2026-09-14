@@ -63,6 +63,33 @@ const toDate = (value: Date | string | undefined, fallback: Date): Date => {
   return value instanceof Date ? value : new Date(value)
 }
 
+/**
+ * Dashboards created before ownership was introduced are stored with the
+ * migration's empty-string owner. On the first authenticated dashboard
+ * operation, claim those legacy rows and rewrite their full document so they
+ * remain usable without exposing dashboards owned by another user.
+ */
+const claimLegacyDashboards = (userId: string): void => {
+  const legacyRows = getDb().select().from(dashboards).where(eq(dashboards.userId, '')).all()
+
+  for (const row of legacyRows) {
+    try {
+      const dashboard = rowToDashboard(row)
+      const ownedDashboard = { ...dashboard, userId }
+      getDb()
+        .update(dashboards)
+        .set({
+          userId,
+          configJson: buildConfigJson(ownedDashboard, dashboard.createdAt, dashboard.updatedAt)
+        })
+        .where(eq(dashboards.dashboardId, row.dashboardId))
+        .run()
+    } catch (error) {
+      console.error(`Failed to claim legacy dashboard ${row.dashboardId}:`, error)
+    }
+  }
+}
+
 // ============================================================================
 // PUBLIC API
 // ============================================================================
@@ -92,11 +119,15 @@ export const initDashboardStorage = async (): Promise<void> => {
 /**
  * Load all dashboards for a specific connection.
  */
-export const loadDashboards = async (connectionId: string): Promise<DashboardConfig[]> => {
+export const loadDashboards = async (
+  connectionId: string,
+  userId: string
+): Promise<DashboardConfig[]> => {
+  claimLegacyDashboards(userId)
   const rows = getDb()
     .select()
     .from(dashboards)
-    .where(eq(dashboards.connectionId, connectionId))
+    .where(and(eq(dashboards.connectionId, connectionId), eq(dashboards.userId, userId)))
     .all()
 
   const result: DashboardConfig[] = []
@@ -116,12 +147,20 @@ export const loadDashboards = async (connectionId: string): Promise<DashboardCon
  */
 export const getDashboard = async (
   connectionId: string,
-  dashboardId: string
+  dashboardId: string,
+  userId: string
 ): Promise<DashboardConfig | undefined> => {
+  claimLegacyDashboards(userId)
   const row = getDb()
     .select()
     .from(dashboards)
-    .where(and(eq(dashboards.dashboardId, dashboardId), eq(dashboards.connectionId, connectionId)))
+    .where(
+      and(
+        eq(dashboards.dashboardId, dashboardId),
+        eq(dashboards.connectionId, connectionId),
+        eq(dashboards.userId, userId)
+      )
+    )
     .get()
 
   if (!row) return undefined
@@ -137,22 +176,27 @@ export const getDashboard = async (
 /**
  * Save a dashboard (create or update).
  */
-export const saveDashboard = async (dashboard: DashboardConfig): Promise<DashboardConfig> => {
-  if (!dashboard.userId) {
-    throw new Error('Cannot save a dashboard without an authenticated user')
-  }
-  const userId = dashboard.userId
+export const saveDashboard = async (
+  dashboard: DashboardConfig,
+  userId: string
+): Promise<DashboardConfig> => {
+  claimLegacyDashboards(userId)
   const now = new Date()
   const existing = getDb()
-    .select({ createdAt: dashboards.createdAt })
+    .select({ createdAt: dashboards.createdAt, userId: dashboards.userId })
     .from(dashboards)
     .where(eq(dashboards.dashboardId, dashboard.dashboardId))
     .get()
+
+  if (existing && existing.userId !== userId) {
+    throw new Error('Cannot modify a dashboard owned by another user')
+  }
 
   const createdAt = existing ? new Date(existing.createdAt) : toDate(dashboard.createdAt, now)
 
   const updatedDashboard: DashboardConfig = {
     ...dashboard,
+    userId,
     createdAt,
     updatedAt: now
   }
@@ -196,11 +240,19 @@ export const saveDashboard = async (dashboard: DashboardConfig): Promise<Dashboa
  */
 export const deleteDashboard = async (
   connectionId: string,
-  dashboardId: string
+  dashboardId: string,
+  userId: string
 ): Promise<boolean> => {
+  claimLegacyDashboards(userId)
   const result = getDb()
     .delete(dashboards)
-    .where(and(eq(dashboards.dashboardId, dashboardId), eq(dashboards.connectionId, connectionId)))
+    .where(
+      and(
+        eq(dashboards.dashboardId, dashboardId),
+        eq(dashboards.connectionId, connectionId),
+        eq(dashboards.userId, userId)
+      )
+    )
     .run()
 
   return result.changes > 0
@@ -235,8 +287,9 @@ export const hasUnsavedChanges = (): boolean => false
 /**
  * Get all dashboards (for export/backup purposes).
  */
-export const getAllDashboards = async (): Promise<DashboardConfig[]> => {
-  const rows = getDb().select().from(dashboards).all()
+export const getAllDashboards = async (userId: string): Promise<DashboardConfig[]> => {
+  claimLegacyDashboards(userId)
+  const rows = getDb().select().from(dashboards).where(eq(dashboards.userId, userId)).all()
   const result: DashboardConfig[] = []
   for (const row of rows) {
     try {
@@ -253,42 +306,40 @@ export const getAllDashboards = async (): Promise<DashboardConfig[]> => {
  */
 export const importDashboards = async (
   imports: DashboardConfig[],
+  userId: string,
   overwrite: boolean = false
 ): Promise<{ imported: number; skipped: number }> => {
+  claimLegacyDashboards(userId)
   let imported = 0
   let skipped = 0
   const now = new Date()
 
   for (const dashboard of imports) {
-    const userId = dashboard.userId
-    if (!userId) {
-      skipped++
-      continue
-    }
+    const ownedDashboard: DashboardConfig = { ...dashboard, userId }
     const existing = getDb()
-      .select({ id: dashboards.dashboardId })
+      .select({ id: dashboards.dashboardId, userId: dashboards.userId })
       .from(dashboards)
       .where(eq(dashboards.dashboardId, dashboard.dashboardId))
       .get()
 
-    if (existing && !overwrite) {
+    if (existing && (existing.userId !== userId || !overwrite)) {
       skipped++
       continue
     }
 
-    const createdAt = toDate(dashboard.createdAt, now)
-    const configJson = buildConfigJson(dashboard, createdAt, now)
+    const createdAt = toDate(ownedDashboard.createdAt, now)
+    const configJson = buildConfigJson(ownedDashboard, createdAt, now)
 
     getDb()
       .insert(dashboards)
       .values({
-        dashboardId: dashboard.dashboardId,
-        connectionId: dashboard.connectionId,
+        dashboardId: ownedDashboard.dashboardId,
+        connectionId: ownedDashboard.connectionId,
         userId,
-        name: dashboard.name,
-        description: dashboard.description ?? null,
-        layoutJson: JSON.stringify(dashboard.layout),
-        widgetsJson: JSON.stringify(dashboard.widgets),
+        name: ownedDashboard.name,
+        description: ownedDashboard.description ?? null,
+        layoutJson: JSON.stringify(ownedDashboard.layout),
+        widgetsJson: JSON.stringify(ownedDashboard.widgets),
         configJson,
         createdAt: createdAt.getTime(),
         updatedAt: now.getTime()
@@ -296,12 +347,12 @@ export const importDashboards = async (
       .onConflictDoUpdate({
         target: dashboards.dashboardId,
         set: {
-          connectionId: dashboard.connectionId,
+          connectionId: ownedDashboard.connectionId,
           userId,
-          name: dashboard.name,
-          description: dashboard.description ?? null,
-          layoutJson: JSON.stringify(dashboard.layout),
-          widgetsJson: JSON.stringify(dashboard.widgets),
+          name: ownedDashboard.name,
+          description: ownedDashboard.description ?? null,
+          layoutJson: JSON.stringify(ownedDashboard.layout),
+          widgetsJson: JSON.stringify(ownedDashboard.widgets),
           configJson,
           updatedAt: now.getTime()
         }
@@ -318,13 +369,14 @@ export const importDashboards = async (
  * Export dashboards (optionally filtered by connection).
  */
 export const exportDashboards = async (
+  userId: string,
   connectionId?: string
 ): Promise<{
   version: string
   exportedAt: string
   dashboards: DashboardConfig[]
 }> => {
-  const all = await getAllDashboards()
+  const all = await getAllDashboards(userId)
   const filtered = connectionId ? all.filter((d) => d.connectionId === connectionId) : all
 
   return {
