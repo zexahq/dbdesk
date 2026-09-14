@@ -18,7 +18,7 @@
   "devDependencies": {
     "prettier": "^3.8.1",
     "prettier-plugin-organize-imports": "^4.3.0",
-    "turbo": "^2.9.18",
+    "turbo": "^2.10.13",
     "typescript": "^6.0.0"
   }
 }
