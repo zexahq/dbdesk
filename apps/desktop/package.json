@@ -50,7 +50,7 @@
     "monaco-sql-languages": "^1.2.1",
     "pg": "^8.20.0",
     "react-grid-layout": "^2.2.2",
-    "sql-formatter": "^15.8.0"
+    "sql-formatter": "^15.8.2"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",
