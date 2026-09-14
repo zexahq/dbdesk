@@ -7,10 +7,10 @@ import {
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { Input } from '@renderer/components/ui/input'
-import { dbdeskClient } from '@renderer/shared/api/client'
 import { mapWithConcurrency } from '@renderer/shared/lib/async'
 import { toast } from '@renderer/shared/lib/toast'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
+import { getTableIntrospection } from '@renderer/features/sql-workspace/queries/schema'
 import {
   Background,
   BackgroundVariant,
@@ -177,6 +177,8 @@ function SchemaDiagramCanvas({ connectionId, schemasWithTables, onOpenTable }: S
   const [focusMode, setFocusMode] = useState(false)
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null)
   const flowContainerRef = useRef<HTMLDivElement>(null)
+  const loadVersionRef = useRef(0)
+  const displayedConnectionIdRef = useRef<string | null>(null)
   const setTableColumns = useSqlWorkspaceStore((s) => s.setTableColumns)
   const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow()
 
@@ -188,6 +190,7 @@ function SchemaDiagramCanvas({ connectionId, schemasWithTables, onOpenTable }: S
 
   const loadDiagram = useCallback(
     async (force = false) => {
+      const loadVersion = ++loadVersionRef.current
       setIsLoading(true)
       try {
         const cachedTables: TableInfo[] = []
@@ -204,7 +207,7 @@ function SchemaDiagramCanvas({ connectionId, schemasWithTables, onOpenTable }: S
           missingTargets,
           MAX_CONCURRENT_INTROSPECTIONS,
           async ({ schema, table }) => {
-            const tableInfo = await dbdeskClient.introspectTable(connectionId, schema, table)
+            const tableInfo = await getTableIntrospection(connectionId, schema, table)
             if (useSqlWorkspaceStore.getState().currentConnectionId === connectionId) {
               setTableColumns(schema, table, tableInfo.columns)
             }
@@ -214,17 +217,34 @@ function SchemaDiagramCanvas({ connectionId, schemasWithTables, onOpenTable }: S
         const fetchedTables = results.flatMap((result) =>
           result.status === 'fulfilled' ? [result.value] : []
         )
+        if (loadVersion !== loadVersionRef.current) return
+
         const diagram = makeDiagram([...cachedTables, ...fetchedTables])
-        setNodes(restorePositions(connectionId, diagram.nodes, getNodes() as SchemaTableNode[]))
+        const currentNodes =
+          displayedConnectionIdRef.current === connectionId ? (getNodes() as SchemaTableNode[]) : []
+        setNodes(restorePositions(connectionId, diagram.nodes, currentNodes))
         setEdges(diagram.edges)
         setFailedTableCount(missingTargets.length - fetchedTables.length)
-        requestAnimationFrame(() => fitView({ padding: 0.2, maxZoom: 1 }))
+        displayedConnectionIdRef.current = connectionId
+        requestAnimationFrame(() => {
+          if (loadVersion === loadVersionRef.current) fitView({ padding: 0.2, maxZoom: 1 })
+        })
       } finally {
-        setIsLoading(false)
+        if (loadVersion === loadVersionRef.current) setIsLoading(false)
       }
     },
     [connectionId, fitView, getNodes, setEdges, setNodes, setTableColumns, tableTargets]
   )
+
+  useEffect(() => {
+    loadVersionRef.current += 1
+    displayedConnectionIdRef.current = null
+    setNodes([])
+    setEdges([])
+    setFailedTableCount(0)
+    setFocusedNodeId(null)
+    setFocusMode(false)
+  }, [connectionId, setEdges, setNodes])
 
   useEffect(() => {
     void loadDiagram()

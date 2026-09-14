@@ -41,6 +41,24 @@ const keys = {
     ] as const
 }
 
+const pendingIntrospections = new Map<string, Promise<TableInfo>>()
+
+/**
+ * Shares in-flight table metadata requests between the workspace preload and
+ * other consumers, such as the schema diagram.
+ */
+export function getTableIntrospection(connectionId: string, schema: string, table: string) {
+  const key = `${connectionId}:${schema}:${table}`
+  const pending = pendingIntrospections.get(key)
+  if (pending) return pending
+
+  const request = dbdeskClient
+    .introspectTable(connectionId, schema, table)
+    .finally(() => pendingIntrospections.delete(key))
+  pendingIntrospections.set(key, request)
+  return request
+}
+
 export function useSchemas(connectionId?: string) {
   return useQuery<string[]>({
     queryKey: connectionId ? keys.schemas(connectionId) : ['schemas', 'disabled'],
@@ -76,8 +94,7 @@ export function useTableIntrospection(connectionId?: string, schema?: string, ta
     queryKey: enabled
       ? keys.tableInfo(connectionId as string, schema as string, table as string)
       : ['table-introspection', 'disabled'],
-    queryFn: () =>
-      dbdeskClient.introspectTable(connectionId as string, schema as string, table as string),
+    queryFn: () => getTableIntrospection(connectionId as string, schema as string, table as string),
     enabled
   })
 }
@@ -93,7 +110,7 @@ export function useTableColumns() {
       schema: string
       table: string
     }): Promise<ColumnInfo[]> => {
-      const tableInfo = await dbdeskClient.introspectTable(
+      const tableInfo = await getTableIntrospection(
         connectionId as string,
         schema as string,
         table as string

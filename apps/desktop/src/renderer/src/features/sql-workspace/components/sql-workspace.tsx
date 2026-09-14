@@ -1,5 +1,8 @@
 import type { SQLConnectionProfile } from '@dbdesk/shared/types'
-import { useSchemasWithTables } from '@renderer/features/sql-workspace/queries/schema'
+import {
+  getTableIntrospection,
+  useSchemasWithTables
+} from '@renderer/features/sql-workspace/queries/schema'
 import { UnsavedChangesDialog } from '@renderer/features/sql-workspace/components/dialogs/unsaved-changes-dialog'
 import {
   ResizableHandle,
@@ -78,7 +81,7 @@ export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
       }
 
       try {
-        const tableInfo = await dbdeskClient.introspectTable(profile.id, schema, table)
+        const tableInfo = await getTableIntrospection(profile.id, schema, table)
         if (!cancelled) {
           setTableColumns(schema, table, tableInfo.columns)
         }

@@ -275,7 +275,9 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
   // Dashboard-specific actions
   addDashboardTab: (dashboardId: string, name: string) => {
-    const existingTab = get().tabs.find((t) => t.kind === 'dashboard' && t.dashboardId === dashboardId)
+    const existingTab = get().tabs.find(
+      (t) => t.kind === 'dashboard' && t.dashboardId === dashboardId
+    )
     if (existingTab) {
       set({ activeTabId: existingTab.id })
       return existingTab.id
@@ -398,9 +400,15 @@ export const useTabStore = create<TabStore>((set, get) => ({
       }
     })
 
+    const isActiveTabPersisted = persistentTabs.some((tab) => tab.id === activeTabId)
+    const closedTabIndex = tabs.findIndex((tab) => tab.id === activeTabId)
+    const fallbackActiveTabId =
+      persistentTabs[closedTabIndex >= 0 ? Math.min(closedTabIndex, persistentTabs.length - 1) : 0]
+        ?.id ?? null
+
     return {
       tabs: serializedTabs,
-      activeTabId: persistentTabs.some((tab) => tab.id === activeTabId) ? activeTabId : null
+      activeTabId: isActiveTabPersisted ? activeTabId : fallbackActiveTabId
     }
   }
 }))
