@@ -117,6 +117,7 @@ export interface DashboardLayout {
 export interface DashboardConfig {
   dashboardId: string
   connectionId: string
+  userId?: string
   name: string
   description?: string
   layout: DashboardLayout
