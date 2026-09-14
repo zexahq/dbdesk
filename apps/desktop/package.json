@@ -48,7 +48,7 @@
     "bindings": "^1.5.0",
     "file-uri-to-path": "^2.0.0",
     "monaco-sql-languages": "^1.2.1",
-    "pg": "^8.20.0",
+    "pg": "^8.23.0",
     "react-grid-layout": "^2.2.2",
     "sql-formatter": "^15.8.2"
   },
@@ -82,7 +82,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/router-plugin": "^1.168.18",
     "@types/node": "^26.0.0",
-    "@types/pg": "^8.20.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.1.2",
