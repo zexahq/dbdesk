@@ -33,6 +33,7 @@ import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import {
   ChevronRight,
   DatabaseIcon,
+  Workflow,
   LayoutDashboard,
   MoreVertical,
   Pencil,
@@ -82,6 +83,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const activeTab = useTabStore((state) => state.tabs.find((t) => t.id === state.activeTabId))
   const addDashboardTab = useTabStore((s) => s.addDashboardTab)
   const findDashboardTabById = useTabStore((s) => s.findDashboardTabById)
+  const addSchemaDiagramTab = useTabStore((s) => s.addSchemaDiagramTab)
 
   const queries = useSavedQueriesStore((s) => s.queries)
   const loadQueries = useSavedQueriesStore((s) => s.loadQueries)
@@ -174,6 +176,10 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
 
   const handleNewQuery = () => {
     addQueryTab()
+  }
+
+  const handleOpenSchemaDiagram = () => {
+    addSchemaDiagramTab()
   }
 
   const handleDuplicateToQuery = (schema: string, table: string) => {
@@ -272,15 +278,27 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
     switch (sidebarViewMode) {
       case 'schemas':
         return (
-          <Button
-            variant="outline"
-            className="w-full justify-start h-10 gap-2 cursor-pointer"
-            onClick={handleRefreshSchemas}
-            disabled={isRefreshing}
-          >
-            <RotateCw className={cn('size-4 text-muted-foreground', isRefreshing && 'animate-spin')} />
-            Refresh Schemas
-          </Button>
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start h-10 gap-2 cursor-pointer"
+              onClick={handleOpenSchemaDiagram}
+            >
+              <Workflow className="size-4 text-muted-foreground" />
+              Schema Diagram
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start h-10 gap-2 cursor-pointer"
+              onClick={handleRefreshSchemas}
+              disabled={isRefreshing}
+            >
+              <RotateCw
+                className={cn('size-4 text-muted-foreground', isRefreshing && 'animate-spin')}
+              />
+              Refresh Schemas
+            </Button>
+          </div>
         )
       case 'queries':
         return (
