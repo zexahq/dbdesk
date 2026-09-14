@@ -287,7 +287,7 @@ importers:
         version: 3.0.33(zod@4.3.6)
       '@better-auth/electron':
         specifier: ^1.6.20
-        version: 1.6.20(@better-auth/core@1.6.20(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.0)(better-call@1.3.2(zod@4.3.6))(jose@6.1.3)(kysely@0.29.2)(nanostores@1.1.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.20(dc112ad34c18a24e0724ad99127d1daa))(better-call@1.3.2(zod@4.3.6))(electron@38.8.6)
+        version: 1.6.20(@better-auth/core@1.6.20(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.0)(better-call@1.3.2(zod@4.3.6))(jose@6.1.3)(kysely@0.29.2)(nanostores@1.1.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.20(@opentelemetry/api@1.9.0)(@prisma/client@5.22.0(prisma@7.4.2(@types/react@19.3.0)(better-sqlite3@12.8.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3)))(better-sqlite3@12.8.0)(drizzle-kit@0.31.9)(mongodb@7.1.0(socks@2.8.7))(mysql2@3.19.0(@types/node@25.3.2))(next@16.1.7(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(pg@8.23.0)(prisma@7.4.2(@types/react@19.3.0)(better-sqlite3@12.8.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.7(@opentelemetry/api@1.9.0)(@types/node@25.3.2)(vite@7.3.1(@types/node@25.3.2)(jiti@2.7.0)(lightningcss@1.31.1)(tsx@4.21.0))))(better-call@1.3.2(zod@4.3.6))(electron@38.8.6)
       '@better-fetch/fetch':
         specifier: 1.3.1
         version: 1.3.1
@@ -302,7 +302,7 @@ importers:
         version: 6.0.103(zod@4.3.6)
       better-auth:
         specifier: ^1.6.20
-        version: 1.6.20(dc112ad34c18a24e0724ad99127d1daa)
+        version: 1.6.20(@opentelemetry/api@1.9.0)(@prisma/client@5.22.0(prisma@7.4.2(@types/react@19.3.0)(better-sqlite3@12.8.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3)))(better-sqlite3@12.8.0)(drizzle-kit@0.31.9)(mongodb@7.1.0(socks@2.8.7))(mysql2@3.19.0(@types/node@25.3.2))(next@16.1.7(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(pg@8.23.0)(prisma@7.4.2(@types/react@19.3.0)(better-sqlite3@12.8.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.7(@opentelemetry/api@1.9.0)(@types/node@25.3.2)(vite@7.3.1(@types/node@25.3.2)(jiti@2.7.0)(lightningcss@1.31.1)(tsx@4.21.0)))
       dotenv:
         specifier: ^17.2.3
         version: 17.3.1
