@@ -12,7 +12,7 @@ import { create } from 'zustand'
 
 export interface BaseTab {
   id: string
-  kind: 'table' | 'query' | 'dashboard'
+  kind: 'table' | 'query' | 'dashboard' | 'schema-diagram'
 }
 
 export interface TableTab extends BaseTab {
@@ -48,7 +48,12 @@ export interface DashboardTab extends BaseTab {
   name: string
 }
 
-export type Tab = TableTab | QueryTab | DashboardTab
+export interface SchemaDiagramTab extends BaseTab {
+  kind: 'schema-diagram'
+  name: string
+}
+
+export type Tab = TableTab | QueryTab | DashboardTab | SchemaDiagramTab
 type TabScrollPosition = {
   left: number
   top: number
@@ -82,6 +87,9 @@ interface TabStore {
   addDashboardTab: (dashboardId: string, name: string) => string
   updateDashboardTab: (tabId: string, updates: Partial<Pick<DashboardTab, 'name'>>) => void
   findDashboardTabById: (dashboardId: string) => DashboardTab | undefined
+
+  // Schema diagram
+  addSchemaDiagramTab: () => string
 
   // Persistence
   loadFromSerialized: (tabs: SerializedTab[], activeTabId: string | null) => void
@@ -267,7 +275,9 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
   // Dashboard-specific actions
   addDashboardTab: (dashboardId: string, name: string) => {
-    const existingTab = get().tabs.find((t) => t.kind === 'dashboard' && t.dashboardId === dashboardId)
+    const existingTab = get().tabs.find(
+      (t) => t.kind === 'dashboard' && t.dashboardId === dashboardId
+    )
     if (existingTab) {
       set({ activeTabId: existingTab.id })
       return existingTab.id
@@ -285,6 +295,23 @@ export const useTabStore = create<TabStore>((set, get) => ({
   findDashboardTabById: (dashboardId: string) => {
     const tab = get().tabs.find((t) => t.kind === 'dashboard' && t.dashboardId === dashboardId)
     return tab?.kind === 'dashboard' ? tab : undefined
+  },
+
+  // Schema diagram
+  addSchemaDiagramTab: () => {
+    const existingTab = get().tabs.find((t) => t.kind === 'schema-diagram')
+    if (existingTab) {
+      set({ activeTabId: existingTab.id })
+      return existingTab.id
+    }
+
+    const newTab: SchemaDiagramTab = {
+      id: 'schema-diagram',
+      kind: 'schema-diagram',
+      name: 'Schema Diagram'
+    }
+    set((state) => ({ tabs: [...state.tabs, newTab], activeTabId: newTab.id }))
+    return newTab.id
   },
 
   updateDashboardTab: (tabId: string, updates: Partial<Pick<DashboardTab, 'name'>>) => {
@@ -334,8 +361,13 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
   serializeState: () => {
     const { tabs, activeTabId } = get()
+    // The diagram is derived from the live schema, so it is intentionally not persisted.
+    // Avoid restoring an active tab id that no longer exists after a workspace reload.
+    const persistentTabs = tabs.filter(
+      (tab): tab is Exclude<Tab, SchemaDiagramTab> => tab.kind !== 'schema-diagram'
+    )
 
-    const serializedTabs: SerializedTab[] = tabs.map((tab) => {
+    const serializedTabs: SerializedTab[] = persistentTabs.map((tab) => {
       if (tab.kind === 'table') {
         return {
           kind: 'table',
@@ -368,7 +400,16 @@ export const useTabStore = create<TabStore>((set, get) => ({
       }
     })
 
-    return { tabs: serializedTabs, activeTabId }
+    const isActiveTabPersisted = persistentTabs.some((tab) => tab.id === activeTabId)
+    const closedTabIndex = tabs.findIndex((tab) => tab.id === activeTabId)
+    const fallbackActiveTabId =
+      persistentTabs[closedTabIndex >= 0 ? Math.min(closedTabIndex, persistentTabs.length - 1) : 0]
+        ?.id ?? null
+
+    return {
+      tabs: serializedTabs,
+      activeTabId: isActiveTabPersisted ? activeTabId : fallbackActiveTabId
+    }
   }
 }))
 

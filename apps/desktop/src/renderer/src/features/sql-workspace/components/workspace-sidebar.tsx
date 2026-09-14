@@ -1,7 +1,6 @@
 import type { DashboardConfig, SQLConnectionProfile } from '@dbdesk/shared/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
-import { AddTableSheet } from '@renderer/features/sql-workspace/components/sheets/add-table-sheet'
-import { TableOptionsDropdown } from '@renderer/features/sql-workspace/components/table-view/table-options-dropdown'
+import { Button } from '@renderer/components/ui/button'
 import {
   Collapsible,
   CollapsibleContent,
@@ -25,11 +24,19 @@ import {
   SidebarMenuSub,
   SidebarSeparator
 } from '@renderer/components/ui/sidebar'
-import { toast } from '@renderer/shared/lib/toast'
-import { cn } from '@renderer/shared/lib/utils'
+import { AddTableSheet } from '@renderer/features/sql-workspace/components/sheets/add-table-sheet'
+import { TableOptionsDropdown } from '@renderer/features/sql-workspace/components/table-view/table-options-dropdown'
+import {
+  DASHBOARD_QUERY_KEYS,
+  useDashboardStore
+} from '@renderer/features/sql-workspace/stores/dashboard-store'
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
+import { dbdeskClient } from '@renderer/shared/api/client'
+import { queryClient } from '@renderer/shared/lib/query-client'
+import { toast } from '@renderer/shared/lib/toast'
+import { cn } from '@renderer/shared/lib/utils'
 import {
   ChevronRight,
   DatabaseIcon,
@@ -40,17 +47,11 @@ import {
   RotateCw,
   SquareCode,
   Table2Icon,
-  Trash2
+  Trash2,
+  Workflow
 } from 'lucide-react'
-import { dbdeskClient } from '@renderer/shared/api/client'
-import { queryClient } from '@renderer/shared/lib/query-client'
 import { useQuery } from '@tanstack/react-query'
-import {
-  DASHBOARD_QUERY_KEYS,
-  useDashboardStore
-} from '@renderer/features/sql-workspace/stores/dashboard-store'
 import { useEffect, useState } from 'react'
-import { Button } from '@renderer/components/ui/button'
 
 type WorkspaceSidebarProps = {
   profile: SQLConnectionProfile
@@ -68,7 +69,10 @@ type DashboardRenameMode = {
 
 export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const [renameMode, setRenameMode] = useState<RenameMode>({ open: false, queryId: null })
-  const [dashboardRenameMode, setDashboardRenameMode] = useState<DashboardRenameMode>({ open: false, dashboardId: null })
+  const [dashboardRenameMode, setDashboardRenameMode] = useState<DashboardRenameMode>({
+    open: false,
+    dashboardId: null
+  })
 
   const sidebarViewMode = useSqlWorkspaceStore((s) => s.sidebarViewMode)
   const schemasWithTables = useSqlWorkspaceStore((s) => s.schemasWithTables)
@@ -82,6 +86,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
   const activeTab = useTabStore((state) => state.tabs.find((t) => t.id === state.activeTabId))
   const addDashboardTab = useTabStore((s) => s.addDashboardTab)
   const findDashboardTabById = useTabStore((s) => s.findDashboardTabById)
+  const addSchemaDiagramTab = useTabStore((s) => s.addSchemaDiagramTab)
 
   const queries = useSavedQueriesStore((s) => s.queries)
   const loadQueries = useSavedQueriesStore((s) => s.loadQueries)
@@ -174,6 +179,10 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
 
   const handleNewQuery = () => {
     addQueryTab()
+  }
+
+  const handleOpenSchemaDiagram = () => {
+    addSchemaDiagramTab()
   }
 
   const handleDuplicateToQuery = (schema: string, table: string) => {
@@ -272,15 +281,27 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
     switch (sidebarViewMode) {
       case 'schemas':
         return (
-          <Button
-            variant="outline"
-            className="w-full justify-start h-10 gap-2 cursor-pointer"
-            onClick={handleRefreshSchemas}
-            disabled={isRefreshing}
-          >
-            <RotateCw className={cn('size-4 text-muted-foreground', isRefreshing && 'animate-spin')} />
-            Refresh Schemas
-          </Button>
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start h-10 gap-2 cursor-pointer"
+              onClick={handleOpenSchemaDiagram}
+            >
+              <Workflow className="size-4 text-muted-foreground" />
+              Schema Diagram
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start h-10 gap-2 cursor-pointer"
+              onClick={handleRefreshSchemas}
+              disabled={isRefreshing}
+            >
+              <RotateCw
+                className={cn('size-4 text-muted-foreground', isRefreshing && 'animate-spin')}
+              />
+              Refresh Schemas
+            </Button>
+          </div>
         )
       case 'queries':
         return (
@@ -405,13 +426,13 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
         return (
           <SidebarGroupContent>
             {dashboards.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground text-center">
-                No dashboards yet
-              </div>
+              <div className="p-4 text-sm text-muted-foreground text-center">No dashboards yet</div>
             ) : (
               <SidebarMenu>
                 {dashboards.map((dashboard) => {
-                  const isActive = activeTab?.kind === 'dashboard' && activeTab.dashboardId === dashboard.dashboardId
+                  const isActive =
+                    activeTab?.kind === 'dashboard' &&
+                    activeTab.dashboardId === dashboard.dashboardId
                   return (
                     <SidebarMenuItem key={dashboard.dashboardId}>
                       <div
@@ -443,7 +464,10 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               onClick={() => {
-                                setDashboardRenameMode({ open: true, dashboardId: dashboard.dashboardId })
+                                setDashboardRenameMode({
+                                  open: true,
+                                  dashboardId: dashboard.dashboardId
+                                })
                               }}
                               className="cursor-pointer"
                             >
@@ -481,9 +505,7 @@ export function WorkspaceSidebar({ profile }: WorkspaceSidebarProps) {
         </SidebarHeader>
         <SidebarSeparator />
         <SidebarContent className="gap-0 py-2">
-          <SidebarGroup className="gap-2 py-0">
-            {renderContent()}
-          </SidebarGroup>
+          <SidebarGroup className="gap-2 py-0">{renderContent()}</SidebarGroup>
         </SidebarContent>
       </Sidebar>
 
