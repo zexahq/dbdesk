@@ -1,8 +1,8 @@
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 
-import 'monaco-sql-languages/esm/languages/mysql/mysql.contribution'
-import 'monaco-sql-languages/esm/languages/pgsql/pgsql.contribution'
+import 'monaco-sql-languages/esm/languages/mysql/mysql.contribution.js'
+import 'monaco-sql-languages/esm/languages/pgsql/pgsql.contribution.js'
 import MYSQLWorker from 'monaco-sql-languages/esm/languages/mysql/mysql.worker?worker'
 import PGSQLWorker from 'monaco-sql-languages/esm/languages/pgsql/pgsql.worker?worker'
 

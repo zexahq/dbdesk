@@ -63,33 +63,6 @@ const toDate = (value: Date | string | undefined, fallback: Date): Date => {
   return value instanceof Date ? value : new Date(value)
 }
 
-/**
- * Dashboards created before ownership was introduced are stored with the
- * migration's empty-string owner. On the first authenticated dashboard
- * operation, claim those legacy rows and rewrite their full document so they
- * remain usable without exposing dashboards owned by another user.
- */
-const claimLegacyDashboards = (userId: string): void => {
-  const legacyRows = getDb().select().from(dashboards).where(eq(dashboards.userId, '')).all()
-
-  for (const row of legacyRows) {
-    try {
-      const dashboard = rowToDashboard(row)
-      const ownedDashboard = { ...dashboard, userId }
-      getDb()
-        .update(dashboards)
-        .set({
-          userId,
-          configJson: buildConfigJson(ownedDashboard, dashboard.createdAt, dashboard.updatedAt)
-        })
-        .where(eq(dashboards.dashboardId, row.dashboardId))
-        .run()
-    } catch (error) {
-      console.error(`Failed to claim legacy dashboard ${row.dashboardId}:`, error)
-    }
-  }
-}
-
 // ============================================================================
 // PUBLIC API
 // ============================================================================
@@ -123,7 +96,6 @@ export const loadDashboards = async (
   connectionId: string,
   userId: string
 ): Promise<DashboardConfig[]> => {
-  claimLegacyDashboards(userId)
   const rows = getDb()
     .select()
     .from(dashboards)
@@ -150,7 +122,6 @@ export const getDashboard = async (
   dashboardId: string,
   userId: string
 ): Promise<DashboardConfig | undefined> => {
-  claimLegacyDashboards(userId)
   const row = getDb()
     .select()
     .from(dashboards)
@@ -180,7 +151,6 @@ export const saveDashboard = async (
   dashboard: DashboardConfig,
   userId: string
 ): Promise<DashboardConfig> => {
-  claimLegacyDashboards(userId)
   const now = new Date()
   const existing = getDb()
     .select({ createdAt: dashboards.createdAt, userId: dashboards.userId })
@@ -243,7 +213,6 @@ export const deleteDashboard = async (
   dashboardId: string,
   userId: string
 ): Promise<boolean> => {
-  claimLegacyDashboards(userId)
   const result = getDb()
     .delete(dashboards)
     .where(
@@ -288,7 +257,6 @@ export const hasUnsavedChanges = (): boolean => false
  * Get all dashboards (for export/backup purposes).
  */
 export const getAllDashboards = async (userId: string): Promise<DashboardConfig[]> => {
-  claimLegacyDashboards(userId)
   const rows = getDb().select().from(dashboards).where(eq(dashboards.userId, userId)).all()
   const result: DashboardConfig[] = []
   for (const row of rows) {
@@ -309,7 +277,6 @@ export const importDashboards = async (
   userId: string,
   overwrite: boolean = false
 ): Promise<{ imported: number; skipped: number }> => {
-  claimLegacyDashboards(userId)
   let imported = 0
   let skipped = 0
   const now = new Date()
