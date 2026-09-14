@@ -1,7 +1,8 @@
+import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/shared/lib/utils'
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
-import { KeyRound, Link2 } from 'lucide-react'
-import { memo } from 'react'
+import { ExternalLink, KeyRound, Link2 } from 'lucide-react'
+import { createContext, memo, useContext } from 'react'
 
 export type DiagramField = {
   name: string
@@ -20,7 +21,20 @@ export type SchemaTableNodeData = Record<string, unknown> & {
 
 export type SchemaTableNode = Node<SchemaTableNodeData, 'table'>
 
+export const TableNodeOptionsContext = createContext<{
+  keysOnly: boolean
+  onOpenTable: (schema: string, table: string) => void
+}>({
+  keysOnly: false,
+  onOpenTable: () => undefined
+})
+
 function TableNode({ data }: NodeProps<SchemaTableNode>) {
+  const { keysOnly, onOpenTable } = useContext(TableNodeOptionsContext)
+  const fields = keysOnly
+    ? data.fields.filter((field) => field.isPrimary || field.isForeign || field.isReferenced)
+    : data.fields
+
   return (
     <div
       className={cn(
@@ -28,12 +42,28 @@ function TableNode({ data }: NodeProps<SchemaTableNode>) {
         data.focused && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
       )}
     >
-      <div className="border-b bg-muted/50 px-3 py-2">
-        <p className="truncate text-sm font-semibold">{data.table}</p>
-        <p className="truncate text-xs text-muted-foreground">{data.schema}</p>
+      <div className="flex items-center gap-2 border-b bg-muted/50 px-3 py-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{data.table}</p>
+          <p className="truncate text-xs text-muted-foreground">{data.schema}</p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="nodrag nopan size-7 shrink-0"
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpenTable(data.schema, data.table)
+          }}
+          aria-label={`Open ${data.schema}.${data.table}`}
+          title={`Open ${data.schema}.${data.table}`}
+        >
+          <ExternalLink className="size-3.5" aria-hidden="true" />
+        </Button>
       </div>
       <div className="py-1">
-        {data.fields.map((field) => (
+        {fields.map((field) => (
           <div key={field.name} className="relative flex items-center gap-2 px-3 py-1.5 text-xs">
             {field.isReferenced && (
               <Handle

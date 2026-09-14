@@ -39,8 +39,13 @@ import {
   X
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { getInitialNodePositions, getTableNodeHeight, TABLE_NODE_WIDTH } from '../lib/layout'
 import { SchemaEdge } from './schema-edge'
-import TableNode, { type DiagramField, type SchemaTableNode } from './table-node'
+import TableNode, {
+  TableNodeOptionsContext,
+  type DiagramField,
+  type SchemaTableNode
+} from './table-node'
 
 type SchemaDiagramProps = {
   connectionId: string
@@ -96,15 +101,21 @@ async function arrangeNodes(nodes: SchemaTableNode[], edges: Edge[]): Promise<Sc
   graph.setGraph({ rankdir: 'LR', nodesep: 72, ranksep: 128, marginx: 48, marginy: 48 })
 
   for (const node of nodes) {
-    graph.setNode(node.id, { width: 256, height: 70 + node.data.fields.length * 28 })
+    graph.setNode(node.id, {
+      width: TABLE_NODE_WIDTH,
+      height: getTableNodeHeight(node.data.fields.length)
+    })
   }
   for (const edge of edges) graph.setEdge(edge.source, edge.target)
 
   dagre.layout(graph)
   return nodes.map((node) => {
     const position = graph.node(node.id) as { x: number; y: number }
-    const height = 70 + node.data.fields.length * 28
-    return { ...node, position: { x: position.x - 128, y: position.y - height / 2 } }
+    const height = getTableNodeHeight(node.data.fields.length)
+    return {
+      ...node,
+      position: { x: position.x - TABLE_NODE_WIDTH / 2, y: position.y - height / 2 }
+    }
   })
 }
 
@@ -120,7 +131,7 @@ function makeDiagram(tables: TableInfo[]): DiagramData {
     }
   }
 
-  const gridColumns = Math.max(1, Math.ceil(Math.sqrt(tables.length)))
+  const initialPositions = getInitialNodePositions(tables.map((table) => table.columns.length))
   const nodes = tables.map((table, index): SchemaTableNode => {
     const fields: DiagramField[] = table.columns.map((column) => ({
       name: column.name,
@@ -132,10 +143,7 @@ function makeDiagram(tables: TableInfo[]): DiagramData {
     return {
       id: `${table.schema}.${table.name}`,
       type: 'table',
-      position: {
-        x: 80 + (index % gridColumns) * 340,
-        y: 80 + Math.floor(index / gridColumns) * 300
-      },
+      position: initialPositions[index],
       data: { schema: table.schema, table: table.name, fields }
     }
   })
@@ -181,6 +189,7 @@ function SchemaDiagramCanvas({ connectionId, schemasWithTables, onOpenTable }: S
   const displayedConnectionIdRef = useRef<string | null>(null)
   const setTableColumns = useSqlWorkspaceStore((s) => s.setTableColumns)
   const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow()
+  const tableNodeOptions = useMemo(() => ({ keysOnly, onOpenTable }), [keysOnly, onOpenTable])
 
   const tableTargets = useMemo(
     () =>
@@ -286,19 +295,10 @@ function SchemaDiagramCanvas({ connectionId, schemasWithTables, onOpenTable }: S
     () =>
       nodes
         .filter((node) => visibleNodeIds.has(node.id))
-        .map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            focused: node.id === focusedNodeId,
-            fields: keysOnly
-              ? node.data.fields.filter(
-                  (field) => field.isPrimary || field.isForeign || field.isReferenced
-                )
-              : node.data.fields
-          }
-        })),
-    [focusedNodeId, keysOnly, nodes, visibleNodeIds]
+        .map((node) =>
+          node.id === focusedNodeId ? { ...node, data: { ...node.data, focused: true } } : node
+        ),
+    [focusedNodeId, nodes, visibleNodeIds]
   )
   const visibleEdges = useMemo(
     () =>
@@ -473,31 +473,37 @@ function SchemaDiagramCanvas({ connectionId, schemasWithTables, onOpenTable }: S
       </div>
 
       <div ref={flowContainerRef} className="relative min-h-0 flex-1">
-        <ReactFlow
-          nodes={visibleNodes}
-          edges={visibleEdges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={(_, node) => setFocusedNodeId(node.id)}
-          onNodeDoubleClick={(_, node) => onOpenTable(node.data.schema, node.data.table)}
-          onPaneClick={() => {
-            setFocusedNodeId(null)
-            setFocusMode(false)
-          }}
-          minZoom={0.15}
-          maxZoom={1.5}
-          nodesDraggable
-          fitView
-          className="bg-muted/20"
-        >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-        </ReactFlow>
+        <TableNodeOptionsContext.Provider value={tableNodeOptions}>
+          <ReactFlow
+            nodes={visibleNodes}
+            edges={visibleEdges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={(_, node) => setFocusedNodeId(node.id)}
+            onNodeDoubleClick={(_, node) => onOpenTable(node.data.schema, node.data.table)}
+            onPaneClick={() => {
+              setFocusedNodeId(null)
+              setFocusMode(false)
+            }}
+            minZoom={0.15}
+            maxZoom={1.5}
+            nodesDraggable
+            fitView
+            className="bg-muted/20"
+          >
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+          </ReactFlow>
+        </TableNodeOptionsContext.Provider>
         {!isLoading && nodes.length === 0 && (
           <EmptyState
-            title="No tables to diagram"
-            description="Create a table or refresh the schema list to get started."
+            title={failedTableCount > 0 ? 'Tables Could Not Be Read' : 'No Tables to Diagram'}
+            description={
+              failedTableCount > 0
+                ? 'Refresh the diagram or check the connection permissions.'
+                : 'Create a table or refresh the schema list to get started.'
+            }
           />
         )}
         {!isLoading && nodes.length > 0 && visibleNodes.length === 0 && (
