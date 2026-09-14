@@ -1,32 +1,32 @@
 import type { SQLConnectionProfile } from '@dbdesk/shared/types'
-import {
-  getTableIntrospection,
-  useSchemasWithTables
-} from '@renderer/features/sql-workspace/queries/schema'
-import { UnsavedChangesDialog } from '@renderer/features/sql-workspace/components/dialogs/unsaved-changes-dialog'
+import { DashboardCanvas } from '@renderer/components/dashboard'
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup
 } from '@renderer/components/ui/resizable'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
-import { cn } from '@renderer/shared/lib/utils'
-import { mapWithConcurrency } from '@renderer/shared/lib/async'
-import { dbdeskClient } from '@renderer/shared/api/client'
+import { SchemaDiagram } from '@renderer/features/schema-visualizer/components/schema-diagram'
+import { UnsavedChangesDialog } from '@renderer/features/sql-workspace/components/dialogs/unsaved-changes-dialog'
 import { useTabCloseHandler } from '@renderer/features/sql-workspace/hooks/use-tab-close-handler'
+import {
+  getTableIntrospection,
+  useSchemasWithTables
+} from '@renderer/features/sql-workspace/queries/schema'
+import { useDashboardStore } from '@renderer/features/sql-workspace/stores/dashboard-store'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
-import { useDashboardStore } from '@renderer/features/sql-workspace/stores/dashboard-store'
+import { dbdeskClient } from '@renderer/shared/api/client'
+import { mapWithConcurrency } from '@renderer/shared/lib/async'
+import { cn } from '@renderer/shared/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { QueryView } from './query-view'
+import { SidebarFocusShortcuts } from './sidebar-focus-shortcuts'
 import { TableView } from './table-view'
 import { TabNavigation } from './table-view/tab-navigation'
 import { WorkspaceSidebar } from './workspace-sidebar'
 import { WorkspaceTopbar } from './workspace-topbar'
-import { DashboardCanvas } from '@renderer/components/dashboard'
-import { SidebarFocusShortcuts } from './sidebar-focus-shortcuts'
-import { SchemaDiagram } from '@renderer/features/schema-visualizer/components/schema-diagram'
 
 export function SqlWorkspace({ profile }: { profile: SQLConnectionProfile }) {
   const setSchemasWithTables = useSqlWorkspaceStore((s) => s.setSchemasWithTables)
