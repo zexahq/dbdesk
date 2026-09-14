@@ -1,5 +1,5 @@
-import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import { cn } from '@renderer/shared/lib/utils'
+import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import { KeyRound, Link2 } from 'lucide-react'
 import { memo } from 'react'
 
