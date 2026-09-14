@@ -87,6 +87,17 @@ export class PostgresAdapter implements SQLAdapter {
       connectionTimeoutMillis: DEFAULT_TIMEOUT_MS
     })
 
+    // pg emits an error on the pool when an idle client loses its database or
+    // network connection. Without a listener, Node treats that event as
+    // unhandled and exits the desktop main process. pg removes the broken
+    // client itself, so logging here lets the next query create a fresh one.
+    pool.on('error', (error) => {
+      console.error(
+        `[postgres] idle client error for ${this.options.host}:${this.options.port}/${this.options.database}:`,
+        error instanceof Error ? error.message : error
+      )
+    })
+
     try {
       const client = await pool.connect()
       try {
