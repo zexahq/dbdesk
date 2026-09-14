@@ -36,9 +36,9 @@ prints raw markdown and `dashboard export` prints the raw JSON document; both
 accept `--format json`):
 
 ```json
-{ "ok": true, "data": [{ "name": "prod", "type": "postgres" }], "meta": { "command": "list", "version": "0.1.12", "duration_ms": 12 } }
+{ "ok": true, "data": [{ "name": "prod", "type": "postgres" }], "meta": { "command": "list", "version": "0.1.13", "duration_ms": 12 } }
 // or
-{ "ok": false, "error": { "code": "not-found", "message": "Connection \"x\" not found.", "hint": "Use \"dbdesk connection list\" to see available connections." }, "meta": { "command": "show", "version": "0.1.12", "duration_ms": 8 } }
+{ "ok": false, "error": { "code": "not-found", "message": "Connection \"x\" not found.", "hint": "Use \"dbdesk connection list\" to see available connections." }, "meta": { "command": "show", "version": "0.1.13", "duration_ms": 8 } }
 ```
 
 Check `ok` first. Exit codes: 0 ok, 2 usage/validation, 3 connection failed, 4 not found, 5 db error.
