@@ -1,5 +1,6 @@
-import { CircleAlert, Loader2, LogOut, Moon, Sun } from 'lucide-react'
+import { CircleAlert, Loader2, LogOut, Moon, Settings, Sun } from 'lucide-react'
 import { fullSignOut } from '@renderer/features/auth/lib/auth'
+import { useSettingsStore } from '@renderer/features/settings/stores/settings-store'
 import { useTheme } from '@renderer/shared/hooks/use-theme'
 import { useUpdateState } from '@renderer/shared/hooks/use-update-state'
 import { UpdateMenuItems } from '@renderer/components/shell/update-menu-items'
@@ -72,6 +73,10 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <UpdateMenuItems />
         <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => useSettingsStore.getState().openSettings()}>
+            <Settings className="size-4" />
+            Settings
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={toggleTheme}>
             {theme === 'light' ? <Moon className="size-4" /> : <Sun className="size-4" />}
             {theme === 'light' ? 'Dark' : 'Light'} Mode

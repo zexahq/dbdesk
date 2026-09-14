@@ -7,27 +7,13 @@
 
 import { and, eq, isNull, getDb, dashboards } from '@dbdesk/db'
 import { dashboardConfigSchema } from '@dbdesk/shared/schemas'
+import { buildDashboardConfigJson as buildConfigJson } from '@dbdesk/shared/utils/dashboard-json'
 import type { DashboardConfig } from '@common/types'
 import { ValidationError } from './utils/errors'
 
 const STORAGE_VERSION = '1.0.0'
 
 type DashboardRow = typeof dashboards.$inferSelect
-
-// The full JSON document persisted in the `config_json` column, kept in
-// tandem with the decomposed columns.
-const buildConfigJson = (dashboard: DashboardConfig, createdAt: Date, updatedAt: Date): string =>
-  JSON.stringify({
-    dashboardId: dashboard.dashboardId,
-    connectionId: dashboard.connectionId,
-    userId: dashboard.userId ?? undefined,
-    name: dashboard.name,
-    description: dashboard.description ?? undefined,
-    layout: dashboard.layout,
-    widgets: dashboard.widgets,
-    createdAt: createdAt.toISOString(),
-    updatedAt: updatedAt.toISOString()
-  })
 
 const rowToDashboard = (row: DashboardRow): DashboardConfig => {
   // Prefer the full JSON document for content; columns stay authoritative for

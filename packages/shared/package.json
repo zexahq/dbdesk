@@ -29,12 +29,21 @@
     "./ipc": {
       "types": "./src/ipc/index.ts",
       "default": "./src/ipc/index.ts"
+    },
+    "./adapters": {
+      "types": "./src/adapters/index.ts",
+      "default": "./src/adapters/index.ts"
+    },
+    "./utils/dashboard-json": {
+      "types": "./src/utils/dashboard-json.ts",
+      "default": "./src/utils/dashboard-json.ts"
     }
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "pg": "^8.20.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

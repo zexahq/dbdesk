@@ -20,11 +20,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui
 import { useTheme } from '@renderer/shared/hooks/use-theme'
 import { toast } from '@renderer/shared/lib/toast'
 import { saveCurrentWorkspace } from '@renderer/features/sql-workspace/lib/workspace'
+import { useSettingsStore } from '@renderer/features/settings/stores/settings-store'
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { useNavigate } from '@tanstack/react-router'
-import { Database, Moon, Plus, Search, SquareCode, Sun, Table2Icon, Unplug } from 'lucide-react'
+import {
+  Database,
+  Moon,
+  Plus,
+  Search,
+  Settings,
+  SquareCode,
+  Sun,
+  Table2Icon,
+  Unplug
+} from 'lucide-react'
 import * as React from 'react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useState } from 'react'
@@ -190,6 +201,16 @@ export function QuickPanel() {
             </>
           )}
           <CommandGroup heading="General Settings" className="py-2">
+            <CommandItem
+              onSelect={() => {
+                useSettingsStore.getState().openSettings()
+                setOpen(false)
+              }}
+              className="py-2!"
+            >
+              <Settings className="size-4 mr-2" />
+              <span className="text-sm">Open Settings</span>
+            </CommandItem>
             <CommandItem onSelect={handleThemeToggle} className="py-2!">
               {theme === 'light' ? (
                 <Moon className="size-4 mr-2" />

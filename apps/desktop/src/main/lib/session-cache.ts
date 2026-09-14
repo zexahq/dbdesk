@@ -10,6 +10,7 @@ interface CachedSession {
   userImage: string | null
   sessionToken: string
   sessionExpiresAt: number
+  cachedAt: number
 }
 
 interface CachedSessionRow {
@@ -48,7 +49,8 @@ export function getCachedSession(): CachedSession | null {
       userEmail: row.user_email,
       userImage: row.user_image,
       sessionToken: row.session_token,
-      sessionExpiresAt: row.session_expires_at
+      sessionExpiresAt: row.session_expires_at,
+      cachedAt: row.cached_at
     }
   } catch {
     return null
@@ -58,7 +60,7 @@ export function getCachedSession(): CachedSession | null {
 /**
  * Persist a session to the local SQLite cache.
  */
-export function setCachedSession(session: CachedSession): void {
+export function setCachedSession(session: Omit<CachedSession, 'cachedAt'>): void {
   try {
     getSqlite()
       .prepare(

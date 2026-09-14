@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-# App paths
 APP_NAME="dbdesk"
 APP_DIR="/opt/dbdesk"
 BIN_PATH="/usr/bin/dbdesk"
+CLI_SH="$APP_DIR/resources/cli/dbdesk.sh"
 
 ########################################
 # 1. Fix chrome-sandbox permissions
@@ -17,13 +17,22 @@ fi
 ########################################
 # 2. Create dbdesk CLI command
 ########################################
-# Remove old command if it exists
-rm -f "$BIN_PATH"
+if [ -e "$BIN_PATH" ] || [ -L "$BIN_PATH" ]; then
+  if [ ! -L "$BIN_PATH" ] || [ "$(readlink "$BIN_PATH")" != "$CLI_SH" ]; then
+    echo "WARNING: $BIN_PATH is not managed by DBDesk; leaving it unchanged"
+    exit 0
+  fi
+fi
 
-# Ensure Electron binary exists
-if [ -f "$APP_DIR/$APP_NAME" ]; then
-  ln -s "$APP_DIR/$APP_NAME" "$BIN_PATH"
+if [ -f "$CLI_SH" ]; then
+  ln -sfn "$CLI_SH" "$BIN_PATH"
+  chmod +x "$CLI_SH"
+  echo "dbdesk CLI installed at $BIN_PATH"
+elif [ -f "$APP_DIR/$APP_NAME" ]; then
+  # Fallback: point to the Electron binary directly
+  ln -sfn "$APP_DIR/$APP_NAME" "$BIN_PATH"
   chmod +x "$BIN_PATH"
+  echo "dbdesk launcher installed at $BIN_PATH (CLI bundle not found)"
 else
   echo "WARNING: $APP_DIR/$APP_NAME not found, CLI not created"
 fi
