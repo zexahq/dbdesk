@@ -295,8 +295,8 @@ importers:
         specifier: ^1.19.9
         version: 1.19.9(hono@4.12.3)
       '@hono/zod-validator':
-        specifier: ^0.7.6
-        version: 0.7.6(hono@4.12.3)(zod@4.3.6)
+        specifier: ^0.9.1
+        version: 0.9.1(hono@4.12.3)(zod@4.3.6)
       ai:
         specifier: ^6.0.39
         version: 6.0.103(zod@4.3.6)
@@ -1591,10 +1591,10 @@ packages:
     peerDependencies:
       hono: ^4
 
-  '@hono/zod-validator@0.7.6':
-    resolution: {integrity: sha512-Io1B6d011Gj1KknV4rXYz4le5+5EubcWEU/speUjuw9XMMIaP3n78yXLhjd2A3PXaXaUwEAluOiAyLqhBEJgsw==}
+  '@hono/zod-validator@0.9.1':
+    resolution: {integrity: sha512-iiv6w0qrIc0arfvCtUqBWsvl4fXjzaTcQcCJTTtCnkawF9HHGE+KjEl0ox3gQJ6rKZEgE3mLExlQCF72M+mNuw==}
     peerDependencies:
-      hono: '>=3.9.0'
+      hono: '>=4.11.2'
       zod: ^3.25.0 || ^4.0.0
 
   '@humanfs/core@0.19.1':
@@ -9054,7 +9054,7 @@ snapshots:
     dependencies:
       hono: 4.12.3
 
-  '@hono/zod-validator@0.7.6(hono@4.12.3)(zod@4.3.6)':
+  '@hono/zod-validator@0.9.1(hono@4.12.3)(zod@4.3.6)':
     dependencies:
       hono: 4.12.3
       zod: 4.3.6
