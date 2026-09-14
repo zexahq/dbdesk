@@ -8,6 +8,7 @@
 import { and, eq, isNull, getDb, dashboards } from '@dbdesk/db'
 import { dashboardConfigSchema } from '@dbdesk/shared/schemas'
 import type { DashboardConfig } from '@common/types'
+import { ValidationError } from './utils/errors'
 
 const STORAGE_VERSION = '1.0.0'
 
@@ -159,7 +160,7 @@ export const saveDashboard = async (
     .get()
 
   if (existing && existing.userId !== userId) {
-    throw new Error('Cannot modify a dashboard owned by another user')
+    throw new ValidationError('Cannot modify a dashboard owned by another user')
   }
 
   const createdAt = existing ? new Date(existing.createdAt) : toDate(dashboard.createdAt, now)

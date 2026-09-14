@@ -10,12 +10,13 @@ import {
   saveDashboard
 } from '../dashboard-storage'
 import { authManager } from '../lib/auth-manager'
+import { ValidationError } from '../utils/errors'
 import { typedHandle } from './typed-handle'
 
 const getAuthenticatedUserId = async (): Promise<string> => {
   const userId = (await authManager.getSession())?.user?.id
   if (!userId) {
-    throw new Error('You must be signed in to manage dashboards')
+    throw new ValidationError('You must be signed in to manage dashboards')
   }
   return userId
 }
