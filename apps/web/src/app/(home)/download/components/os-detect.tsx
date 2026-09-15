@@ -7,13 +7,13 @@ import { useSyncExternalStore } from 'react'
 
 type OS = 'macos' | 'windows' | 'linux' | null
 
-interface Asset {
+type Asset = {
   name: string
   browser_download_url: string
   size: number
 }
 
-interface OSDetectProps {
+type OSDetectProps = {
   assets?: Asset[]
 }
 
