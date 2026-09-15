@@ -1,33 +1,25 @@
-import { useEffect, useState } from 'react'
 import { ArrowDownToLine, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { useUpdateState } from '@renderer/shared/hooks/use-update-state'
 
 export function UpdatesSection({ version }: { version: string }) {
   const updateState = useUpdateState()
-  const [checking, setChecking] = useState(false)
-
-  useEffect(() => {
-    if (updateState.status !== 'idle') setChecking(false)
-  }, [updateState.status])
-
-  const handleCheck = () => {
-    setChecking(true)
-    window.dbdesk.checkForUpdate()
-    setTimeout(() => setChecking(false), 15000)
-  }
+  const checking = updateState.status === 'checking'
 
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border p-4 flex items-center justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-medium">DBDesk v{version || '…'}</p>
           <p className="text-xs text-muted-foreground mt-0.5" aria-live="polite">
-            {updateState.status === 'idle' && 'You are up to date.'}
+            {updateState.status === 'idle' && 'Updates are checked automatically.'}
+            {updateState.status === 'checking' && 'Checking for updates…'}
+            {updateState.status === 'up-to-date' && 'You are up to date.'}
             {updateState.status === 'available' && `v${updateState.version} is available.`}
-            {updateState.status === 'downloading' && `Downloading v… ${updateState.percent}%`}
+            {updateState.status === 'downloading' &&
+              `Downloading v${updateState.version}… ${updateState.percent}%`}
             {updateState.status === 'downloaded' && `v${updateState.version} ready to install.`}
-            {updateState.status === 'error' && updateState.message}
+            {updateState.status === 'error' && `Update failed: ${updateState.message}. Try again.`}
           </p>
         </div>
         {updateState.status === 'available' && (
@@ -53,7 +45,7 @@ export function UpdatesSection({ version }: { version: string }) {
           variant="outline"
           className="h-7 text-xs"
           disabled={checking}
-          onClick={handleCheck}
+          onClick={() => window.dbdesk.checkForUpdate()}
         >
           {checking && (
             <Loader2

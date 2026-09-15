@@ -6,7 +6,8 @@ import type {
   DBConnectionOptions,
   ExportTableOptions,
   QueryResultRow,
-  TableDataOptions
+  TableDataOptions,
+  UpdateState
 } from '@dbdesk/shared/types'
 import { ipcRenderer } from 'electron'
 import { typedInvoke } from './typed-ipc'
@@ -174,31 +175,12 @@ export const dbdeskAPI = {
   downloadUpdate: () => typedInvoke('update:download'),
   installUpdate: () => typedInvoke('update:install'),
   getAppVersion: () => typedInvoke('update:get-version'),
+  getUpdateState: () => typedInvoke('update:get-state'),
 
-  onUpdateAvailable(
-    callback: (data: { version: string; releaseNotes?: string }) => void
-  ): () => void {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { version: string; releaseNotes?: string }
-    ) => callback(data)
-    ipcRenderer.on('update:available', handler)
-    return () => ipcRenderer.removeListener('update:available', handler)
-  },
-  onUpdateDownloaded(callback: (data: { version: string }) => void): () => void {
-    const handler = (_event: Electron.IpcRendererEvent, data: { version: string }) => callback(data)
-    ipcRenderer.on('update:downloaded', handler)
-    return () => ipcRenderer.removeListener('update:downloaded', handler)
-  },
-  onUpdateProgress(callback: (data: { percent: number }) => void): () => void {
-    const handler = (_event: Electron.IpcRendererEvent, data: { percent: number }) => callback(data)
-    ipcRenderer.on('update:progress', handler)
-    return () => ipcRenderer.removeListener('update:progress', handler)
-  },
-  onUpdateError(callback: (data: { message: string }) => void): () => void {
-    const handler = (_event: Electron.IpcRendererEvent, data: { message: string }) => callback(data)
-    ipcRenderer.on('update:error', handler)
-    return () => ipcRenderer.removeListener('update:error', handler)
+  onUpdateState(callback: (state: UpdateState) => void): () => void {
+    const handler = (_event: Electron.IpcRendererEvent, state: UpdateState) => callback(state)
+    ipcRenderer.on('update:state', handler)
+    return () => ipcRenderer.removeListener('update:state', handler)
   },
 
   // ── CLI ──

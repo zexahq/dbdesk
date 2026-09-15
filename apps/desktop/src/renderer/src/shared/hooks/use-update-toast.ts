@@ -1,65 +1,41 @@
 import { useEffect, useRef } from 'react'
 import { toast } from '@renderer/shared/lib/toast'
+import { useUpdateState } from './use-update-state'
 
 export function useUpdateToast() {
   const toastIdRef = useRef<string | number | null>(null)
+  const updateState = useUpdateState()
 
   useEffect(() => {
-    const cleanups = [
-      window.dbdesk.onUpdateAvailable((data) => {
-        if (toastIdRef.current) {
-          toast.dismiss(toastIdRef.current)
+    if (updateState.status === 'available') {
+      toastIdRef.current = toast.info('Update Available', {
+        id: toastIdRef.current ?? undefined,
+        description: `Version ${updateState.version} is ready to download.`,
+        duration: Infinity,
+        action: {
+          label: 'Download Update',
+          onClick: () => window.dbdesk.downloadUpdate()
         }
-
-        toastIdRef.current = toast.info('Update available', {
-          description: `Version ${data.version} is ready to download.`,
-          duration: Infinity,
-          position: 'bottom-right',
-          action: {
-            label: 'Update now',
-            onClick: () => window.dbdesk.downloadUpdate(),
-          },
-        })
-      }),
-
-      window.dbdesk.onUpdateProgress((data) => {
-        if (toastIdRef.current) {
-          toast.loading(`Downloading update… ${data.percent}%`, {
-            id: toastIdRef.current,
-            position: 'bottom-right',
-          })
+      })
+    } else if (updateState.status === 'downloading' && toastIdRef.current) {
+      toast.loading(`Downloading Update… ${updateState.percent}%`, {
+        id: toastIdRef.current
+      })
+    } else if (updateState.status === 'downloaded') {
+      toastIdRef.current = toast.success('Ready to Install', {
+        id: toastIdRef.current ?? undefined,
+        description: `Version ${updateState.version} will install on restart.`,
+        duration: Infinity,
+        action: {
+          label: 'Restart Now',
+          onClick: () => window.dbdesk.installUpdate()
         }
-      }),
-
-      window.dbdesk.onUpdateDownloaded((data) => {
-        if (toastIdRef.current) {
-          toast.dismiss(toastIdRef.current)
-        }
-
-        toastIdRef.current = toast.success('Ready to install', {
-          description: `Version ${data.version} will install on restart.`,
-          duration: Infinity,
-          position: 'bottom-right',
-          action: {
-            label: 'Restart now',
-            onClick: () => window.dbdesk.installUpdate(),
-          },
-        })
-      }),
-
-      window.dbdesk.onUpdateError((data) => {
-        if (toastIdRef.current) {
-          toast.dismiss(toastIdRef.current)
-          toastIdRef.current = null
-        }
-
-        toast.error('Update failed', {
-          description: data.message,
-          position: 'bottom-right',
-        })
-      }),
-    ]
-
-    return () => cleanups.forEach((fn) => fn())
-  }, [])
+      })
+    } else if (updateState.status === 'error') {
+      toastIdRef.current = toast.error('Update Failed', {
+        id: toastIdRef.current ?? undefined,
+        description: `${updateState.message} Try again from Settings → Updates.`
+      })
+    }
+  }, [updateState])
 }

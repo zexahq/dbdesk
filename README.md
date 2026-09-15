@@ -31,13 +31,7 @@ Download the latest installer for your platform from the [GitHub Releases](https
 
 ### macOS
 
-If you encounter issues with macOS Gatekeeper blocking the app (since it is not signed with an Apple developer certificate), you can bypass this by running the following command in your terminal after installation:
-
-```bash
-xattr -rd com.apple.quarantine /Applications/dbdesk.app
-```
-
-After running this command, you can launch the app.
+Starting with v0.1.13, DBDesk releases are Developer ID signed and notarized. If you are upgrading from v0.1.12 or earlier, install the latest DMG manually once; those older builds used an ad-hoc signature and cannot install the new signing identity automatically.
 
 ### Linux
 

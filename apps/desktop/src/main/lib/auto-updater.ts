@@ -1,30 +1,55 @@
-import { app, BrowserWindow } from 'electron'
+import type { UpdateState } from '@dbdesk/shared/types'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import { is } from '@electron-toolkit/utils'
+import { app, BrowserWindow } from 'electron'
+import { appendFile, mkdirSync } from 'fs'
+import { join } from 'path'
 
 /**
  * Auto-updater — checks for new versions via GitHub Releases.
  *
  * In production the updater runs on the `electron-builder.yml` publish config.
- * In development it reads from `dev-app-update.yml` instead.
  *
- * Events are forwarded to the renderer via `webContents.send()`:
- *   - update:available    → { version, releaseNotes }
- *   - update:downloaded   → { version }
- *   - update:error        → { message }
- *   - update:progress     → { percent }
+ * State is forwarded to the renderer via `webContents.send()`.
  */
 
 // Do not auto-download; let the user decide.
 autoUpdater.autoDownload = false
 autoUpdater.autoInstallOnAppQuit = true
 
-let updateAvailable = false
-let isDownloading = false
+let state: UpdateState = { status: 'idle' }
 
-function notifyAllWindows(channel: string, payload: unknown) {
+function configureLogging(): void {
+  let logFile: string
+  try {
+    const logDirectory = app.getPath('logs')
+    mkdirSync(logDirectory, { recursive: true })
+    logFile = join(logDirectory, 'updater.log')
+  } catch (error) {
+    console.error('[auto-updater] Failed to configure file logging', error)
+    return
+  }
+  const write = (level: string, values: unknown[]) => {
+    const message = values
+      .map((value) => (value instanceof Error ? (value.stack ?? value.message) : String(value)))
+      .join(' ')
+    appendFile(logFile, `${new Date().toISOString()} [${level}] ${message}\n`, (error) => {
+      if (error) console.error('[auto-updater] Failed to write log', error)
+    })
+  }
+
+  autoUpdater.logger = {
+    debug: (...values: unknown[]) => write('debug', values),
+    info: (...values: unknown[]) => write('info', values),
+    warn: (...values: unknown[]) => write('warn', values),
+    error: (...values: unknown[]) => write('error', values)
+  }
+}
+
+function setState(nextState: UpdateState): void {
+  state = nextState
   for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(channel, payload)
+    win.webContents.send('update:state', state)
   }
 }
 
@@ -32,62 +57,91 @@ function notifyAllWindows(channel: string, payload: unknown) {
 export function initAutoUpdater(): void {
   // Skip updates in development
   if (is.dev) return
+  configureLogging()
+
+  autoUpdater.on('checking-for-update', () => {
+    setState({ status: 'checking' })
+  })
 
   autoUpdater.on('update-available', (info: UpdateInfo) => {
-    updateAvailable = true
-    notifyAllWindows('update:available', {
+    setState({
+      status: 'available',
       version: info.version,
       releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined
     })
   })
 
   autoUpdater.on('update-not-available', () => {
-    updateAvailable = false
+    setState({ status: 'up-to-date' })
   })
 
   autoUpdater.on('download-progress', (progress) => {
-    notifyAllWindows('update:progress', { percent: Math.round(progress.percent) })
+    if (state.status !== 'downloading') return
+    setState({ ...state, percent: Math.round(progress.percent) })
   })
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
-    isDownloading = false
-    notifyAllWindows('update:downloaded', { version: info.version })
+    setState({ status: 'downloaded', version: info.version })
   })
 
   autoUpdater.on('error', (err) => {
-    isDownloading = false
     console.error('[auto-updater]', err)
-    notifyAllWindows('update:error', { message: err.message })
+    setState({ status: 'error', message: err.message })
   })
 
   // Check once on startup (after a short delay to not block the window)
   setTimeout(() => {
-    void autoUpdater.checkForUpdates().catch(() => {})
+    void checkForUpdates()
   }, 5_000)
 
   // Then every 4 hours
   setInterval(
     () => {
-      void autoUpdater.checkForUpdates().catch(() => {})
+      void checkForUpdates()
     },
     4 * 60 * 60 * 1000
   )
 }
 
+/** Check GitHub Releases for an update. */
+export async function checkForUpdates(): Promise<UpdateState> {
+  if (is.dev) return state
+  if (['checking', 'downloading', 'downloaded'].includes(state.status)) return state
+
+  try {
+    await autoUpdater.checkForUpdates()
+  } catch (error) {
+    if (state.status !== 'error') {
+      setState({ status: 'error', message: error instanceof Error ? error.message : String(error) })
+    }
+  }
+  return state
+}
+
 /** Trigger manual download of a pending update. */
-export function downloadUpdate(): void {
-  if (updateAvailable && !isDownloading) {
-    isDownloading = true
-    void autoUpdater.downloadUpdate().catch(() => {})
+export async function downloadUpdate(): Promise<void> {
+  if (state.status !== 'available') return
+
+  setState({ status: 'downloading', version: state.version, percent: 0 })
+  try {
+    await autoUpdater.downloadUpdate()
+  } catch (error) {
+    if (getUpdateState().status !== 'error') {
+      setState({ status: 'error', message: error instanceof Error ? error.message : String(error) })
+    }
   }
 }
 
 /** Quit the app and install the downloaded update. */
 export function quitAndInstall(): void {
-  autoUpdater.quitAndInstall()
+  if (state.status === 'downloaded') autoUpdater.quitAndInstall(false, true)
 }
 
 /** Return current app version. */
 export function getAppVersion(): string {
   return app.getVersion()
+}
+
+export function getUpdateState(): UpdateState {
+  return state
 }

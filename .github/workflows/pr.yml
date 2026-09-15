@@ -70,3 +70,63 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+  package-desktop:
+    name: Package Desktop (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+          - os: windows-latest
+            target: win
+          - os: macos-15
+            target: mac
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Linux tooling
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools rpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop package
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
+        working-directory: apps/desktop
+        run: |
+          pnpm --dir ../../packages/cli run build
+          pnpm exec electron-vite build
+          pnpm exec electron-builder --${{ matrix.target }} --publish never
+        if: matrix.target != 'mac'
+
+      - name: Build unsigned macOS package
+        if: matrix.target == 'mac'
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
+          NODE_OPTIONS: '--max-old-space-size=6144'
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        working-directory: apps/desktop
+        run: |
+          pnpm --dir ../../packages/cli run build
+          pnpm exec electron-vite build
+          pnpm exec electron-builder --mac --arm64 --publish never -c.mac.hardenedRuntime=false -c.mac.notarize=false

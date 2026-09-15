@@ -20,6 +20,7 @@ import type {
   TableFilterCondition,
   TableInfo,
   TableSortRule,
+  UpdateState,
   UpdateTableCellResult
 } from '../types'
 
@@ -230,7 +231,7 @@ export interface IpcContract {
   // -- Updates --
   'update:check': {
     payload: void
-    result: void
+    result: UpdateState
   }
   'update:download': {
     payload: void
@@ -243,6 +244,10 @@ export interface IpcContract {
   'update:get-version': {
     payload: void
     result: { version: string }
+  }
+  'update:get-state': {
+    payload: void
+    result: UpdateState
   }
 
   // -- Dashboards --
