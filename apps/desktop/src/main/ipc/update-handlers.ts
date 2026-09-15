@@ -1,14 +1,19 @@
 import { typedHandle } from './typed-handle'
-import { downloadUpdate, getAppVersion, quitAndInstall } from '../lib/auto-updater'
-import { autoUpdater } from 'electron-updater'
+import {
+  checkForUpdates,
+  downloadUpdate,
+  getAppVersion,
+  getUpdateState,
+  quitAndInstall
+} from '../lib/auto-updater'
 
 export function registerUpdateHandlers() {
   typedHandle('update:check', async () => {
-    await autoUpdater.checkForUpdates().catch(() => {})
+    return checkForUpdates()
   })
 
   typedHandle('update:download', async () => {
-    downloadUpdate()
+    await downloadUpdate()
   })
 
   typedHandle('update:install', async () => {
@@ -17,5 +22,9 @@ export function registerUpdateHandlers() {
 
   typedHandle('update:get-version', async () => {
     return { version: getAppVersion() }
+  })
+
+  typedHandle('update:get-state', async () => {
+    return getUpdateState()
   })
 }

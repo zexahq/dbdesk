@@ -3,38 +3,48 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
+      - 'v*.*.*'
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build-linux:
+  validate:
+    name: Validate Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Match tag to desktop version
+        shell: bash
+        run: |
+          expected="v$(node -p "require('./apps/desktop/package.json').version")"
+          if [[ "$GITHUB_REF_NAME" != "$expected" ]]; then
+            echo "Release tag $GITHUB_REF_NAME does not match desktop version $expected" >&2
+            exit 1
+          fi
+
+  build-linux:
+    name: Build Linux
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v6
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          cache: pnpm
 
       - name: Install Linux tooling
         run: |
@@ -44,118 +54,178 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and publish for Linux
+      - name: Build Linux packages
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
           NODE_OPTIONS: '--max-old-space-size=6144'
         working-directory: apps/desktop
         run: |
           pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
-          pnpm exec electron-builder --linux --publish always
+          pnpm exec electron-builder --linux --publish never
+
+      - name: Upload Linux release files
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: linux
+          path: |
+            apps/desktop/dist/*.AppImage
+            apps/desktop/dist/*.deb
+            apps/desktop/dist/latest-linux.yml
+          if-no-files-found: error
 
   build-windows:
+    name: Build Windows
+    needs: validate
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v6
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and publish for Windows
+      - name: Build Windows package
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
           NODE_OPTIONS: '--max-old-space-size=6144'
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         working-directory: apps/desktop
         run: |
           pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
-          pnpm exec electron-builder --win --publish always
+          pnpm exec electron-builder --win --publish never
+
+      - name: Upload Windows release files
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: windows
+          path: |
+            apps/desktop/dist/*-setup.exe
+            apps/desktop/dist/*-setup.exe.blockmap
+            apps/desktop/dist/latest.yml
+          if-no-files-found: error
 
   build-mac:
-    runs-on: macos-latest
+    name: Build macOS
+    needs: validate
+    runs-on: macos-15
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v6
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and publish for macOS
+      - name: Build unsigned macOS package
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
           NODE_OPTIONS: '--max-old-space-size=6144'
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         working-directory: apps/desktop
         run: |
           pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
-          pnpm exec electron-builder --mac --publish always
+          pnpm exec electron-builder --mac --arm64 --publish never
+
+      - name: Verify macOS package
+        working-directory: apps/desktop
+        run: |
+          app_path="$(find dist -type d -path '*/DBDesk.app' -print -quit)"
+          test -n "$app_path"
+          file "$app_path/Contents/MacOS/DBDesk" | grep -q arm64
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          for dmg in dist/*.dmg; do hdiutil verify "$dmg"; done
+
+      - name: Upload macOS release files
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: macos
+          path: |
+            apps/desktop/dist/*.dmg
+          if-no-files-found: error
 
   release:
+    name: Publish Release
     needs: [build-linux, build-windows, build-mac]
     runs-on: ubuntu-latest
-    if: always() && needs.build-linux.result == 'success' && needs.build-windows.result == 'success' && needs.build-mac.result == 'success'
+    permissions:
+      contents: write
+    env:
+      GH_REPO: ${{ github.repository }}
     steps:
-      - name: Create release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download release files
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          path: release-files
+
+      - name: Verify update metadata and payloads
+        shell: bash
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
-          release_url="https://github.com/${{ github.repository }}//releases/tag/$tag"
+          for metadata in \
+            release-files/linux/latest-linux.yml \
+            release-files/windows/latest.yml; do
+            test -f "$metadata"
+            test "v$(sed -n 's/^version: //p' "$metadata")" = "$GITHUB_REF_NAME"
 
-          echo "All builds succeeded! Ensuring release exists..."
-          curl -s -o /dev/null -w "%{http_code}" -X POST \
-            -H "Authorization: token $GH_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{"tag_name":"$tag","generate_release_notes":true}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases"
+            url_count="$(sed -n 's/^  - url: //p' "$metadata" | wc -l | tr -d ' ')"
+            hash_count="$(sed -n 's/^    sha512: //p' "$metadata" | wc -l | tr -d ' ')"
+            test "$url_count" -gt 0
+            test "$url_count" -eq "$hash_count"
 
-          echo "Release created: $release_url"
+            paste \
+              <(sed -n 's/^  - url: //p' "$metadata") \
+              <(sed -n 's/^    sha512: //p' "$metadata") |
+            while IFS=$'\t' read -r url expected_hash; do
+              payload="$(dirname "$metadata")/$url"
+              test -f "$payload"
+              actual_hash="$(openssl dgst -sha512 -binary "$payload" | openssl base64 -A)"
+              test "$actual_hash" = "$expected_hash"
+            done
+          done
+
+      - name: Create or resume draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            if [[ "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" != 'true' ]]; then
+              echo "Release $GITHUB_REF_NAME is already published; refusing to replace its assets" >&2
+              exit 1
+            fi
+          else
+            gh release create "$GITHUB_REF_NAME" --draft --generate-notes --verify-tag
+          fi
+
+      - name: Upload release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" release-files/*/* --clobber
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest

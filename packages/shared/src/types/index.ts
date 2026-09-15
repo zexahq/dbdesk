@@ -10,7 +10,7 @@ export type {
   QueryBatchResult,
   QueryResult,
   QueryResultRow,
-  RunQueryOptions,
+  RunQueryOptions
 } from './adapter'
 
 // SQL types
@@ -50,7 +50,7 @@ export type {
   TableInfo,
   TableSortRule,
   UpdateTableCellOptions,
-  UpdateTableCellResult,
+  UpdateTableCellResult
 } from './sql'
 
 // MongoDB types
@@ -58,7 +58,7 @@ export type {
   CollectionInfo,
   MongoDBAdapter,
   MongoDBConnectionOptions,
-  MongoDBIndexInfo,
+  MongoDBIndexInfo
 } from './mongodb'
 
 // Redis types
@@ -72,7 +72,7 @@ export type {
   MongoDBConnectionProfile,
   RedisConnectionProfile,
   SQLConnectionProfile,
-  SQLDatabaseType,
+  SQLDatabaseType
 } from './connection'
 
 // Workspace types
@@ -84,7 +84,7 @@ export type {
   SerializedQueryTab,
   SerializedTab,
   SerializedTableTab,
-  WorkspaceStorage,
+  WorkspaceStorage
 } from './workspace'
 
 // Dashboard types
@@ -108,3 +108,5 @@ export type {
   WidgetSettings,
   WidgetType
 } from './dashboard'
+
+export type { UpdateState } from './update'

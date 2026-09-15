@@ -1,32 +1,38 @@
-import { useEffect, useState } from 'react'
+import type { UpdateState } from '@dbdesk/shared/types'
+import { useEffect } from 'react'
+import { create } from 'zustand'
 
-export type UpdateState =
-  | { status: 'idle' }
-  | { status: 'available'; version: string; releaseNotes?: string }
-  | { status: 'downloading'; percent: number }
-  | { status: 'downloaded'; version: string }
-  | { status: 'error'; message: string }
+const useUpdateStore = create<{ state: UpdateState }>(() => ({ state: { status: 'idle' } }))
+let initialized = false
+
+function initializeUpdateState(): void {
+  if (initialized) return
+  initialized = true
+
+  let receivedEvent = false
+  window.dbdesk.onUpdateState((state) => {
+    receivedEvent = true
+    useUpdateStore.setState({ state })
+  })
+  void window.dbdesk
+    .getUpdateState()
+    .then((state) => {
+      if (!receivedEvent) useUpdateStore.setState({ state })
+    })
+    .catch((error) => {
+      if (!receivedEvent) {
+        useUpdateStore.setState({
+          state: { status: 'error', message: error instanceof Error ? error.message : String(error) }
+        })
+      }
+    })
+}
 
 export function useUpdateState() {
-  const [state, setState] = useState<UpdateState>({ status: 'idle' })
+  const state = useUpdateStore((store) => store.state)
 
   useEffect(() => {
-    const cleanups = [
-      window.dbdesk.onUpdateAvailable((data) => {
-        setState({ status: 'available', version: data.version, releaseNotes: data.releaseNotes })
-      }),
-      window.dbdesk.onUpdateDownloaded((data) => {
-        setState({ status: 'downloaded', version: data.version })
-      }),
-      window.dbdesk.onUpdateProgress((data) => {
-        setState({ status: 'downloading', percent: data.percent })
-      }),
-      window.dbdesk.onUpdateError((data) => {
-        setState({ status: 'error', message: data.message })
-      }),
-    ]
-
-    return () => cleanups.forEach((fn) => fn())
+    initializeUpdateState()
   }, [])
 
   return state

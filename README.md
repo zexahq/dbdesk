@@ -31,13 +31,18 @@ Download the latest installer for your platform from the [GitHub Releases](https
 
 ### macOS
 
-If you encounter issues with macOS Gatekeeper blocking the app (since it is not signed with an Apple developer certificate), you can bypass this by running the following command in your terminal after installation:
+DBDesk for macOS currently requires Apple silicon (M1 or newer). The recommended install is Homebrew:
 
 ```bash
-xattr -rd com.apple.quarantine /Applications/dbdesk.app
+brew install --cask zexahq/dbdesk/dbdesk
 ```
 
-After running this command, you can launch the app.
+DBDesk is not yet Developer ID signed or notarized. The Homebrew cask verifies the download checksum and clears the quarantine attribute during installation. Until Developer ID signing is available, macOS updates use Homebrew instead of the in-app updater:
+
+```bash
+brew update
+brew upgrade --cask zexahq/dbdesk/dbdesk
+```
 
 ### Linux
 
@@ -51,6 +56,14 @@ chmod +x dbdesk-*.AppImage
 ### Windows
 
 Download and run the installer from the releases page. The installer will handle setup automatically.
+
+## 🔄 Updates
+
+- **Windows, Linux AppImage, and Linux DEB:** DBDesk checks automatically and lets you download and install updates from Settings.
+- **macOS with Homebrew:** run `brew update && brew upgrade --cask zexahq/dbdesk/dbdesk`. Settings can detect the Homebrew installation and check whether DBDesk is outdated.
+- **macOS from a DMG:** Settings explains that Developer ID signing is not available yet and opens the Downloads page for manual installation.
+
+See the [update guide](https://dbdesk.zexa.app/docs/updates) for the complete platform-specific behavior.
 
 ## ⌨️ CLI
 

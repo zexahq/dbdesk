@@ -36,7 +36,7 @@ export function UserMenu() {
     navigate({ to: '/auth' })
   }
 
-  const showBadge = updateState.status !== 'idle'
+  const showBadge = ['available', 'downloading', 'downloaded', 'error'].includes(updateState.status)
 
   return (
     <DropdownMenu>
@@ -44,14 +44,18 @@ export function UserMenu() {
         {isLoading ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
-          <button className="relative flex items-center justify-center rounded-lg p-1 hover:bg-accent cursor-pointer">
+          <button
+            type="button"
+            aria-label="Open User Menu"
+            className="relative flex items-center justify-center rounded-lg p-1 hover:bg-accent cursor-pointer focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <Avatar size="sm">
               <AvatarImage src={user.image ?? undefined} alt={user.name} />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             {showBadge && (
               <AvatarBadge className="bg-primary">
-                <CircleAlert className="size-2 fill-current" />
+                <CircleAlert aria-hidden="true" className="size-2 fill-current" />
               </AvatarBadge>
             )}
           </button>

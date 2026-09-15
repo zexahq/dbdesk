@@ -34,13 +34,14 @@ export function MainSidebar() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={label}
                         className={cn(
                           'h-8 w-8 cursor-pointer',
                           isActive && 'bg-accent text-accent-foreground'
                         )}
                         onClick={() => setSidebarViewMode(mode)}
                       >
-                        <Icon className="size-4" />
+                        <Icon aria-hidden="true" className="size-4" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">{label}</TooltipContent>

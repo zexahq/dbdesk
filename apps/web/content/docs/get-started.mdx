@@ -9,13 +9,15 @@ Download the latest installer for your platform from the [GitHub Releases](https
 
 ### macOS
 
-Download the `.dmg` installer from the releases page. After mounting, drag DBDesk to your Applications folder.
-
-If you encounter issues with macOS Gatekeeper blocking the app (since it is not signed with an Apple developer certificate), you can bypass this by running:
+The recommended installation is through Homebrew:
 
 ```bash
-xattr -rd com.apple.quarantine /Applications/dbdesk.app
+brew install --cask zexahq/dbdesk/dbdesk
 ```
+
+DBDesk for macOS currently requires Apple silicon (M1 or newer) and is not yet Developer ID signed or notarized. The Homebrew cask verifies the download checksum and clears the quarantine attribute during installation. Until Developer ID signing is available, update with `brew update && brew upgrade --cask zexahq/dbdesk/dbdesk` instead of the in-app updater.
+
+You can still install the `.dmg` from the releases page manually. After mounting, drag DBDesk to your Applications folder and approve the app in System Settings if macOS blocks the first launch.
 
 ### Linux
 
@@ -58,6 +60,7 @@ DBDesk is designed for keyboard-first workflows:
 
 ## Next Steps
 
+- Learn how [DBDesk updates work](/docs/updates)
 - Learn about the [Keyboard Shortcuts](/docs/keyboard-shortcuts)
 - Explore the [Tech Stack](/docs/tech-stack)
 - Download DBDesk from the [releases page](/download)

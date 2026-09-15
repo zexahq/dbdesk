@@ -1,0 +1,44 @@
+---
+title: Updates
+description: Keep DBDesk current on macOS, Windows, and Linux
+---
+
+## macOS
+
+Homebrew is the recommended way to install and update DBDesk on Apple silicon:
+
+```bash
+brew install --cask zexahq/dbdesk/dbdesk
+```
+
+To update:
+
+```bash
+brew update
+brew upgrade --cask zexahq/dbdesk/dbdesk
+```
+
+DBDesk is not yet Developer ID signed or notarized, so macOS in-app installation is disabled. Settings detects a standard Homebrew Cask installation and can check whether DBDesk is outdated. If DBDesk was installed from a DMG, Settings explains the limitation and opens the [Downloads page](/download) so you can install the latest DMG manually.
+
+## Windows
+
+DBDesk checks for updates after launch, every four hours, and when you select **Check for Updates** in Settings. When a release is available, select **Download**, then **Restart to Install**.
+
+Windows releases are not currently code signed, so SmartScreen may warn during the initial installation. Update files are still verified against the hashes published with the GitHub release.
+
+## Linux
+
+AppImage and DEB installations use the in-app updater. DBDesk checks automatically, downloads the matching package type, and asks to restart when installation is ready. The installed file or package manager must be writable or able to request the required permissions.
+
+If DBDesk was installed with Linux Homebrew, keep it managed by Homebrew:
+
+```bash
+brew update
+brew upgrade zexahq/dbdesk/dbdesk
+```
+
+Settings detects standard Linux Homebrew installations and uses Homebrew for update checks instead of replacing its managed AppImage.
+
+## If an update fails
+
+Open **Settings → Updates** and try again. DBDesk keeps the current installation when a download or verification fails and displays the error in Settings.

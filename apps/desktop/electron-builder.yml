@@ -58,14 +58,16 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
-  include: build/win/installer.nsh
 mac:
-  identity: ''
+  # macOS updates are distributed through Homebrew until Developer ID signing is available.
+  identity: '-'
   hardenedRuntime: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: false
   target:
     - dmg
-    - zip
-  artifactName: ${productName}-${version}.${ext}
+  artifactName: ${productName}-${version}-${arch}.${ext}
 linux:
   target:
     - AppImage
