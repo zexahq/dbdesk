@@ -9,15 +9,23 @@ function initializeUpdateState(): void {
   if (initialized) return
   initialized = true
 
-  window.dbdesk.onUpdateState((state) => useUpdateStore.setState({ state }))
+  let receivedEvent = false
+  window.dbdesk.onUpdateState((state) => {
+    receivedEvent = true
+    useUpdateStore.setState({ state })
+  })
   void window.dbdesk
     .getUpdateState()
-    .then((state) => useUpdateStore.setState({ state }))
-    .catch((error) =>
-      useUpdateStore.setState({
-        state: { status: 'error', message: error instanceof Error ? error.message : String(error) }
-      })
-    )
+    .then((state) => {
+      if (!receivedEvent) useUpdateStore.setState({ state })
+    })
+    .catch((error) => {
+      if (!receivedEvent) {
+        useUpdateStore.setState({
+          state: { status: 'error', message: error instanceof Error ? error.message : String(error) }
+        })
+      }
+    })
 }
 
 export function useUpdateState() {

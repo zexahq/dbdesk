@@ -1,99 +1,99 @@
-"use client";
+'use client'
 
-import { Icons } from "@/components/icons";
-import Image from "next/image";
-import { ArrowDownToLine } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { Icons } from '@/components/icons'
+import Image from 'next/image'
+import { ArrowDownToLine } from 'lucide-react'
+import { useSyncExternalStore } from 'react'
 
-type OS = "macos" | "windows" | "linux" | null;
+type OS = 'macos' | 'windows' | 'linux' | null
 
 interface Asset {
-  name: string;
-  browser_download_url: string;
-  size: number;
+  name: string
+  browser_download_url: string
+  size: number
 }
 
 interface OSDetectProps {
-  assets?: Asset[];
+  assets?: Asset[]
 }
 
 function detectOS(): OS {
-  if (typeof navigator === "undefined") {
-    return null;
+  if (typeof navigator === 'undefined') {
+    return null
   }
 
-  const ua = navigator.userAgent.toLowerCase();
+  const ua = navigator.userAgent.toLowerCase()
 
-  if (ua.includes("mac")) {
-    return "macos";
+  if (ua.includes('mac')) {
+    return 'macos'
   }
 
-  if (ua.includes("windows") || ua.includes("win")) {
-    return "windows";
+  if (ua.includes('windows') || ua.includes('win')) {
+    return 'windows'
   }
 
-  if (ua.includes("linux") || ua.includes("x11")) {
-    return "linux";
+  if (ua.includes('linux') || ua.includes('x11')) {
+    return 'linux'
   }
 
-  return null;
+  return null
 }
 
 function subscribe() {
-  return () => {};
+  return () => {}
 }
 
 function getDownloadUrl(assets: Asset[], os: OS): string | null {
-  if (!assets.length || !os) return null;
+  if (!assets.length || !os) return null
 
   // Skip updater-only artifacts
   const installAssets = assets.filter(
-    (a) => !a.name.includes(".blockmap") && !a.name.endsWith("-mac.zip")
-  );
+    (a) => !a.name.includes('.blockmap') && !a.name.endsWith('-mac.zip')
+  )
 
   const patterns: Record<string, RegExp[]> = {
-    macos: [/\.dmg$/i, /darwin/i, /macos/i],
+    macos: [/arm64.*\.dmg$/i, /\.dmg$/i, /darwin/i, /macos/i],
     windows: [/\.exe$/i, /\.msi$/i, /windows/i],
-    linux: [/\.AppImage$/i, /\.deb$/i, /linux/i],
-  };
-
-  const osPatterns = patterns[os];
-  for (const pattern of osPatterns) {
-    const asset = installAssets.find((a) => pattern.test(a.name));
-    if (asset) return asset.browser_download_url;
+    linux: [/\.AppImage$/i, /\.deb$/i, /linux/i]
   }
-  return null;
+
+  const osPatterns = patterns[os]
+  for (const pattern of osPatterns) {
+    const asset = installAssets.find((a) => pattern.test(a.name))
+    if (asset) return asset.browser_download_url
+  }
+  return null
 }
 
 export function OSDetect({ assets = [] }: OSDetectProps) {
-  const detectedOS = useSyncExternalStore(subscribe, detectOS, () => null);
+  const detectedOS = useSyncExternalStore(subscribe, detectOS, () => null)
 
   if (!detectedOS) {
-    return null;
+    return null
   }
 
   const osConfig = {
     macos: {
       icon: Icons.apple,
-      name: "macOS",
-      label: "Download for macOS",
+      name: 'macOS (Apple silicon)',
+      label: 'Download for macOS (Apple silicon)'
     },
     windows: {
       icon: Icons.windows,
-      name: "Windows",
-      label: "Download for Windows",
+      name: 'Windows',
+      label: 'Download for Windows'
     },
     linux: {
       icon: Icons.linux,
-      name: "Linux",
-      label: "Download for Linux",
-    },
-  };
+      name: 'Linux',
+      label: 'Download for Linux'
+    }
+  }
 
-  const config = detectedOS ? osConfig[detectedOS] : null;
-  if (!config) return null;
+  const config = detectedOS ? osConfig[detectedOS] : null
+  if (!config) return null
 
-  const downloadUrl = getDownloadUrl(assets, detectedOS);
+  const downloadUrl = getDownloadUrl(assets, detectedOS)
 
   return (
     <div className="bg-fd-secondary/50 rounded-2xl p-8 mb-12">
@@ -142,11 +142,13 @@ export function OSDetect({ assets = [] }: OSDetectProps) {
             )}
 
             <p className="text-xs text-fd-muted-foreground">
-              Post-install steps are shown below.
+              {detectedOS === 'macos'
+                ? 'Requires Apple silicon (M1 or newer). Intel Macs are not supported.'
+                : 'Post-install steps are shown below.'}
             </p>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

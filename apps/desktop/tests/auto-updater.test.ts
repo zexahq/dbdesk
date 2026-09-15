@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => {
   const listeners = new Map<string, ((value?: unknown) => void)[]>()
   const send = vi.fn()
+  const truncate = vi.fn()
   const updater = {
     autoDownload: true,
     autoInstallOnAppQuit: false,
@@ -21,7 +22,7 @@ const mocks = vi.hoisted(() => {
     quitAndInstall: vi.fn()
   }
 
-  return { send, updater }
+  return { send, truncate, updater }
 })
 
 vi.mock('@electron-toolkit/utils', () => ({ is: { dev: false } }))
@@ -35,13 +36,20 @@ vi.mock('electron', () => ({
     getAllWindows: () => [{ webContents: { send: mocks.send } }]
   }
 }))
-vi.mock('fs', () => ({ appendFile: vi.fn(), mkdirSync: vi.fn() }))
+vi.mock('fs', () => ({
+  appendFile: vi.fn(),
+  existsSync: () => true,
+  mkdirSync: vi.fn(),
+  statSync: () => ({ size: 6 * 1024 * 1024 }),
+  truncateSync: mocks.truncate
+}))
 
 describe('auto updater', () => {
   it('shares state and prevents duplicate downloads', async () => {
     vi.useFakeTimers()
     const updater = await import('../src/main/lib/auto-updater')
     updater.initAutoUpdater()
+    expect(mocks.truncate).toHaveBeenCalledWith('/tmp/dbdesk-updater-test/updater.log')
 
     expect(await updater.checkForUpdates()).toEqual({ status: 'up-to-date' })
 

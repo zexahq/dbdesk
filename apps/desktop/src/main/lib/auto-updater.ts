@@ -2,7 +2,7 @@ import type { UpdateState } from '@dbdesk/shared/types'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import { is } from '@electron-toolkit/utils'
 import { app, BrowserWindow } from 'electron'
-import { appendFile, mkdirSync } from 'fs'
+import { appendFile, existsSync, mkdirSync, statSync, truncateSync } from 'fs'
 import { join } from 'path'
 
 /**
@@ -18,6 +18,7 @@ autoUpdater.autoDownload = false
 autoUpdater.autoInstallOnAppQuit = true
 
 let state: UpdateState = { status: 'idle' }
+const maxLogSize = 5 * 1024 * 1024
 
 function configureLogging(): void {
   let logFile: string
@@ -25,6 +26,7 @@ function configureLogging(): void {
     const logDirectory = app.getPath('logs')
     mkdirSync(logDirectory, { recursive: true })
     logFile = join(logDirectory, 'updater.log')
+    if (existsSync(logFile) && statSync(logFile).size > maxLogSize) truncateSync(logFile)
   } catch (error) {
     console.error('[auto-updater] Failed to configure file logging', error)
     return

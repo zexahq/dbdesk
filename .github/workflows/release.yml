@@ -6,7 +6,7 @@ on:
       - 'v*.*.*'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Match tag to desktop version
         shell: bash
@@ -35,13 +35,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
@@ -66,7 +66,7 @@ jobs:
           pnpm exec electron-builder --linux --publish never
 
       - name: Upload Linux release files
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: linux
           path: |
@@ -81,13 +81,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
@@ -109,7 +109,7 @@ jobs:
           pnpm exec electron-builder --win --publish never
 
       - name: Upload Windows release files
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: windows
           path: |
@@ -124,13 +124,13 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
@@ -168,7 +168,7 @@ jobs:
         run: |
           pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
-          pnpm exec electron-builder --mac --arm64 --publish never -c.mac.forceCodeSigning=true
+          pnpm exec electron-builder --mac --arm64 --publish never --config.mac.forceCodeSigning=true
 
       - name: Verify macOS signature and notarization
         working-directory: apps/desktop
@@ -178,7 +178,7 @@ jobs:
           xcrun stapler validate dist/*.dmg
 
       - name: Upload macOS release files
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: macos
           path: |
@@ -193,23 +193,45 @@ jobs:
     name: Publish Release
     needs: [build-linux, build-windows, build-mac]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
-      GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
       - name: Download release files
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           path: release-files
 
-      - name: Verify update metadata
+      - name: Verify update metadata and payloads
         shell: bash
         run: |
-          test -f release-files/linux/latest-linux.yml
-          test -f release-files/windows/latest.yml
-          test -f release-files/macos/latest-mac.yml
+          for metadata in \
+            release-files/linux/latest-linux.yml \
+            release-files/windows/latest.yml \
+            release-files/macos/latest-mac.yml; do
+            test -f "$metadata"
+            test "v$(sed -n 's/^version: //p' "$metadata")" = "$GITHUB_REF_NAME"
+
+            url_count="$(sed -n 's/^  - url: //p' "$metadata" | wc -l | tr -d ' ')"
+            hash_count="$(sed -n 's/^    sha512: //p' "$metadata" | wc -l | tr -d ' ')"
+            test "$url_count" -gt 0
+            test "$url_count" -eq "$hash_count"
+
+            paste \
+              <(sed -n 's/^  - url: //p' "$metadata") \
+              <(sed -n 's/^    sha512: //p' "$metadata") |
+            while IFS=$'\t' read -r url expected_hash; do
+              payload="$(dirname "$metadata")/$url"
+              test -f "$payload"
+              actual_hash="$(openssl dgst -sha512 -binary "$payload" | openssl base64 -A)"
+              test "$actual_hash" = "$expected_hash"
+            done
+          done
 
       - name: Create or resume draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
@@ -222,7 +244,11 @@ jobs:
           fi
 
       - name: Upload release files
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release upload "$GITHUB_REF_NAME" release-files/*/* --clobber
 
       - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest

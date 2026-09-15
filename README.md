@@ -31,7 +31,7 @@ Download the latest installer for your platform from the [GitHub Releases](https
 
 ### macOS
 
-Starting with v0.1.13, DBDesk releases are Developer ID signed and notarized. If you are upgrading from v0.1.12 or earlier, install the latest DMG manually once; those older builds used an ad-hoc signature and cannot install the new signing identity automatically.
+DBDesk for macOS currently requires Apple silicon (M1 or newer). Starting with v0.1.13, releases are Developer ID signed and notarized. If you are upgrading from v0.1.12 or earlier, install the latest DMG manually once; those older builds used an ad-hoc signature and cannot install the new signing identity automatically.
 
 ### Linux
 
