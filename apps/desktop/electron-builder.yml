@@ -58,7 +58,6 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
-  include: build/win/installer.nsh
 mac:
   hardenedRuntime: true
   entitlements: build/entitlements.mac.plist
