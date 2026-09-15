@@ -7,6 +7,7 @@ export function UpdateMenuItems() {
 
   if (
     updateState.status === 'idle' ||
+    updateState.status === 'manual' ||
     updateState.status === 'checking' ||
     updateState.status === 'up-to-date'
   ) {

@@ -105,8 +105,8 @@ export function DownloadButton({ assets = [] }: DownloadButtonProps) {
         {detectedOS === 'macos' && (
           <div className="text-sm text-fd-muted-foreground max-w-md w-full">
             <p className="text-center text-xs">
-              Requires Apple silicon (M1 or newer). Using v0.1.12 or earlier? Install this version
-              manually once to move to signed automatic updates.
+              Requires Apple silicon (M1 or newer). DBDesk is not yet Developer ID signed; Homebrew
+              is the recommended install and update method.
             </p>
           </div>
         )}
@@ -140,8 +140,8 @@ export function DownloadButton({ assets = [] }: DownloadButtonProps) {
       {detectedOS === 'macos' && (
         <div className="text-sm text-fd-muted-foreground max-w-md w-full">
           <p className="text-center text-xs">
-            Requires Apple silicon (M1 or newer). Using v0.1.12 or earlier? Install the latest
-            version manually once to move to signed automatic updates.
+            Requires Apple silicon (M1 or newer). DBDesk is not yet Developer ID signed; Homebrew is
+            the recommended install and update method.
           </p>
         </div>
       )}

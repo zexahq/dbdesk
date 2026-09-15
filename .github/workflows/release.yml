@@ -135,47 +135,29 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Verify signing secrets
-        env:
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        shell: bash
-        run: |
-          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            if [[ -z "${!name}" ]]; then
-              echo "Missing required GitHub Actions secret: $name" >&2
-              exit 1
-            fi
-          done
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build, sign, and notarize macOS package
+      - name: Build unsigned macOS package
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
           VITE_WEB_URL: ${{ vars.VITE_WEB_URL }}
           NODE_OPTIONS: '--max-old-space-size=6144'
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         working-directory: apps/desktop
         run: |
           pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
-          pnpm exec electron-builder --mac --arm64 --publish never --config.mac.forceCodeSigning=true
+          pnpm exec electron-builder --mac --arm64 --publish never
 
-      - name: Verify macOS signature and notarization
+      - name: Verify macOS package
         working-directory: apps/desktop
         run: |
-          codesign --verify --deep --strict --verbose=2 dist/mac-*/DBDesk.app
-          spctl --assess --type execute --verbose=2 dist/mac-*/DBDesk.app
-          xcrun stapler validate dist/*.dmg
+          app_path="$(find dist -type d -path '*/DBDesk.app' -print -quit)"
+          test -n "$app_path"
+          file "$app_path/Contents/MacOS/DBDesk" | grep -q arm64
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          for dmg in dist/*.dmg; do hdiutil verify "$dmg"; done
 
       - name: Upload macOS release files
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -183,10 +165,6 @@ jobs:
           name: macos
           path: |
             apps/desktop/dist/*.dmg
-            apps/desktop/dist/*.dmg.blockmap
-            apps/desktop/dist/*.zip
-            apps/desktop/dist/*.zip.blockmap
-            apps/desktop/dist/latest-mac.yml
           if-no-files-found: error
 
   release:
@@ -208,8 +186,7 @@ jobs:
         run: |
           for metadata in \
             release-files/linux/latest-linux.yml \
-            release-files/windows/latest.yml \
-            release-files/macos/latest-mac.yml; do
+            release-files/windows/latest.yml; do
             test -f "$metadata"
             test "v$(sed -n 's/^version: //p' "$metadata")" = "$GITHUB_REF_NAME"
 

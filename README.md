@@ -31,7 +31,18 @@ Download the latest installer for your platform from the [GitHub Releases](https
 
 ### macOS
 
-DBDesk for macOS currently requires Apple silicon (M1 or newer). Starting with v0.1.13, releases are Developer ID signed and notarized. If you are upgrading from v0.1.12 or earlier, install the latest DMG manually once; those older builds used an ad-hoc signature and cannot install the new signing identity automatically.
+DBDesk for macOS currently requires Apple silicon (M1 or newer). The recommended install is Homebrew:
+
+```bash
+brew install --cask zexahq/dbdesk/dbdesk
+```
+
+DBDesk is not yet Developer ID signed or notarized. The Homebrew cask verifies the download checksum and clears the quarantine attribute during installation. Until Developer ID signing is available, macOS updates use Homebrew instead of the in-app updater:
+
+```bash
+brew update
+brew upgrade --cask zexahq/dbdesk/dbdesk
+```
 
 ### Linux
 

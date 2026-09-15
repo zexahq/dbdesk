@@ -13,6 +13,7 @@ export function UpdatesSection({ version }: { version: string }) {
           <p className="text-sm font-medium">DBDesk v{version || '…'}</p>
           <p className="text-xs text-muted-foreground mt-0.5" aria-live="polite">
             {updateState.status === 'idle' && 'Updates are checked automatically.'}
+            {updateState.status === 'manual' && updateState.message}
             {updateState.status === 'checking' && 'Checking for updates…'}
             {updateState.status === 'up-to-date' && 'You are up to date.'}
             {updateState.status === 'available' && `v${updateState.version} is available.`}
@@ -39,23 +40,25 @@ export function UpdatesSection({ version }: { version: string }) {
         )}
       </div>
 
-      <div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs"
-          disabled={checking}
-          onClick={() => window.dbdesk.checkForUpdate()}
-        >
-          {checking && (
-            <Loader2
-              aria-hidden="true"
-              className="size-3.5 animate-spin motion-reduce:animate-none"
-            />
-          )}
-          Check for Updates
-        </Button>
-      </div>
+      {updateState.status !== 'manual' && (
+        <div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            disabled={checking}
+            onClick={() => window.dbdesk.checkForUpdate()}
+          >
+            {checking && (
+              <Loader2
+                aria-hidden="true"
+                className="size-3.5 animate-spin motion-reduce:animate-none"
+              />
+            )}
+            Check for Updates
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

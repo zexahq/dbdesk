@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => {
   const listeners = new Map<string, ((value?: unknown) => void)[]>()
@@ -44,6 +44,11 @@ vi.mock('fs', () => ({
   truncateSync: mocks.truncate
 }))
 
+const platform = process.platform
+
+beforeAll(() => Object.defineProperty(process, 'platform', { value: 'linux' }))
+afterAll(() => Object.defineProperty(process, 'platform', { value: platform }))
+
 describe('auto updater', () => {
   it('shares state and prevents duplicate downloads', async () => {
     vi.useFakeTimers()
@@ -81,5 +86,24 @@ describe('auto updater', () => {
 
     vi.clearAllTimers()
     vi.useRealTimers()
+  })
+
+  it('uses Homebrew updates on macOS', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    vi.resetModules()
+    const checkCalls = mocks.updater.checkForUpdates.mock.calls.length
+
+    try {
+      const updater = await import('../src/main/lib/auto-updater')
+      updater.initAutoUpdater()
+
+      expect(await updater.checkForUpdates()).toEqual({
+        status: 'manual',
+        message: 'Update with Homebrew: brew upgrade --cask zexahq/dbdesk/dbdesk'
+      })
+      expect(mocks.updater.checkForUpdates).toHaveBeenCalledTimes(checkCalls)
+    } finally {
+      Object.defineProperty(process, 'platform', { value: 'linux' })
+    }
   })
 })

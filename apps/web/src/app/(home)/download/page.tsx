@@ -33,9 +33,7 @@ export default async function DownloadPage() {
                     className="block bg-fd-background border border-fd-border p-3 rounded text-xs select-all text-fd-foreground leading-relaxed"
                     style={{ fontFamily: 'var(--font-mono)' }}
                   >
-                    brew tap zexahq/dbdesk<br />
-                    brew trust zexahq/dbdesk<br />
-                    brew install --cask dbdesk
+                    brew install --cask zexahq/dbdesk/dbdesk
                   </code>
                 </div>
                 <div className="border border-fd-border rounded-lg p-4 bg-fd-secondary/30">

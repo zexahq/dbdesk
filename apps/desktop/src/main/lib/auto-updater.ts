@@ -19,6 +19,10 @@ autoUpdater.autoInstallOnAppQuit = true
 
 let state: UpdateState = { status: 'idle' }
 const maxLogSize = 5 * 1024 * 1024
+const macUpdateState: UpdateState = {
+  status: 'manual',
+  message: 'Update with Homebrew: brew upgrade --cask zexahq/dbdesk/dbdesk'
+}
 
 function configureLogging(): void {
   let logFile: string
@@ -57,6 +61,11 @@ function setState(nextState: UpdateState): void {
 
 /** Initialise the auto-updater and register listeners. */
 export function initAutoUpdater(): void {
+  if (process.platform === 'darwin') {
+    state = macUpdateState
+    return
+  }
+
   // Skip updates in development
   if (is.dev) return
   configureLogging()
@@ -107,6 +116,10 @@ export function initAutoUpdater(): void {
 
 /** Check GitHub Releases for an update. */
 export async function checkForUpdates(): Promise<UpdateState> {
+  if (process.platform === 'darwin') {
+    state = macUpdateState
+    return state
+  }
   if (is.dev) return state
   if (['checking', 'downloading', 'downloaded'].includes(state.status)) return state
 
