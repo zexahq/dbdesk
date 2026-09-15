@@ -34,13 +34,14 @@ export const dbdeskAPI = {
   runQuery: (
     connectionId: string,
     query: string,
-    options?: { limit?: number; offset?: number; queryId?: string }
+    options?: { limit?: number; offset?: number; readOnly?: boolean; queryId?: string }
   ) =>
     typedInvoke('query:run', {
       connectionId,
       query,
       limit: options?.limit,
       offset: options?.offset,
+      readOnly: options?.readOnly,
       queryId: options?.queryId
     }),
   runManyQueries: (

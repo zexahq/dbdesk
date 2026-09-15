@@ -6,12 +6,12 @@ import { typedHandle } from './typed-handle'
 const PG_QUERY_CANCELED = '57014'
 
 export function registerQueryHandlers() {
-  typedHandle('query:run', async ({ connectionId, query, limit, offset, queryId }) => {
+  typedHandle('query:run', async ({ connectionId, query, limit, offset, readOnly, queryId }) => {
     const adapter = connectionManager.getConnection(connectionId)
     if (!adapter) throw new ConnectionError(`Connection "${connectionId}" is not established`)
 
     try {
-      return await adapter.runQuery(query, { limit, offset, queryId })
+      return await adapter.runQuery(query, { limit, offset, readOnly, queryId })
     } catch (error) {
       // Surface user-initiated cancels as a clear, non-scary message.
       if (

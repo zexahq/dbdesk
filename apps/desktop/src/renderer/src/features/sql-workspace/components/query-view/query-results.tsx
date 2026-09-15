@@ -2,7 +2,8 @@ import type { QueryBatchResult, QueryResult } from '@dbdesk/shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { cleanErrorMessage } from '@renderer/shared/lib/utils'
 import { getQueryTabLabel } from '@renderer/features/editor/lib/sql-parser'
-import { CircleCheck, CircleX, FileText, Play, Square } from 'lucide-react'
+import { CircleCheck, CircleX, FileText, ListTree, Play, Square } from 'lucide-react'
+import { ExplainPlan } from './explain-plan'
 import { SimpleTable } from './simple-table'
 
 interface QueryResultsProps {
@@ -12,6 +13,8 @@ interface QueryResultsProps {
   isLoading?: boolean
   error?: Error | null
   onRun: () => void
+  onExplain?: () => void
+  isExplainPlan?: boolean
   onResultSelect?: (index: number) => void
   onCancel?: () => void
 }
@@ -35,10 +38,15 @@ export function QueryResults({
   isLoading,
   error,
   onRun,
+  onExplain,
+  isExplainPlan,
   onResultSelect,
   onCancel
 }: QueryResultsProps) {
-  const safeActiveResultIndex = Math.min(activeResultIndex ?? 0, Math.max((batchResults?.length ?? 1) - 1, 0))
+  const safeActiveResultIndex = Math.min(
+    activeResultIndex ?? 0,
+    Math.max((batchResults?.length ?? 1) - 1, 0)
+  )
   const activeBatchResult = batchResults?.[safeActiveResultIndex]
 
   return (
@@ -56,6 +64,16 @@ export function QueryResults({
               STOP
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs cursor-pointer"
+            onClick={onExplain}
+            disabled={isLoading || !onExplain}
+          >
+            <ListTree className="size-4" />
+            EXPLAIN
+          </Button>
           <Button
             size="sm"
             className="h-8 text-xs cursor-pointer"
@@ -92,6 +110,8 @@ export function QueryResults({
               <p className="text-sm">Please wait</p>
             </div>
           </div>
+        ) : isExplainPlan ? (
+          <ExplainPlan result={queryResults} />
         ) : batchResults && batchResults.length > 0 ? (
           activeBatchResult?.error ? (
             <div className="flex w-full items-center justify-center text-center text-destructive">
@@ -99,7 +119,10 @@ export function QueryResults({
             </div>
           ) : activeBatchResult?.result?.columns.length ? (
             <div className="h-full w-full">
-              <SimpleTable columns={activeBatchResult.result.columns} data={activeBatchResult.result.rows} />
+              <SimpleTable
+                columns={activeBatchResult.result.columns}
+                data={activeBatchResult.result.rows}
+              />
             </div>
           ) : activeBatchResult?.result ? (
             <div className="flex w-full items-center justify-center text-center text-muted-foreground">

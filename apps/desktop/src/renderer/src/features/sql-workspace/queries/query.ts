@@ -16,7 +16,7 @@ export function useRunQuery(connectionId: string) {
       options
     }: {
       query: string
-      options?: { limit?: number; offset?: number; queryId?: string }
+      options?: { limit?: number; offset?: number; readOnly?: boolean; queryId?: string }
     }) => dbdeskClient.runQuery(connectionId, query, options),
     onSuccess: (_, variables) => {
       // Invalidate schemas cache if DDL query (CREATE, DROP, ALTER, etc.)

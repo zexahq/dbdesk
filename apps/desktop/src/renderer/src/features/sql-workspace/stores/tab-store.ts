@@ -39,6 +39,7 @@ export interface QueryTab extends BaseTab {
   queryResults?: QueryResult
   batchResults?: QueryBatchResult[]
   activeResultIndex: number
+  isExplainPlan?: boolean
   isDirty: boolean
 }
 
@@ -119,6 +120,7 @@ const createDefaultQueryTab = (): QueryTab => ({
   queryResults: undefined,
   batchResults: undefined,
   activeResultIndex: 0,
+  isExplainPlan: false,
   lastExecutedQuery: undefined,
   lastSavedContent: undefined,
   isDirty: false

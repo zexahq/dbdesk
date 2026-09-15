@@ -76,6 +76,7 @@ export interface IpcContract {
       query: string
       limit?: number
       offset?: number
+      readOnly?: boolean
       queryId?: string
     }
     result: QueryResult

@@ -138,7 +138,8 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
       lastExecutedQuery: query,
       limit: result.limit ?? activeTab.limit,
       offset: result.offset ?? activeTab.offset,
-      totalRowCount: result.totalRowCount
+      totalRowCount: result.totalRowCount,
+      isExplainPlan: false
     })
   }
 
@@ -150,7 +151,8 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
       lastExecutedQuery: undefined,
       limit,
       offset,
-      totalRowCount: undefined
+      totalRowCount: undefined,
+      isExplainPlan: false
     })
   }
 
@@ -160,7 +162,8 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
       batchResults: undefined,
       activeResultIndex: 0,
       lastExecutedQuery: undefined,
-      totalRowCount: undefined
+      totalRowCount: undefined,
+      isExplainPlan: false
     })
   }
 
@@ -202,6 +205,41 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
     const queriesToRun = blocks.flatMap((block) => block.queries).filter(Boolean)
 
     await queueDangerousExecution(queriesToRun, limit, offset)
+  }
+
+  const handleExplain = async () => {
+    const queriesToExplain = getEditorQueries(activeTab.editorContent)
+      .flatMap((block) => block.queries)
+      .filter(Boolean)
+
+    if (queriesToExplain.length !== 1) {
+      toast.error('Explain requires exactly one SQL statement')
+      return
+    }
+
+    const query = queriesToExplain[0]
+    const queryId = crypto.randomUUID()
+    currentQueryIdRef.current = queryId
+    clearQueryResults()
+
+    try {
+      const result = await runQueryMutation({
+        query: `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`,
+        options: { queryId, readOnly: true }
+      })
+      updateQueryTab(activeTab.id, {
+        queryResults: result,
+        batchResults: undefined,
+        activeResultIndex: 0,
+        lastExecutedQuery: `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`,
+        totalRowCount: undefined,
+        isExplainPlan: true
+      })
+    } catch {
+      clearQueryResults()
+    } finally {
+      currentQueryIdRef.current = null
+    }
   }
 
   const executeSingleQueryWithPagination = async (query: string, limit: number, offset: number) => {
@@ -290,6 +328,8 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
             isLoading={isExecuting}
             error={executionError}
             onRun={handleRunQuery}
+            onExplain={() => void handleExplain()}
+            isExplainPlan={activeTab.isExplainPlan}
             onResultSelect={(index) => {
               const result = activeTab.batchResults?.[index]?.result
               updateQueryTab(activeTab.id, {
@@ -303,7 +343,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {(activeTab.queryResults || activeBatchResult) && (
+      {!activeTab.isExplainPlan && (activeTab.queryResults || activeBatchResult) && (
         <QueryBottombar
           resultLabel={batchResultLabel}
           totalRows={
