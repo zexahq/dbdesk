@@ -57,6 +57,14 @@ chmod +x dbdesk-*.AppImage
 
 Download and run the installer from the releases page. The installer will handle setup automatically.
 
+## 🔄 Updates
+
+- **Windows, Linux AppImage, and Linux DEB:** DBDesk checks automatically and lets you download and install updates from Settings.
+- **macOS with Homebrew:** run `brew update && brew upgrade --cask zexahq/dbdesk/dbdesk`. Settings can detect the Homebrew installation and check whether DBDesk is outdated.
+- **macOS from a DMG:** Settings explains that Developer ID signing is not available yet and opens the Downloads page for manual installation.
+
+See the [update guide](https://dbdesk.zexa.app/docs/updates) for the complete platform-specific behavior.
+
 ## ⌨️ CLI
 
 Use DBDesk from the terminal — or let your AI agents (Claude Code, Cursor, Codex, OpenCode) drive it: connections, read-only queries, and dashboards as code.

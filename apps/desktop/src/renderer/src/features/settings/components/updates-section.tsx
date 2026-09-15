@@ -1,4 +1,4 @@
-import { ArrowDownToLine, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowDownToLine, ExternalLink, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { useUpdateState } from '@renderer/shared/hooks/use-update-state'
 
@@ -39,6 +39,30 @@ export function UpdatesSection({ version }: { version: string }) {
           </Button>
         )}
       </div>
+
+      {updateState.status === 'manual' && updateState.method === 'homebrew' && (
+        <div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => window.dbdesk.checkForUpdate()}
+          >
+            Check for Updates
+          </Button>
+        </div>
+      )}
+
+      {updateState.status === 'manual' && updateState.method === 'download' && (
+        <div>
+          <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+            <a href={`${window.env.WEB_URL}/download`} target="_blank" rel="noreferrer">
+              <ExternalLink aria-hidden="true" className="size-3.5" />
+              Open Downloads
+            </a>
+          </Button>
+        </div>
+      )}
 
       {updateState.status !== 'manual' && (
         <div>

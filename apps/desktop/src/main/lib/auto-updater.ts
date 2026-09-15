@@ -2,6 +2,7 @@ import type { UpdateState } from '@dbdesk/shared/types'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import { is } from '@electron-toolkit/utils'
 import { app, BrowserWindow } from 'electron'
+import { execFile } from 'child_process'
 import { appendFile, existsSync, mkdirSync, statSync, truncateSync } from 'fs'
 import { join } from 'path'
 
@@ -19,9 +20,119 @@ autoUpdater.autoInstallOnAppQuit = true
 
 let state: UpdateState = { status: 'idle' }
 const maxLogSize = 5 * 1024 * 1024
-const macUpdateState: UpdateState = {
-  status: 'manual',
-  message: 'Update with Homebrew: brew upgrade --cask zexahq/dbdesk/dbdesk'
+
+type HomebrewInstallation = {
+  executable: string
+  packageFlag: '--cask' | '--formula'
+  upgradeCommand: string
+}
+
+function findHomebrewInstallation(): HomebrewInstallation | null {
+  const packageDirectory = process.platform === 'darwin' ? 'Caskroom' : 'Cellar'
+  const prefixes = [
+    process.env.HOMEBREW_PREFIX,
+    '/opt/homebrew',
+    '/usr/local',
+    '/home/linuxbrew/.linuxbrew'
+  ]
+
+  for (const prefix of prefixes) {
+    if (!prefix) continue
+    const executable = join(prefix, 'bin', 'brew')
+    if (!existsSync(executable) || !existsSync(join(prefix, packageDirectory, 'dbdesk'))) continue
+    const runningHomebrewPackage =
+      process.platform === 'darwin'
+        ? app.getAppPath().startsWith('/Applications/DBDesk.app/')
+        : process.env.APPIMAGE?.startsWith(`${join(prefix, packageDirectory, 'dbdesk')}/`)
+    if (!runningHomebrewPackage) continue
+
+    return {
+      executable,
+      packageFlag: process.platform === 'darwin' ? '--cask' : '--formula',
+      upgradeCommand:
+        process.platform === 'darwin'
+          ? 'brew upgrade --cask zexahq/dbdesk/dbdesk'
+          : 'brew upgrade zexahq/dbdesk/dbdesk'
+    }
+  }
+
+  return null
+}
+
+const homebrewInstallation = findHomebrewInstallation()
+
+function getManualUpdateState(message?: string): UpdateState | null {
+  if (homebrewInstallation) {
+    const reason =
+      process.platform === 'darwin'
+        ? 'Because DBDesk is not Developer ID signed yet, macOS updates are handled by Homebrew.'
+        : 'Updates are handled by Homebrew.'
+    return {
+      status: 'manual',
+      method: 'homebrew',
+      message:
+        message ?? `Installed with Homebrew. ${reason} Run: ${homebrewInstallation.upgradeCommand}`
+    }
+  }
+
+  if (process.platform === 'darwin') {
+    return {
+      status: 'manual',
+      method: 'download',
+      message:
+        'DBDesk is not Developer ID signed yet, so this DMG cannot update in-app. Open Downloads and install the latest DMG manually.'
+    }
+  }
+
+  return null
+}
+
+function runHomebrew(installation: HomebrewInstallation, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      installation.executable,
+      args,
+      {
+        encoding: 'utf8',
+        env: { ...process.env, HOMEBREW_NO_AUTO_UPDATE: '1' },
+        timeout: 120_000
+      },
+      (error, stdout, stderr) => {
+        if (error) reject(new Error(stderr.trim() || error.message))
+        else resolve(stdout)
+      }
+    )
+  })
+}
+
+async function checkHomebrewUpdates(installation: HomebrewInstallation): Promise<UpdateState> {
+  setState({ status: 'checking' })
+  try {
+    await runHomebrew(installation, ['update', '--quiet'])
+    const output = await runHomebrew(installation, [
+      'outdated',
+      installation.packageFlag,
+      '--json=v2'
+    ])
+    const packages = JSON.parse(output) as {
+      casks?: Array<{ name: string; current_version: string }>
+      formulae?: Array<{ name: string; current_version: string }>
+    }
+    const update = [...(packages.casks ?? []), ...(packages.formulae ?? [])].find(
+      ({ name }) => name === 'dbdesk' || name.endsWith('/dbdesk')
+    )
+    const message = update
+      ? `Homebrew has v${update.current_version} ready. Run: ${installation.upgradeCommand}`
+      : 'Homebrew reports DBDesk is up to date.'
+    const nextState = getManualUpdateState(message)!
+    setState(nextState)
+    return nextState
+  } catch (error) {
+    const message = `Homebrew check failed: ${error instanceof Error ? error.message : String(error)}. Run: ${installation.upgradeCommand}`
+    const nextState = getManualUpdateState(message)!
+    setState(nextState)
+    return nextState
+  }
 }
 
 function configureLogging(): void {
@@ -61,8 +172,9 @@ function setState(nextState: UpdateState): void {
 
 /** Initialise the auto-updater and register listeners. */
 export function initAutoUpdater(): void {
-  if (process.platform === 'darwin') {
-    state = macUpdateState
+  const manualState = getManualUpdateState()
+  if (manualState) {
+    state = manualState
     return
   }
 
@@ -116,12 +228,16 @@ export function initAutoUpdater(): void {
 
 /** Check GitHub Releases for an update. */
 export async function checkForUpdates(): Promise<UpdateState> {
-  if (process.platform === 'darwin') {
-    state = macUpdateState
+  if (state.status === 'checking') return state
+  if (homebrewInstallation) return checkHomebrewUpdates(homebrewInstallation)
+
+  const manualState = getManualUpdateState()
+  if (manualState) {
+    state = manualState
     return state
   }
   if (is.dev) return state
-  if (['checking', 'downloading', 'downloaded'].includes(state.status)) return state
+  if (['downloading', 'downloaded'].includes(state.status)) return state
 
   try {
     await autoUpdater.checkForUpdates()
