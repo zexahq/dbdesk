@@ -115,7 +115,7 @@ jobs:
         run: |
           pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
-          pnpm exec electron-builder --${{ matrix.target }} --publish never
+          pnpm exec electron-builder --${{ matrix.target }} --publish never -c.compression=normal
         if: matrix.target != 'mac'
 
       - name: Build unsigned macOS package
@@ -129,4 +129,4 @@ jobs:
         run: |
           pnpm --dir ../../packages/cli run build
           pnpm exec electron-vite build
-          pnpm exec electron-builder --mac --arm64 --publish never -c.mac.hardenedRuntime=false -c.mac.notarize=false
+          pnpm exec electron-builder --mac --arm64 --publish never -c.compression=normal -c.mac.hardenedRuntime=false -c.mac.notarize=false
