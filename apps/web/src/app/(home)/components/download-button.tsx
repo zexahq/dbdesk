@@ -6,13 +6,13 @@ import { ArrowDownToLine } from 'lucide-react'
 
 type OS = 'macos' | 'windows' | 'linux' | null
 
-interface Asset {
+type Asset = {
   name: string
   browser_download_url: string
   size: number
 }
 
-interface DownloadButtonProps {
+type DownloadButtonProps = {
   assets?: Asset[]
 }
 
