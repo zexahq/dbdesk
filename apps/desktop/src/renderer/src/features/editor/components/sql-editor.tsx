@@ -1,5 +1,6 @@
 import type { SQLDatabaseType } from '@dbdesk/shared/types'
 import Editor, { type Monaco } from '@monaco-editor/react'
+import { EXECUTE_ACTIVE_QUERY_EVENT } from '@renderer/features/sql-workspace/lib/commands'
 import { useTheme } from '@renderer/shared/hooks/use-theme'
 import type { editor } from 'monaco-editor'
 import { KeyCode, KeyMod } from 'monaco-editor'
@@ -75,6 +76,12 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
   useEffect(() => {
     onExecuteRef.current = onExecute
   }, [onExecute])
+
+  useEffect(() => {
+    const execute = () => onExecuteRef.current?.()
+    window.addEventListener(EXECUTE_ACTIVE_QUERY_EVENT, execute)
+    return () => window.removeEventListener(EXECUTE_ACTIVE_QUERY_EVENT, execute)
+  }, [])
 
   const focusEditor = useCallback((editorInstance = editorRef.current) => {
     if (!editorInstance) return

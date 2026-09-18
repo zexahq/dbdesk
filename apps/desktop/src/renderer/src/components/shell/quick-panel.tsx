@@ -1,12 +1,5 @@
-'use client'
-
-import { dbdeskClient } from '@renderer/shared/api/client'
-import {
-  useConnect,
-  useConnections,
-  useDisconnect
-} from '@renderer/features/connections/queries/connections'
-import { useDashboardStore } from '@renderer/features/sql-workspace/stores/dashboard-store'
+import type { ColumnInfo } from '@dbdesk/shared/types'
+import { Button } from '@renderer/components/ui/button'
 import {
   CommandDialog,
   CommandEmpty,
@@ -14,38 +7,70 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator
+  CommandSeparator,
+  CommandShortcut
 } from '@renderer/components/ui/command'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { useTheme } from '@renderer/shared/hooks/use-theme'
-import { toast } from '@renderer/shared/lib/toast'
-import { saveCurrentWorkspace } from '@renderer/features/sql-workspace/lib/workspace'
+import {
+  useConnect,
+  useConnections,
+  useDisconnect
+} from '@renderer/features/connections/queries/connections'
+import {
+  useExportTableAsCSV,
+  useExportTableAsSQL
+} from '@renderer/features/data-table/queries/export'
 import { useSettingsStore } from '@renderer/features/settings/stores/settings-store'
+import { AddRowSheet } from '@renderer/features/sql-workspace/components/sheets/add-row-sheet'
+import { EXECUTE_ACTIVE_QUERY_EVENT } from '@renderer/features/sql-workspace/lib/commands'
+import { saveCurrentWorkspace } from '@renderer/features/sql-workspace/lib/workspace'
+import {
+  useInsertTableRow,
+  useTableIntrospection
+} from '@renderer/features/sql-workspace/queries/schema'
+import { useDashboardStore } from '@renderer/features/sql-workspace/stores/dashboard-store'
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
+import { dbdeskClient } from '@renderer/shared/api/client'
+import { useTheme } from '@renderer/shared/hooks/use-theme'
+import { toast } from '@renderer/shared/lib/toast'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { useNavigate } from '@tanstack/react-router'
 import {
   Database,
+  Download,
+  FileCode2,
+  LayoutDashboard,
+  Layers,
   Moon,
+  Play,
   Plus,
   Search,
   Settings,
   SquareCode,
   Sun,
   Table2Icon,
-  Unplug
+  Unplug,
+  Workflow
 } from 'lucide-react'
-import * as React from 'react'
-import { useHotkey } from '@tanstack/react-hotkeys'
 import { useState } from 'react'
-import { Button } from '@renderer/components/ui/button'
+
+type AddRowTarget = {
+  connectionId: string
+  schema: string
+  table: string
+  columns: ColumnInfo[]
+}
 
 export function QuickPanel() {
   const [open, setOpen] = useState(false)
+  const [addRowOpen, setAddRowOpen] = useState(false)
+  const [addRowTarget, setAddRowTarget] = useState<AddRowTarget | null>(null)
   const schemasWithTables = useSqlWorkspaceStore((s) => s.schemasWithTables)
   const currentConnectionId = useSqlWorkspaceStore((s) => s.currentConnectionId)
   const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
+  const setSidebarViewMode = useSqlWorkspaceStore((s) => s.setSidebarViewMode)
   const currentDashboard = useDashboardStore((s) => s.currentDashboard)
   const persistDashboard = useDashboardStore((s) => s.persistDashboard)
   const resetDashboard = useDashboardStore((s) => s.reset)
@@ -55,6 +80,9 @@ export function QuickPanel() {
   const findQueryTabById = useTabStore((s) => s.findQueryTabById)
   const updateQueryTab = useTabStore((s) => s.updateQueryTab)
   const setActiveTab = useTabStore((s) => s.setActiveTab)
+  const activeTab = useTabStore((s) => s.tabs.find((tab) => tab.id === s.activeTabId))
+  const addSchemaDiagramTab = useTabStore((s) => s.addSchemaDiagramTab)
+  const updateTableTab = useTabStore((s) => s.updateTableTab)
   const reset = useTabStore((s) => s.reset)
   const loadFromSerialized = useTabStore((s) => s.loadFromSerialized)
   const { theme, toggleTheme } = useTheme()
@@ -66,6 +94,22 @@ export function QuickPanel() {
   const { mutateAsync: disconnect } = useDisconnect()
   const navigate = useNavigate()
 
+  const activeTable = activeTab?.kind === 'table' ? activeTab : undefined
+  const activeQuery = activeTab?.kind === 'query' ? activeTab : undefined
+  const exportCSVMutation = useExportTableAsCSV(currentConnectionId ?? '')
+  const exportSQLMutation = useExportTableAsSQL(currentConnectionId ?? '')
+  const insertRowMutation = useInsertTableRow(
+    addRowTarget?.connectionId,
+    addRowTarget?.schema,
+    addRowTarget?.table
+  )
+  const { data: activeTableInfo } = useTableIntrospection(
+    currentConnectionId ?? undefined,
+    activeTable?.schema,
+    activeTable?.table
+  )
+
+  useHotkey('Mod+K', () => setOpen((open) => !open), { preventDefault: true })
   useHotkey('Mod+P', () => setOpen((open) => !open), { preventDefault: true })
 
   const handleTableSelect = (schema: string, table: string) => {
@@ -74,7 +118,15 @@ export function QuickPanel() {
   }
 
   const handleConnectionSelect = async (connectionId: string) => {
+    if (connectionId === currentConnectionId) {
+      setOpen(false)
+      return
+    }
+
     try {
+      if (currentConnectionId) {
+        await saveCurrentWorkspace()
+      }
       await connect(connectionId)
       setCurrentConnection(connectionId)
 
@@ -145,59 +197,227 @@ export function QuickPanel() {
     setOpen(false)
   }
 
+  const handleExecuteQuery = () => {
+    window.dispatchEvent(new Event(EXECUTE_ACTIVE_QUERY_EVENT))
+    setOpen(false)
+  }
+
+  const handleTableView = (view: 'tables' | 'structure') => {
+    if (!activeTable) return
+    updateTableTab(activeTable.id, { view })
+    setOpen(false)
+  }
+
+  const handleExport = (format: 'csv' | 'sql') => {
+    if (!activeTable) return
+    const input = {
+      schema: activeTable.schema,
+      table: activeTable.table,
+      options: { filters: activeTable.filters, sortRules: activeTable.sortRules }
+    }
+    if (format === 'csv') {
+      exportCSVMutation.mutate(input)
+    } else {
+      exportSQLMutation.mutate(input)
+    }
+    setOpen(false)
+  }
+
   return (
     <>
-      <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => setOpen(true)}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <kbd>
-              <Search className="size-4" />
-            </kbd>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Quick Search (Ctrl + K)</p>
-          </TooltipContent>
-        </Tooltip>
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="cursor-pointer"
+            aria-label="Open command palette"
+            onClick={() => setOpen(true)}
+          >
+            <Search aria-hidden="true" className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Command palette (Ctrl/⌘ + K)</TooltipContent>
+      </Tooltip>
       <CommandDialog
         open={open}
         onOpenChange={setOpen}
         className="w-2xl max-w-none! border-3 rounded-md"
       >
-        <CommandInput placeholder="Type a schema or table name..." />
-        <CommandList>
+        <CommandInput placeholder="Search commands, connections, tables, and queries..." />
+        <CommandList className="max-h-[min(70vh,36rem)]">
           <CommandEmpty>No results found.</CommandEmpty>
-          {!currentConnectionId && connections && connections.length > 0 && (
-            <>
-              <CommandGroup heading="Connections" className="py-2">
-                {connections.map((connection) => (
-                  <CommandItem
-                    key={connection.id}
-                    onSelect={() => handleConnectionSelect(connection.id)}
-                    className="py-2!"
-                  >
-                    <Database className="size-4 mr-2" />
-                    <span className="text-sm">{connection.name}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-              {schemasWithTables.length > 0 && <CommandSeparator />}
-            </>
-          )}
           {currentConnectionId && (
             <>
-              <CommandGroup heading="Query" className="py-2">
-                <CommandItem onSelect={handleNewQuery} className="py-2!">
-                  <Plus className="size-4 mr-2" />
-                  <span className="text-sm">New Query</span>
+              <CommandGroup heading="Commands" className="py-2">
+                <CommandItem value="command: new query sql editor" onSelect={handleNewQuery}>
+                  <Plus />
+                  <span>New Query</span>
+                </CommandItem>
+                <CommandItem
+                  value="command: run execute current query sql"
+                  disabled={!activeQuery?.editorContent.trim()}
+                  onSelect={handleExecuteQuery}
+                >
+                  <Play />
+                  <span>Run Current Query</span>
+                  <CommandShortcut>⌘↵</CommandShortcut>
+                </CommandItem>
+                <CommandItem
+                  value="command: schema database diagram relationships"
+                  onSelect={() => {
+                    addSchemaDiagramTab()
+                    setOpen(false)
+                  }}
+                >
+                  <Workflow />
+                  <span>Open Schema Diagram</span>
                 </CommandItem>
               </CommandGroup>
-              <CommandGroup heading="Connection Actions" className="py-2">
-                <CommandItem onSelect={handleDisconnect} className="py-2!">
-                  <Unplug className="size-4 mr-2" />
-                  <span className="text-sm">Disconnect</span>
+              {activeTable && (
+                <CommandGroup heading={`Table · ${activeTable.schema}.${activeTable.table}`}>
+                  <CommandItem
+                    value="command: table browse data rows"
+                    onSelect={() => handleTableView('tables')}
+                  >
+                    <Table2Icon />
+                    <span>Browse Table Data</span>
+                  </CommandItem>
+                  <CommandItem
+                    value="command: table structure columns constraints indexes"
+                    onSelect={() => handleTableView('structure')}
+                  >
+                    <Layers />
+                    <span>View Table Structure</span>
+                  </CommandItem>
+                  <CommandItem
+                    value="command: table add insert row"
+                    disabled={!activeTableInfo}
+                    onSelect={() => {
+                      if (!currentConnectionId || !activeTableInfo) return
+                      setAddRowTarget({
+                        connectionId: currentConnectionId,
+                        schema: activeTable.schema,
+                        table: activeTable.table,
+                        columns: activeTableInfo.columns
+                      })
+                      setOpen(false)
+                      setAddRowOpen(true)
+                    }}
+                  >
+                    <Plus />
+                    <span>Add Row</span>
+                  </CommandItem>
+                  <CommandItem
+                    value="command: table export download csv"
+                    onSelect={() => handleExport('csv')}
+                  >
+                    <Download />
+                    <span>Export Table as CSV</span>
+                  </CommandItem>
+                  <CommandItem
+                    value="command: table export download sql"
+                    onSelect={() => handleExport('sql')}
+                  >
+                    <FileCode2 />
+                    <span>Export Table as SQL</span>
+                  </CommandItem>
+                </CommandGroup>
+              )}
+              <CommandGroup heading="Workspace">
+                <CommandItem
+                  value="command: show browse schemas tables"
+                  onSelect={() => {
+                    setSidebarViewMode('schemas')
+                    setOpen(false)
+                  }}
+                >
+                  <Database />
+                  <span>Show Schemas</span>
+                </CommandItem>
+                <CommandItem
+                  value="command: show saved queries"
+                  onSelect={() => {
+                    setSidebarViewMode('queries')
+                    setOpen(false)
+                  }}
+                >
+                  <SquareCode />
+                  <span>Show Saved Queries</span>
+                </CommandItem>
+                <CommandItem
+                  value="command: show dashboards"
+                  onSelect={() => {
+                    setSidebarViewMode('dashboards')
+                    setOpen(false)
+                  }}
+                >
+                  <LayoutDashboard />
+                  <span>Show Dashboards</span>
                 </CommandItem>
               </CommandGroup>
+              <CommandSeparator />
+            </>
+          )}
+          {connections && connections.length > 0 && (
+            <>
+              <CommandGroup heading="Connections" className="py-2">
+                {connections.map((connection) => {
+                  const isCurrent = connection.id === currentConnectionId
+                  return (
+                    <CommandItem
+                      key={connection.id}
+                      value={`connection: connect switch ${connection.name}`}
+                      disabled={isCurrent}
+                      onSelect={() => void handleConnectionSelect(connection.id)}
+                      className="py-2!"
+                    >
+                      <Database />
+                      <span>{connection.name}</span>
+                      {isCurrent && <CommandShortcut>Current</CommandShortcut>}
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          )}
+          {currentConnectionId && savedQueries.length > 0 && (
+            <CommandGroup heading="Saved Queries" className="py-2">
+              {savedQueries.map((query) => (
+                <CommandItem
+                  key={query.id}
+                  value={`saved query: ${query.name}`}
+                  onSelect={() => handleLoadSavedQuery(query)}
+                  className="py-2!"
+                >
+                  <SquareCode />
+                  <span>{query.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {schemasWithTables.length > 0 && (
+            <>
+              <CommandGroup heading="Tables" className="py-2">
+                {schemasWithTables.flatMap(({ schema, tables }) =>
+                  tables.map((table) => {
+                    const displayName = schema === 'public' ? table : `${schema}.${table}`
+                    return (
+                      <CommandItem
+                        key={`${schema}:${table}`}
+                        value={`table: ${schema} ${table} ${displayName}`}
+                        onSelect={() => handleTableSelect(schema, table)}
+                        className="py-2!"
+                      >
+                        <Table2Icon />
+                        <span>{displayName}</span>
+                      </CommandItem>
+                    )
+                  })
+                )}
+              </CommandGroup>
+              <CommandSeparator />
             </>
           )}
           <CommandGroup heading="General Settings" className="py-2">
@@ -208,66 +428,42 @@ export function QuickPanel() {
               }}
               className="py-2!"
             >
-              <Settings className="size-4 mr-2" />
-              <span className="text-sm">Open Settings</span>
+              <Settings />
+              <span>Open Settings</span>
             </CommandItem>
             <CommandItem onSelect={handleThemeToggle} className="py-2!">
-              {theme === 'light' ? (
-                <Moon className="size-4 mr-2" />
-              ) : (
-                <Sun className="size-4 mr-2" />
-              )}
-              <span className="text-sm">Toggle Theme</span>
+              {theme === 'light' ? <Moon /> : <Sun />}
+              <span>Toggle Theme</span>
             </CommandItem>
+            {currentConnectionId && (
+              <CommandItem value="command: disconnect connection" onSelect={handleDisconnect}>
+                <Unplug />
+                <span>Disconnect</span>
+              </CommandItem>
+            )}
           </CommandGroup>
-          {currentConnectionId && savedQueries.length > 0 && (
-            <CommandGroup heading="Saved Queries" className="py-2">
-              {savedQueries.map((query) => (
-                <CommandItem
-                  key={query.id}
-                  value={`saved-query: ${query.name}`}
-                  onSelect={() => handleLoadSavedQuery(query)}
-                  className="py-2!"
-                >
-                  <SquareCode className="size-4 mr-2" />
-                  <span className="text-sm">{query.name}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )}
-          {schemasWithTables.length > 0 && (
-            <>
-              <CommandGroup heading="Entities" className="py-2">
-                {schemasWithTables.map(({ schema, tables }) => {
-                  if (tables.length === 0) return null
-
-                  return (
-                    <React.Fragment key={schema}>
-                      <CommandItem disabled className="text-xs text-muted-foreground">
-                        {schema}
-                      </CommandItem>
-                      {tables.map((table) => {
-                        const displayName = schema === 'public' ? table : `${schema}.${table}`
-                        return (
-                          <CommandItem
-                            key={`${schema}:${table}`}
-                            onSelect={() => handleTableSelect(schema, table)}
-                            className="ml-4 py-2!"
-                          >
-                            <Table2Icon />
-                            <span className="text-sm">{displayName}</span>
-                          </CommandItem>
-                        )
-                      })}
-                    </React.Fragment>
-                  )
-                })}
-              </CommandGroup>
-              <CommandSeparator />
-            </>
-          )}
         </CommandList>
       </CommandDialog>
+      {addRowTarget && (
+        <AddRowSheet
+          open={addRowOpen}
+          onOpenChange={(nextOpen) => {
+            setAddRowOpen(nextOpen)
+            if (!nextOpen) setAddRowTarget(null)
+          }}
+          columns={addRowTarget.columns}
+          tableName={addRowTarget.table}
+          onSubmit={(values) => {
+            insertRowMutation.mutate(values, {
+              onSuccess: () => {
+                setAddRowOpen(false)
+                setAddRowTarget(null)
+              }
+            })
+          }}
+          isPending={insertRowMutation.isPending}
+        />
+      )}
     </>
   )
 }
