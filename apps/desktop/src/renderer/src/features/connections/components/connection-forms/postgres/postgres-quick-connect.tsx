@@ -45,7 +45,14 @@ export function PostgresQuickConnect({ onSuccess }: PostgresQuickConnectProps) {
 
       // Parse SSL mode from query parameters
       const sslModeParam = url.searchParams.get('sslmode') || url.searchParams.get('ssl-mode')
-      const validSslModes: PostgreSQLSslMode[] = ['disable', 'allow', 'prefer', 'require']
+      const validSslModes: PostgreSQLSslMode[] = [
+        'disable',
+        'allow',
+        'prefer',
+        'require',
+        'verify-ca',
+        'verify-full'
+      ]
       const sslMode: PostgreSQLSslMode = validSslModes.includes(sslModeParam as PostgreSQLSslMode)
         ? (sslModeParam as PostgreSQLSslMode)
         : 'disable'

@@ -5,7 +5,7 @@ import SqlEditor from '@renderer/features/editor/components/sql-editor'
 import {
   getEditorQueries,
   getQueryTabLabel,
-  hasDangerousSqlKeywords
+  requiresSqlConfirmation
 } from '@renderer/features/editor/lib/sql-parser'
 import {
   useRunManyQueries,
@@ -182,7 +182,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
   }
 
   const queueDangerousExecution = async (queriesToRun: string[], limit: number, offset: number) => {
-    if (queriesToRun.some((query) => hasDangerousSqlKeywords(query))) {
+    if (requiresSqlConfirmation(queriesToRun, profile.options.environment === 'production')) {
       setPendingExecution({ queries: queriesToRun, limit, offset })
       return
     }
@@ -354,6 +354,8 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
       <DangerousQueryDialog
         open={pendingExecution !== null}
         queryCount={pendingExecution?.queries.length ?? 0}
+        connectionName={profile.name}
+        production={profile.options.environment === 'production'}
         onOpenChange={(open) => {
           if (!open) {
             setPendingExecution(null)

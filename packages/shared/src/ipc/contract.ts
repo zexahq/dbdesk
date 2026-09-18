@@ -69,6 +69,28 @@ export interface IpcContract {
     payload: { connectionId: string }
     result: { success: boolean }
   }
+  'connections:export': {
+    payload: void
+    result: { exported: number; filePath?: string }
+  }
+  'connections:import': {
+    payload: void
+    result: ConnectionProfile[]
+  }
+  'connections:discover-local': {
+    payload: void
+    result: Array<{
+      name: string
+      options: {
+        host: string
+        port: number
+        database: string
+        user: string
+        password: string
+        sslMode: 'disable'
+      }
+    }>
+  }
 
   // -- Query --
   'query:run': {
@@ -78,11 +100,18 @@ export interface IpcContract {
       limit?: number
       offset?: number
       queryId?: string
+      readOnly?: boolean
     }
     result: QueryResult
   }
   'query:runMany': {
-    payload: { connectionId: string; queries: string[]; limit?: number; offset?: number }
+    payload: {
+      connectionId: string
+      queries: string[]
+      limit?: number
+      offset?: number
+      readOnly?: boolean
+    }
     result: QueryBatchResult[]
   }
   'query:cancel': {

@@ -1,4 +1,6 @@
 import { connectionManager } from '../connectionManager'
+import { shouldRunReadOnly } from '../lib/query-safety'
+import { getProfile } from '../storage'
 import { ConnectionError, QueryError } from '../utils/errors'
 import { typedHandle } from './typed-handle'
 
@@ -6,12 +8,18 @@ import { typedHandle } from './typed-handle'
 const PG_QUERY_CANCELED = '57014'
 
 export function registerQueryHandlers() {
-  typedHandle('query:run', async ({ connectionId, query, limit, offset, queryId }) => {
+  typedHandle('query:run', async ({ connectionId, query, limit, offset, queryId, readOnly }) => {
     const adapter = connectionManager.getConnection(connectionId)
     if (!adapter) throw new ConnectionError(`Connection "${connectionId}" is not established`)
 
     try {
-      return await adapter.runQuery(query, { limit, offset, queryId })
+      const profile = await getProfile(connectionId)
+      return await adapter.runQuery(query, {
+        limit,
+        offset,
+        queryId,
+        readOnly: shouldRunReadOnly(profile, readOnly)
+      })
     } catch (error) {
       // Surface user-initiated cancels as a clear, non-scary message.
       if (
@@ -27,12 +35,17 @@ export function registerQueryHandlers() {
     }
   })
 
-  typedHandle('query:runMany', async ({ connectionId, queries, limit, offset }) => {
+  typedHandle('query:runMany', async ({ connectionId, queries, limit, offset, readOnly }) => {
     const adapter = connectionManager.getConnection(connectionId)
     if (!adapter) throw new ConnectionError(`Connection "${connectionId}" is not established`)
 
     try {
-      return await adapter.runManyQueries(queries, { limit, offset })
+      const profile = await getProfile(connectionId)
+      return await adapter.runManyQueries(queries, {
+        limit,
+        offset,
+        readOnly: shouldRunReadOnly(profile, readOnly)
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to execute queries'
       throw new QueryError(message, error)
