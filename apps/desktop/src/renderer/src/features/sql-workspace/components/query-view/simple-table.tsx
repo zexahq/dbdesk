@@ -1,6 +1,7 @@
 'use client'
 
 import type { QueryResultRow } from '@dbdesk/shared/types'
+import { Checkbox } from '@renderer/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -9,50 +10,90 @@ import {
   TableHeader,
   TableRow
 } from '@renderer/components/ui/table'
-import { formatCellValue } from '@renderer/features/data-table/lib/data-table'
+import {
+  formatCellValue,
+  getSelectionColumnId,
+  isSelectionColumn
+} from '@renderer/features/data-table/lib/data-table'
 import { cn } from '@renderer/shared/lib/utils'
 import type { CellPosition } from '@renderer/features/data-table/types/data-table'
 import {
   type ColumnDef,
   type ColumnSizingState,
+  type OnChangeFn,
+  type RowSelectionState,
   flexRender,
   getCoreRowModel,
   useReactTable
 } from '@tanstack/react-table'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ColumnResizer } from '@renderer/features/data-table/components/column-resizer'
 
 interface SimpleTableProps {
   columns: string[]
   data: QueryResultRow[]
+  rowSelection: RowSelectionState
+  onRowSelectionChange: OnChangeFn<RowSelectionState>
 }
 
 const DEFAULT_COLUMN_WIDTH = 200
 
 function getSimpleColumns(columnNames: string[]): ColumnDef<QueryResultRow>[] {
-  return columnNames.map((columnName) => ({
-    id: columnName,
-    accessorKey: columnName,
-    header: () => (
-      <div className="px-2 py-1">
-        <span className="font-medium text-accent-foreground">{columnName}</span>
-      </div>
-    ),
-    cell: ({ getValue }) => {
-      const value = getValue()
-      const formattedValue = formatCellValue(value, undefined)
-      const isNull = value === null
-      return (
-        <span className={cn('truncate', isNull && 'text-muted-foreground')}>{formattedValue}</span>
-      )
+  return [
+    {
+      id: getSelectionColumnId(columnNames),
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(Boolean(value))}
+          aria-label="Select all result rows"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(Boolean(value))}
+          aria-label={`Select result row ${row.index + 1}`}
+        />
+      ),
+      size: 36,
+      enableResizing: false,
+      meta: { isSelectionColumn: true }
     },
-    size: DEFAULT_COLUMN_WIDTH,
-    minSize: 100
-  }))
+    ...columnNames.map((columnName) => ({
+      id: columnName,
+      accessorKey: columnName,
+      header: () => (
+        <div className="px-2 py-1">
+          <span className="font-medium text-accent-foreground">{columnName}</span>
+        </div>
+      ),
+      cell: ({ getValue }) => {
+        const value = getValue()
+        const formattedValue = formatCellValue(value, undefined)
+        const isNull = value === null
+        return (
+          <span className={cn('truncate', isNull && 'text-muted-foreground')}>
+            {formattedValue}
+          </span>
+        )
+      },
+      size: DEFAULT_COLUMN_WIDTH,
+      minSize: 100
+    }))
+  ]
 }
 
-export function SimpleTable({ columns, data }: SimpleTableProps) {
-  const tableColumns = getSimpleColumns(columns)
+export function SimpleTable({
+  columns,
+  data,
+  rowSelection,
+  onRowSelectionChange
+}: SimpleTableProps) {
+  const tableColumns = useMemo(() => getSimpleColumns(columns), [columns])
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
   const [focusedCell, setFocusedCell] = useState<CellPosition | null>(null)
 
@@ -61,11 +102,14 @@ export function SimpleTable({ columns, data }: SimpleTableProps) {
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
+    enableRowSelection: true,
     columnResizeMode: 'onChange',
     state: {
-      columnSizing
+      columnSizing,
+      rowSelection
     },
-    onColumnSizingChange: setColumnSizing
+    onColumnSizingChange: setColumnSizing,
+    onRowSelectionChange
   })
 
   const rowModel = table.getRowModel()
@@ -105,23 +149,31 @@ export function SimpleTable({ columns, data }: SimpleTableProps) {
             <TableBody className="[&_tr:last-child]:border-b">
               {hasRows
                 ? rows.map((row, rowIndex) => (
-                    <TableRow key={row.id}>
+                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                       {row.getVisibleCells().map((cell) => {
                         const columnId = cell.column.id
+                        const isRowSelection = isSelectionColumn(cell.column.columnDef.meta)
                         const isFocused =
-                          focusedCell?.rowIndex === rowIndex && focusedCell?.columnId === columnId
+                          !isRowSelection &&
+                          focusedCell?.rowIndex === rowIndex &&
+                          focusedCell?.columnId === columnId
                         return (
                           <TableCell
                             key={cell.id}
                             className={cn(
-                              'border-border border-x truncate cursor-pointer',
+                              'border-border border-x truncate',
+                              !isRowSelection && 'cursor-pointer',
                               isFocused && 'outline-2 outline-ring outline-offset-0'
                             )}
                             style={{
                               width: cell.column.getSize(),
                               maxWidth: cell.column.getSize()
                             }}
-                            onClick={() => setFocusedCell({ rowIndex, columnId })}
+                            onClick={
+                              isRowSelection
+                                ? undefined
+                                : () => setFocusedCell({ rowIndex, columnId })
+                            }
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>

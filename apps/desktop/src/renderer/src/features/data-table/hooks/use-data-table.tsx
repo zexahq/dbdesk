@@ -20,6 +20,7 @@ import { useHotkeys } from '@tanstack/react-hotkeys'
 import { type MouseEvent, useCallback, useRef, useState } from 'react'
 
 import type { QueryResultRow } from '@dbdesk/shared/types'
+import { isSelectionColumn } from '@renderer/features/data-table/lib/data-table'
 import { toast } from '@renderer/shared/lib/toast'
 
 interface UseDataTableProps<TData, TValue = unknown> extends Omit<
@@ -36,8 +37,6 @@ interface UseDataTableProps<TData, TValue = unknown> extends Omit<
   sortRules?: TableSortRule[]
   tabId: string
 }
-
-const NON_NAVIGABLE_COLUMN_IDS = ['select', 'actions']
 
 export function useDataTable<TData, TValue = unknown>({
   columns,
@@ -100,8 +99,8 @@ export function useDataTable<TData, TValue = unknown>({
   const getNavigableColumnIds = useCallback(() => {
     return tableRef2.current
       .getVisibleLeafColumns()
+      .filter((column) => !isSelectionColumn(column.columnDef.meta))
       .map((column) => column.id)
-      .filter((columnId) => !NON_NAVIGABLE_COLUMN_IDS.includes(columnId))
   }, [])
 
   // Scroll cell into view
@@ -399,8 +398,9 @@ export function useDataTable<TData, TValue = unknown>({
         return
       }
 
-      // Ignore clicks on select column (let checkbox handle it)
-      if (columnId === 'select') {
+      // Ignore the row-selection column (let its checkbox handle it).
+      const column = tableRef2.current.getColumn(columnId)
+      if (isSelectionColumn(column?.columnDef.meta)) {
         return
       }
 

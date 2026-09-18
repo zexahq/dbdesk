@@ -38,6 +38,16 @@ import { isSelectableQuery, normalizeQuery } from './sql-parser'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
+export function assertSingleRowUpdated(updatedRowCount: number): void {
+  if (updatedRowCount !== 1) {
+    throw new Error(
+      updatedRowCount === 0
+        ? 'The row no longer exists or its primary key changed. Refresh the result and try again.'
+        : `Expected to update one row, but updated ${updatedRowCount}.`
+    )
+  }
+}
+
 function getSslConfig(sslMode?: PostgreSQLSslMode): boolean | object {
   switch (sslMode) {
     case 'disable':
@@ -489,10 +499,12 @@ export class PostgresAdapter implements SQLAdapter {
 
       const result = await client.query(query, params)
 
+      assertSingleRowUpdated(result.rowCount ?? 0)
+
       await client.query('COMMIT')
 
       return {
-        updatedRowCount: result.rowCount ?? 0
+        updatedRowCount: 1
       }
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {})
@@ -675,7 +687,9 @@ export class PostgresAdapter implements SQLAdapter {
     const rowCount = typeof result?.rowCount === 'number' ? result.rowCount : rows.length
     const cmd = result?.command ?? ''
     const commandTag =
-      cmd && rowCount > 0 && !['SELECT', 'SHOW'].includes(cmd) ? `${cmd} ${rowCount}` : cmd || undefined
+      cmd && rowCount > 0 && !['SELECT', 'SHOW'].includes(cmd)
+        ? `${cmd} ${rowCount}`
+        : cmd || undefined
 
     return {
       rows,
