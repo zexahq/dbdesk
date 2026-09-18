@@ -41,6 +41,7 @@ export const QUERIES = {
       c.column_name,
       c.data_type,
       c.udt_name,
+      pg_catalog.format_type(a.atttypid, a.atttypmod) AS formatted_data_type,
       c.is_nullable,
       c.column_default,
       BOOL_OR(tc.constraint_type = 'PRIMARY KEY') AS is_primary_key,
@@ -56,6 +57,16 @@ export const QUERIES = {
         ELSE NULL
       END AS enum_values
     FROM information_schema.columns c
+    JOIN pg_catalog.pg_namespace n
+      ON n.nspname = c.table_schema
+    JOIN pg_catalog.pg_class cls
+      ON cls.relnamespace = n.oid
+      AND cls.relname = c.table_name
+    JOIN pg_catalog.pg_attribute a
+      ON a.attrelid = cls.oid
+      AND a.attname = c.column_name
+      AND a.attnum > 0
+      AND NOT a.attisdropped
     LEFT JOIN information_schema.key_column_usage kcu
       ON c.table_schema = kcu.table_schema
       AND c.table_name = kcu.table_name
@@ -92,6 +103,8 @@ export const QUERIES = {
       c.column_name,
       c.data_type,
       c.udt_name,
+      a.atttypid,
+      a.atttypmod,
       c.is_nullable,
       c.column_default
     ORDER BY c.ordinal_position

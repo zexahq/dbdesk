@@ -1,3 +1,4 @@
+import type { ColumnInfo } from '@dbdesk/shared/types'
 import { useTableIntrospection } from '@renderer/features/sql-workspace/queries/schema'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
@@ -9,15 +10,35 @@ import {
   CardHeader,
   CardTitle
 } from '@renderer/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@renderer/components/ui/dropdown-menu'
 import { Separator } from '@renderer/components/ui/separator'
+import { MoreHorizontal } from 'lucide-react'
+import { useState } from 'react'
+import { StructureEditorDialog, type StructureEditorRequest } from './structure-editor-dialog'
 
 interface SqlStructureProps {
   connectionId: string
+  connectionName: string
+  production: boolean
   schema: string
   table: string
 }
 
-export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps) => {
+const getColumnType = (column: ColumnInfo) => column.formattedType ?? column.type
+
+export const SqlStructure = ({
+  connectionId,
+  connectionName,
+  production,
+  schema,
+  table
+}: SqlStructureProps) => {
+  const [editorRequest, setEditorRequest] = useState<StructureEditorRequest>()
   const {
     data: structureInfo,
     isLoading: isLoadingTableInfo,
@@ -98,7 +119,14 @@ export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps)
             </CardDescription>
           </div>
           <CardAction>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditorRequest({ kind: 'add-column' })}
+              >
+                Edit structure
+              </Button>
               <span>{structureInfo.columns.length} columns</span>
               <Separator orientation="vertical" className="h-4" />
               <span>{structureInfo.indexes?.length ?? 0} indexes</span>
@@ -130,7 +158,11 @@ export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps)
             <CardDescription>{structureInfo.columns.length} columns defined</CardDescription>
           </div>
           <CardAction>
-            <Button size="sm" variant="outline" disabled>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditorRequest({ kind: 'add-column' })}
+            >
               Add column
             </Button>
           </CardAction>
@@ -151,9 +183,72 @@ export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps)
                   Default value: {formatDefaultValue(column.defaultValue)}
                 </p>
               </div>
-              <Badge variant="outline" className="uppercase">
-                {column.type}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="uppercase">
+                  {getColumnType(column)}
+                </Badge>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="ghost" aria-label={`Edit ${column.name}`}>
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        setEditorRequest({
+                          kind: 'rename-column',
+                          target: column.name
+                        })
+                      }
+                    >
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        setEditorRequest({
+                          kind: 'change-column-type',
+                          target: column.name,
+                          dataType: getColumnType(column)
+                        })
+                      }
+                    >
+                      Change type
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        setEditorRequest({
+                          kind: 'set-column-nullability',
+                          target: column.name,
+                          nullable: column.nullable
+                        })
+                      }
+                    >
+                      Change nullability
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        setEditorRequest({
+                          kind: 'set-column-default',
+                          target: column.name,
+                          defaultValue:
+                            column.defaultValue == null ? undefined : String(column.defaultValue)
+                        })
+                      }
+                    >
+                      Change default
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() =>
+                        setEditorRequest({ kind: 'drop-column', target: column.name })
+                      }
+                    >
+                      Drop column
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           ))}
         </CardContent>
@@ -170,7 +265,11 @@ export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps)
             </CardDescription>
           </div>
           <CardAction>
-            <Button size="sm" variant="outline" disabled>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditorRequest({ kind: 'add-constraint' })}
+            >
               Add constraint
             </Button>
           </CardAction>
@@ -184,6 +283,15 @@ export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps)
                     <span className="font-medium">{constraint.name}</span>
                     <Badge variant="outline">{constraint.type}</Badge>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setEditorRequest({ kind: 'drop-constraint', target: constraint.name })
+                    }
+                  >
+                    Drop
+                  </Button>
                 </div>
                 <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -225,7 +333,11 @@ export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps)
             </CardDescription>
           </div>
           <CardAction>
-            <Button size="sm" variant="outline" disabled>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditorRequest({ kind: 'add-index' })}
+            >
               Add index
             </Button>
           </CardAction>
@@ -239,6 +351,13 @@ export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps)
                     <span className="font-medium">{index.name}</span>
                     {index.unique ? <Badge variant="secondary">Unique</Badge> : null}
                   </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditorRequest({ kind: 'drop-index', target: index.name })}
+                  >
+                    Drop
+                  </Button>
                 </div>
                 <div className="mt-2 text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">Columns:</span>{' '}
@@ -253,6 +372,20 @@ export const SqlStructure = ({ connectionId, schema, table }: SqlStructureProps)
           )}
         </CardContent>
       </Card>
+
+      {editorRequest ? (
+        <StructureEditorDialog
+          key={`${editorRequest.kind}:${editorRequest.target ?? ''}`}
+          connectionId={connectionId}
+          connectionName={connectionName}
+          production={production}
+          schema={schema}
+          table={table}
+          structure={structureInfo}
+          request={editorRequest}
+          onClose={() => setEditorRequest(undefined)}
+        />
+      ) : null}
     </div>
   )
 }

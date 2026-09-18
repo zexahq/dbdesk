@@ -49,6 +49,7 @@ export interface SQLConnectionOptions {
 export interface ColumnInfo {
   name: string
   type: string
+  formattedType?: string
   nullable: boolean
   defaultValue?: unknown
   isPrimaryKey?: boolean

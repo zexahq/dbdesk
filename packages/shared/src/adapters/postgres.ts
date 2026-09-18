@@ -782,6 +782,7 @@ export class PostgresAdapter implements SQLAdapter {
       column_name: string
       data_type: string
       udt_name: string
+      formatted_data_type: string
       is_nullable: 'YES' | 'NO'
       column_default: unknown
       is_primary_key: boolean
@@ -800,6 +801,7 @@ export class PostgresAdapter implements SQLAdapter {
       return {
         name: row.column_name,
         type: row.data_type === 'USER-DEFINED' ? row.udt_name : row.data_type,
+        formattedType: row.formatted_data_type,
         nullable: row.is_nullable === 'YES',
         defaultValue: row.column_default ?? undefined,
         isPrimaryKey: row.is_primary_key,
