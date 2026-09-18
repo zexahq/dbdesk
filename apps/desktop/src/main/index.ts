@@ -1,5 +1,5 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, ipcMain, Menu, protocol, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, protocol, shell } from 'electron'
 import { join } from 'path'
 
 import icon from '../../resources/icon.png?asset'
@@ -171,14 +171,6 @@ authManager.setup(() => mainWindow)
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  // safeStorage must only be touched after app.ready: pre-ready
-  // isEncryptionAvailable() checks can create bogus "Chromium Safe Storage"
-  // keychain entries and spurious access prompts. On Linux without an OS
-  // keyring, fall back to in-memory plaintext so auth still works.
-  if (process.platform === 'linux' && !safeStorage.isEncryptionAvailable()) {
-    safeStorage.setUsePlainTextEncryption(true)
-  }
-
   // Initialize dashboard storage
   try {
     await initDashboardStorage()

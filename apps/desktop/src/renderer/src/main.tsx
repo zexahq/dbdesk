@@ -68,7 +68,9 @@ window.onAuthenticated(async (user) => {
             useAuthStore.getState().setToken(tokenResult.token)
             return
           }
-        } catch { /* retry */ }
+        } catch {
+          /* retry */
+        }
       }
     }
     void fetchTokenWithRetry()
@@ -92,12 +94,11 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Listen for background session invalidation from the main process.
-// When the server verification finds the session expired, we show a
-// sign-in overlay instead of redirecting — the user keeps their page visible.
+// Account sessions are optional; expiry signs out cloud features without
+// interrupting local database work.
 window.dbdesk.onSessionInvalidated(() => {
   console.log('[auth] session invalidated by server background check')
-  useAuthStore.getState().setSessionExpired(true)
+  useAuthStore.getState().logout()
 })
 
 // Listen for background session refresh from the main process.

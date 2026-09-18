@@ -14,15 +14,14 @@ npm i -g dbdesk        # or: npx dbdesk <command>
 dbdesk doctor          # verify install, data file, and environment
 ```
 
-If no connection exists yet, add one. The CLI never accepts passwords —
-connections are added without one, and the user fills it in via the desktop
-app (you cannot do that part; tell them). Standalone alternative that keeps
-you out of secrets: a `~/.pgpass` file, which the driver reads automatically.
+If no connection exists yet, add one. The CLI never accepts passwords and
+cannot decrypt credentials protected by the desktop app's OS keychain.
+Use a `~/.pgpass` file, which the driver reads automatically.
 
 ```bash
 dbdesk connection add --name prod --host localhost --database mydb --user app --format json
-dbdesk connection show prod --format json      # check "hasPassword"
-# → ask the user to open the connection in DBDesk and fill in the password
+dbdesk connection show prod --format json
+# → ask the user to configure ~/.pgpass when password authentication is required
 dbdesk connection test prod
 ```
 

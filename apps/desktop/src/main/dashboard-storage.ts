@@ -52,6 +52,8 @@ const toDate = (value: Date | string | undefined, fallback: Date): Date => {
 
 // ponytail: legacy rows have no owner signal; claim per connection until ownership metadata exists.
 const claimLegacyDashboards = (connectionId: string, userId: string): void => {
+  if (!userId) return
+
   const legacyRows = getDb()
     .select()
     .from(dashboards)
@@ -89,6 +91,9 @@ const claimLegacyDashboards = (connectionId: string, userId: string): void => {
  * column existed so the full JSON stays in tandem with the columns.
  */
 export const initDashboardStorage = async (): Promise<void> => {
+  // Dashboards are local-first. Authentication is optional and never owns local data.
+  getDb().update(dashboards).set({ userId: '' }).run()
+
   const legacyRows = getDb().select().from(dashboards).where(isNull(dashboards.configJson)).all()
 
   for (const row of legacyRows) {

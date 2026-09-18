@@ -25,6 +25,8 @@ The Windows installer and Linux `.deb` package also add the command to `PATH`. L
 users should use the npm installation instead.
 
 Both installation methods use the same local DBDesk data file.
+Desktop credentials remain encrypted by the operating-system keychain and are not exposed to the
+CLI. Use `~/.pgpass` or PostgreSQL environment variables for CLI authentication.
 
 ## Quick start
 

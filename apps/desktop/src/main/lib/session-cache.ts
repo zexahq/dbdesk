@@ -1,4 +1,5 @@
 import { getSqlite } from '@dbdesk/db'
+import { decryptFromStorage, encryptForStorage, isEncryptedValue } from './secure-storage'
 
 const CACHE_KEY = 'current'
 
@@ -42,13 +43,30 @@ export function getCachedSession(): CachedSession | null {
       return null
     }
 
+    const encryptedAtRest = isEncryptedValue(row.session_token)
+    let sessionToken = decryptFromStorage(row.session_token)
+    if (!sessionToken && !encryptedAtRest) {
+      const encrypted = encryptForStorage(row.session_token)
+      if (encrypted) {
+        getSqlite()
+          .prepare('UPDATE auth_session_cache SET session_token = ? WHERE id = ?')
+          .run(encrypted, CACHE_KEY)
+        sessionToken = row.session_token
+      }
+    }
+
+    if (!sessionToken) {
+      if (!encryptedAtRest) clearCachedSession()
+      return null
+    }
+
     return {
       id: row.id,
       userId: row.user_id,
       userName: row.user_name,
       userEmail: row.user_email,
       userImage: row.user_image,
-      sessionToken: row.session_token,
+      sessionToken,
       sessionExpiresAt: row.session_expires_at,
       cachedAt: row.cached_at
     }
@@ -57,11 +75,24 @@ export function getCachedSession(): CachedSession | null {
   }
 }
 
+export function hasCachedSession(): boolean {
+  try {
+    return Boolean(
+      getSqlite().prepare('SELECT 1 FROM auth_session_cache WHERE id = ?').get(CACHE_KEY)
+    )
+  } catch {
+    return false
+  }
+}
+
 /**
  * Persist a session to the local SQLite cache.
  */
 export function setCachedSession(session: Omit<CachedSession, 'cachedAt'>): void {
   try {
+    const encryptedToken = encryptForStorage(session.sessionToken)
+    if (!encryptedToken) return
+
     getSqlite()
       .prepare(
         `INSERT OR REPLACE INTO auth_session_cache (id, user_id, user_name, user_email, user_image, session_token, session_expires_at, cached_at)
@@ -73,7 +104,7 @@ export function setCachedSession(session: Omit<CachedSession, 'cachedAt'>): void
         session.userName,
         session.userEmail,
         session.userImage ?? null,
-        session.sessionToken,
+        encryptedToken,
         session.sessionExpiresAt,
         Date.now()
       )
