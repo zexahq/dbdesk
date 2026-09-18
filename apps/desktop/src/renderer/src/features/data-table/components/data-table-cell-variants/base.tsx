@@ -88,10 +88,10 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   const cellClassName = useMemo(
     () =>
       cn(
-      'border-border border-x first:border-l last:border-r',
-      'truncate bg-accent/50',
-      !isSelectColumn && 'cursor-pointer',
-      isFocused && 'shadow-[inset_0_0_0_2px_var(--color-ring)] bg-ring/20'
+        'border-border border-x first:border-l last:border-r',
+        'truncate bg-accent/50',
+        !isSelectColumn && 'cursor-pointer',
+        isFocused && 'shadow-[inset_0_0_0_2px_var(--color-ring)] bg-ring/20'
       ),
     [isSelectColumn, isFocused]
   )
@@ -170,6 +170,13 @@ export function areCellPropsEqual<TData, TValue>(
 
   // Check if cell value changed
   if (prevProps.cell.getValue() !== nextProps.cell.getValue()) {
+    return false
+  }
+
+  if (
+    prevProps.cell.column.columnDef.cell !== nextProps.cell.column.columnDef.cell ||
+    prevProps.cell.column.columnDef.meta !== nextProps.cell.column.columnDef.meta
+  ) {
     return false
   }
 

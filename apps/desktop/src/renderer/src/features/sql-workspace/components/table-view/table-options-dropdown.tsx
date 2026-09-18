@@ -1,4 +1,7 @@
-import { useExportTableAsCSV, useExportTableAsSQL } from '@renderer/features/data-table/queries/export'
+import {
+  useExportTableAsCSV,
+  useExportTableAsSQL
+} from '@renderer/features/data-table/queries/export'
 import {
   useDeleteTable,
   useInsertTableRow,
@@ -41,8 +44,7 @@ export function TableOptionsDropdown({
 
   const { data: tableInfo } = useTableIntrospection(connectionId, schema, table)
 
-  const removeTab = useTabStore((s) => s.removeTab)
-  const findTableTabById = useTabStore((s) => s.findTableTabById)
+  const removeTableTabs = useTabStore((s) => s.removeTableTabs)
 
   const handleDelete = () => {
     deleteTableMutation.mutate(
@@ -51,11 +53,7 @@ export function TableOptionsDropdown({
         onSuccess: (result) => {
           if (result.success) {
             setDeleteDialogOpen(false)
-            const tableTabId = `${schema}.${table}`
-            const tab = findTableTabById(tableTabId)
-            if (tab) {
-              removeTab(tab.id)
-            }
+            removeTableTabs(schema, table)
           }
         }
       }

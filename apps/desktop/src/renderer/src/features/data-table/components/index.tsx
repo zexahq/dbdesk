@@ -1,4 +1,10 @@
-import type { QueryResultRow, TableDataResult, TableSortRule } from '@dbdesk/shared/types'
+import type {
+  ConstraintInfo,
+  QueryResultRow,
+  TableDataResult,
+  TableSortRule
+} from '@dbdesk/shared/types'
+import type { ForeignKeyNavigation } from '@renderer/features/data-table/lib/foreign-key-navigation'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import type { OnChangeFn, RowSelectionState } from '@tanstack/react-table'
 import * as React from 'react'
@@ -15,6 +21,8 @@ interface SqlTableProps {
   onRowSelectionChange: OnChangeFn<RowSelectionState>
   tabId: string
   sortRules?: TableSortRule[]
+  constraints?: ConstraintInfo[]
+  onForeignKeyOpen?: (navigation: ForeignKeyNavigation) => void
 }
 
 export const SqlTable = ({
@@ -26,17 +34,23 @@ export const SqlTable = ({
   rowSelection,
   onRowSelectionChange,
   tabId,
-  sortRules
+  sortRules,
+  constraints,
+  onForeignKeyOpen
 }: SqlTableProps) => {
   const updateTableTab = useTabStore((s) => s.updateTableTab)
 
   // Memoize columns to prevent recreation on every render
   const columns = React.useMemo(() => {
     if (!tableData) return []
-    return getColumns(tableData.columns, (nextSortRules) => {
-      updateTableTab(tabId, { sortRules: nextSortRules, offset: 0 })
+    return getColumns(tableData.columns, {
+      constraints,
+      onForeignKeyOpen,
+      onSortChange: (nextSortRules) => {
+        updateTableTab(tabId, { sortRules: nextSortRules, offset: 0 })
+      }
     })
-  }, [tableData, tabId, updateTableTab])
+  }, [constraints, onForeignKeyOpen, tableData, tabId, updateTableTab])
 
   if (isLoading) {
     return (

@@ -73,6 +73,8 @@ interface TabStore {
 
   // Table-specific actions
   addTableTab: (schema: string, table: string) => string
+  addFilteredTableTab: (schema: string, table: string, filters: TableFilterCondition[]) => string
+  removeTableTabs: (schema: string, table: string) => void
   updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => void
   makeTabPermanent: (tabId: string) => void
   getTableTabBySchemaTable: (schema: string, table: string) => TableTab | undefined
@@ -212,6 +214,41 @@ export const useTabStore = create<TabStore>((set, get) => ({
     }))
 
     return tabId
+  },
+
+  addFilteredTableTab: (schema: string, table: string, filters: TableFilterCondition[]) => {
+    const newTab = {
+      ...createDefaultTableTab(schema, table, false),
+      id: `${schema}.${table}:${crypto.randomUUID()}`,
+      filters
+    }
+    set((state) => ({ tabs: [...state.tabs, newTab], activeTabId: newTab.id }))
+    return newTab.id
+  },
+
+  removeTableTabs: (schema: string, table: string) => {
+    set((state) => {
+      const isDeletedTable = (tab: Tab) =>
+        tab.kind === 'table' && tab.schema === schema && tab.table === table
+      const removedIds = new Set(state.tabs.filter(isDeletedTable).map((tab) => tab.id))
+      if (removedIds.size === 0) return state
+
+      const tabs = state.tabs.filter((tab) => !removedIds.has(tab.id))
+      let activeTabId = state.activeTabId
+
+      if (activeTabId && removedIds.has(activeTabId)) {
+        const activeIndex = state.tabs.findIndex((tab) => tab.id === activeTabId)
+        const remainingBeforeActive = state.tabs
+          .slice(0, activeIndex)
+          .filter((tab) => !removedIds.has(tab.id)).length
+        activeTabId = tabs[Math.min(remainingBeforeActive, tabs.length - 1)]?.id ?? null
+      }
+
+      const tabScrollPositions = { ...state.tabScrollPositions }
+      removedIds.forEach((tabId) => delete tabScrollPositions[tabId])
+
+      return { tabs, activeTabId, tabScrollPositions }
+    })
   },
 
   updateTableTab: (tabId: string, updates: Partial<Omit<TableTab, 'kind'>>) => {
