@@ -1,5 +1,22 @@
 import { format } from 'date-fns'
 
+const SELECTION_COLUMN_ID = '__dbdesk_row_selection__'
+
+export type DataTableColumnMeta = {
+  isSelectionColumn?: boolean
+}
+
+export function getSelectionColumnId(columnNames: Iterable<string>): string {
+  const names = new Set(columnNames)
+  let id = SELECTION_COLUMN_ID
+  while (names.has(id)) id += '_'
+  return id
+}
+
+export function isSelectionColumn(meta: unknown): boolean {
+  return Boolean((meta as DataTableColumnMeta | undefined)?.isSelectionColumn)
+}
+
 /**
  * Generates a unique key for a cell based on its row index and column ID
  */

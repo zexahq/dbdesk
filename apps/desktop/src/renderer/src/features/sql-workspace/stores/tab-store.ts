@@ -39,7 +39,17 @@ export interface QueryTab extends BaseTab {
   queryResults?: QueryResult
   batchResults?: QueryBatchResult[]
   activeResultIndex: number
+  pinnedResults: PinnedQueryResult[]
+  activePinnedResultId?: string
   isDirty: boolean
+}
+
+export interface PinnedQueryResult {
+  id: string
+  name: string
+  query: string
+  result: QueryResult
+  createdAt: number
 }
 
 export interface DashboardTab extends BaseTab {
@@ -119,6 +129,8 @@ const createDefaultQueryTab = (): QueryTab => ({
   queryResults: undefined,
   batchResults: undefined,
   activeResultIndex: 0,
+  pinnedResults: [],
+  activePinnedResultId: undefined,
   lastExecutedQuery: undefined,
   lastSavedContent: undefined,
   isDirty: false
@@ -351,6 +363,8 @@ export const useTabStore = create<TabStore>((set, get) => ({
           queryResults: undefined,
           batchResults: undefined,
           activeResultIndex: 0,
+          pinnedResults: [],
+          activePinnedResultId: undefined,
           isDirty
         } as QueryTab
       }
