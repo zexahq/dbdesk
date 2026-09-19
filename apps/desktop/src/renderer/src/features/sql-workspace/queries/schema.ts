@@ -43,20 +43,28 @@ const keys = {
 
 const pendingIntrospections = new Map<string, Promise<TableInfo>>()
 
+const getTableIntrospectionKey = (connectionId: string, schema: string, table: string) =>
+  JSON.stringify([connectionId, schema, table])
+
 /**
  * Shares in-flight table metadata requests between the workspace preload and
  * other consumers, such as the schema diagram.
  */
 export function getTableIntrospection(connectionId: string, schema: string, table: string) {
-  const key = JSON.stringify([connectionId, schema, table])
+  const key = getTableIntrospectionKey(connectionId, schema, table)
   const pending = pendingIntrospections.get(key)
   if (pending) return pending
 
-  const request = dbdeskClient
-    .introspectTable(connectionId, schema, table)
-    .finally(() => pendingIntrospections.delete(key))
+  const request = dbdeskClient.introspectTable(connectionId, schema, table).finally(() => {
+    if (pendingIntrospections.get(key) === request) pendingIntrospections.delete(key)
+  })
   pendingIntrospections.set(key, request)
   return request
+}
+
+export function refreshTableIntrospection(connectionId: string, schema: string, table: string) {
+  pendingIntrospections.delete(getTableIntrospectionKey(connectionId, schema, table))
+  return getTableIntrospection(connectionId, schema, table)
 }
 
 export function useSchemas(connectionId?: string) {

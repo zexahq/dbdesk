@@ -215,6 +215,8 @@ export function TableView({ profile, tabId }: TableViewProps) {
         {activeTab.view === 'structure' && (
           <SqlStructure
             connectionId={profile.id}
+            connectionName={profile.name}
+            production={profile.options.environment === 'production'}
             schema={activeTab.schema}
             table={activeTab.table}
           />
