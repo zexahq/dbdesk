@@ -5,6 +5,7 @@ export const connectionProfiles = sqliteTable('connection_profiles', {
   name: text('name').notNull(),
   type: text('type').notNull(),
   optionsJson: text('options_json').notNull(),
+  secretJson: text('secret_json'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   lastConnectedAt: integer('last_connected_at'),

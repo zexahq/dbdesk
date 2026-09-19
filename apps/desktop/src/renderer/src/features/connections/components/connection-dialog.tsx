@@ -1,5 +1,11 @@
 import type { ConnectionProfile, DatabaseType } from '@dbdesk/shared/types'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@renderer/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
+} from '@renderer/components/ui/sheet'
 import { PostgresConnectionForm } from './connection-forms/postgres/postgres-connection-form'
 
 interface ConnectionDialogProps {
@@ -18,21 +24,23 @@ export function ConnectionDialog({
   const type = connection?.type || databaseType
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg w-2xl max-w-none!">
-        <DialogHeader>
-          <DialogTitle>{connection ? 'Edit Connection' : 'New Connection'}</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-2xl">
+        <SheetHeader className="border-b pr-12">
+          <SheetTitle>{connection ? 'Edit Connection' : 'New Connection'}</SheetTitle>
+          <SheetDescription>
             {connection
               ? 'Update the connection details.'
               : 'Create a new database connection profile.'}
-          </DialogDescription>
-        </DialogHeader>
-        {!type && <div className="flex flex-col gap-2">Select a database type to continue.</div>}
-        {type === 'postgres' && (
-          <PostgresConnectionForm connection={connection} onSuccess={() => onOpenChange(false)} />
-        )}
-      </DialogContent>
-    </Dialog>
+          </SheetDescription>
+        </SheetHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {!type ? <div>Select a database type to continue.</div> : null}
+          {type === 'postgres' ? (
+            <PostgresConnectionForm connection={connection} onSuccess={() => onOpenChange(false)} />
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }

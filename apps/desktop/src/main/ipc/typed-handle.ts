@@ -5,12 +5,17 @@ import {
   createTableInputSchema,
   dashboardConfigSchema,
   dashboardIdentifierSchema,
+  databaseToolCancelSchema,
+  databaseToolChoosePathSchema,
+  databaseToolRequestSchema,
+  databaseToolStartSchema,
   deleteQueryInputSchema,
   deleteRowsInputSchema,
   exportDashboardsSchema,
   exportTableInputSchema,
   importDashboardsSchema,
   insertRowInputSchema,
+  localDatabaseDiscoverySchema,
   queryBatchInputSchema,
   persistDashboardSchema,
   queryCancelInputSchema,
@@ -22,9 +27,9 @@ import {
   updateCellInputSchema,
   updateConnectionSchema,
   updateQueryInputSchema,
-  workspaceInputSchema,
+  workspaceInputSchema
 } from '@dbdesk/shared/schemas'
-import { ipcMain } from 'electron'
+import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type { ZodType } from 'zod'
 import { sanitizeError, ValidationError } from '../utils/errors'
 
@@ -40,6 +45,11 @@ const payloadSchemas: Partial<Record<keyof IpcContract, ZodType>> = {
   'connections:connect': connectionIdentifierSchema,
   'connections:disconnect': connectionIdentifierSchema,
   'connections:delete': connectionIdentifierSchema,
+  'connections:discover-local': localDatabaseDiscoverySchema,
+  'database-tools:choose-path': databaseToolChoosePathSchema,
+  'database-tools:preview': databaseToolRequestSchema,
+  'database-tools:start': databaseToolStartSchema,
+  'database-tools:cancel': databaseToolCancelSchema,
   'query:run': queryInputSchema,
   'query:runMany': queryBatchInputSchema,
   'query:cancel': queryCancelInputSchema,
@@ -68,7 +78,7 @@ const payloadSchemas: Partial<Record<keyof IpcContract, ZodType>> = {
   'dashboards:delete': dashboardIdentifierSchema,
   'dashboards:persist': persistDashboardSchema,
   'dashboards:export': exportDashboardsSchema,
-  'dashboards:import': importDashboardsSchema,
+  'dashboards:import': importDashboardsSchema
 }
 
 /**
@@ -80,7 +90,10 @@ const payloadSchemas: Partial<Record<keyof IpcContract, ZodType>> = {
  */
 export function typedHandle<K extends keyof IpcContract>(
   channel: K,
-  handler: (payload: IpcContract[K]['payload']) => Promise<IpcContract[K]['result']>,
+  handler: (
+    payload: IpcContract[K]['payload'],
+    event: IpcMainInvokeEvent
+  ) => Promise<IpcContract[K]['result']>
 ): void {
   const schema = payloadSchemas[channel]
 
@@ -99,7 +112,7 @@ export function typedHandle<K extends keyof IpcContract>(
         payload = result.data as IpcContract[K]['payload']
       }
 
-      return await handler(payload)
+      return await handler(payload, _event)
     } catch (error) {
       console.error(`[IPC:${channel}]`, error)
       const sanitized = sanitizeError(error)

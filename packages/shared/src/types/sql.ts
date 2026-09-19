@@ -11,6 +11,16 @@ export type PostgreSQLSslMode =
   | 'verify-ca'
   | 'verify-full'
 
+export type ConnectionEnvironment = 'development' | 'staging' | 'production'
+
+export interface SSHTunnelOptions {
+  enabled: boolean
+  host: string
+  port?: number
+  user: string
+  identityFile?: string
+}
+
 /**
  * SQL database connection options (PostgreSQL)
  */
@@ -21,6 +31,16 @@ export interface SQLConnectionOptions {
   user: string
   password: string
   sslMode?: PostgreSQLSslMode
+  sslRootCertPath?: string
+  sslClientCertPath?: string
+  sslClientKeyPath?: string
+  sshTunnel?: SSHTunnelOptions
+  environment?: ConnectionEnvironment
+  color?: string
+  group?: string
+  tags?: string[]
+  readOnly?: boolean
+  statementTimeoutMs?: number
 }
 
 /**
@@ -29,6 +49,7 @@ export interface SQLConnectionOptions {
 export interface ColumnInfo {
   name: string
   type: string
+  formattedType?: string
   nullable: boolean
   defaultValue?: unknown
   isPrimaryKey?: boolean

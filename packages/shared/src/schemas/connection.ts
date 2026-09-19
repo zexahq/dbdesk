@@ -11,6 +11,16 @@ export const postgreSQLSslModeSchema = z.enum([
   'verify-full'
 ])
 
+export const connectionEnvironmentSchema = z.enum(['development', 'staging', 'production'])
+
+export const sshTunnelOptionsSchema = z.object({
+  enabled: z.boolean(),
+  host: z.string().min(1),
+  port: z.number().int().min(1).max(65535).optional(),
+  user: z.string().min(1),
+  identityFile: z.string().optional()
+})
+
 // ── Database Types ──
 
 export const databaseTypeSchema = z.enum(['postgres', 'mongodb', 'redis'])
@@ -24,8 +34,21 @@ export const sqlConnectionOptionsSchema = z.object({
   port: z.number().int().min(1).max(65535),
   database: z.string().min(1),
   user: z.string().min(1),
-  password: z.string().min(1),
-  sslMode: postgreSQLSslModeSchema.optional()
+  password: z.string(),
+  sslMode: postgreSQLSslModeSchema.optional(),
+  sslRootCertPath: z.string().optional(),
+  sslClientCertPath: z.string().optional(),
+  sslClientKeyPath: z.string().optional(),
+  sshTunnel: sshTunnelOptionsSchema.optional(),
+  environment: connectionEnvironmentSchema.optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+  group: z.string().optional(),
+  tags: z.array(z.string().min(1)).optional(),
+  readOnly: z.boolean().optional(),
+  statementTimeoutMs: z.number().int().min(0).max(86_400_000).optional()
 })
 
 export const mongoDBConnectionOptionsSchema = z.object({
@@ -91,15 +114,33 @@ export const connectionProfileSchema = z.discriminatedUnion('type', [
 
 // ── Create / Update ──
 
-export const createConnectionSchema = z.object({
+const postgresConnectionInputSchema = z.object({
   name: z.string().min(1),
-  type: databaseTypeSchema,
-  options: dbConnectionOptionsSchema
+  type: z.literal('postgres'),
+  options: sqlConnectionOptionsSchema
+})
+const mongoDBConnectionInputSchema = z.object({
+  name: z.string().min(1),
+  type: z.literal('mongodb'),
+  options: mongoDBConnectionOptionsSchema
+})
+const redisConnectionInputSchema = z.object({
+  name: z.string().min(1),
+  type: z.literal('redis'),
+  options: redisConnectionOptionsSchema
 })
 
-export const updateConnectionSchema = createConnectionSchema.extend({
-  connectionId: z.string().uuid()
-})
+export const createConnectionSchema = z.discriminatedUnion('type', [
+  postgresConnectionInputSchema,
+  mongoDBConnectionInputSchema,
+  redisConnectionInputSchema
+])
+
+export const updateConnectionSchema = z.discriminatedUnion('type', [
+  postgresConnectionInputSchema.extend({ connectionId: z.string().uuid() }),
+  mongoDBConnectionInputSchema.extend({ connectionId: z.string().uuid() }),
+  redisConnectionInputSchema.extend({ connectionId: z.string().uuid() })
+])
 
 // ── Inferred Types ──
 

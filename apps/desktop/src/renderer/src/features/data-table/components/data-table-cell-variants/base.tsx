@@ -1,7 +1,11 @@
 'use client'
 
 import type { TableCell } from '@renderer/components/ui/table'
-import { formatCellValue, getEditorLanguage } from '@renderer/features/data-table/lib/data-table'
+import {
+  formatCellValue,
+  getEditorLanguage,
+  isSelectionColumn
+} from '@renderer/features/data-table/lib/data-table'
 import { cn } from '@renderer/shared/lib/utils'
 import { flexRender } from '@tanstack/react-table'
 import { useCallback, useMemo, useRef, type ComponentProps } from 'react'
@@ -21,7 +25,7 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   } = props
 
   const cellRef = useRef<HTMLTableCellElement>(null)
-  const isSelectColumn = columnId === 'select'
+  const isSelectColumn = isSelectionColumn(cell.column.columnDef.meta)
 
   // Memoize focus/edit state checks
   const isFocused = useMemo(
@@ -88,10 +92,10 @@ export function useDataTableCellContext<TData, TValue>(props: DataTableCellProps
   const cellClassName = useMemo(
     () =>
       cn(
-      'border-border border-x first:border-l last:border-r',
-      'truncate bg-accent/50',
-      !isSelectColumn && 'cursor-pointer',
-      isFocused && 'shadow-[inset_0_0_0_2px_var(--color-ring)] bg-ring/20'
+        'border-border border-x first:border-l last:border-r',
+        'truncate bg-accent/50',
+        !isSelectColumn && 'cursor-pointer',
+        isFocused && 'shadow-[inset_0_0_0_2px_var(--color-ring)] bg-ring/20'
       ),
     [isSelectColumn, isFocused]
   )
@@ -144,7 +148,7 @@ export function areCellPropsEqual<TData, TValue>(
 ): boolean {
   // Select column: always re-render since row.getIsSelected() reads from shared table state
   // and comparing prev vs next would give the same value at comparison time
-  if (prevProps.columnId === 'select') {
+  if (isSelectionColumn(prevProps.cell.column.columnDef.meta)) {
     return false
   }
 
@@ -170,6 +174,13 @@ export function areCellPropsEqual<TData, TValue>(
 
   // Check if cell value changed
   if (prevProps.cell.getValue() !== nextProps.cell.getValue()) {
+    return false
+  }
+
+  if (
+    prevProps.cell.column.columnDef.cell !== nextProps.cell.column.columnDef.cell ||
+    prevProps.cell.column.columnDef.meta !== nextProps.cell.column.columnDef.meta
+  ) {
     return false
   }
 

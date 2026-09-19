@@ -1,17 +1,25 @@
 import type { ConnectionProfile, DatabaseType } from '@dbdesk/shared/types'
-import { useConnections } from '@renderer/features/connections/queries/connections'
+import {
+  useConnections,
+  useExportConnections,
+  useImportConnections
+} from '@renderer/features/connections/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { Skeleton } from '@renderer/components/ui/skeleton'
-import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { toast } from '@renderer/shared/lib/toast'
+import { Download, Plus, Upload } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { ConnectionCard } from './connection-card'
 import { ConnectionDialog } from './connection-dialog'
+import { LocalDatabaseDiscoverySheet } from './local-database-discovery-sheet'
 
 export function ConnectionList() {
   const { data: connections, isLoading, isError, error } = useConnections()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingConnection, setEditingConnection] = useState<ConnectionProfile | null>(null)
   const [selectedDatabaseType, setSelectedDatabaseType] = useState<DatabaseType | null>(null)
+  const exportConnections = useExportConnections()
+  const importConnections = useImportConnections()
 
   const handleNewConnection = () => {
     setSelectedDatabaseType('postgres')
@@ -34,6 +42,15 @@ export function ConnectionList() {
   }
 
   const hasConnections = (connections?.length ?? 0) > 0
+  const groupedConnections = useMemo(() => {
+    const groups = new Map<string, ConnectionProfile[]>()
+    for (const profile of connections ?? []) {
+      const group = 'group' in profile.options ? profile.options.group?.trim() : ''
+      const name = group || 'Ungrouped'
+      groups.set(name, [...(groups.get(name) ?? []), profile])
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b))
+  }, [connections])
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,10 +62,43 @@ export function ConnectionList() {
               Manage database profiles and establish connections.
             </p>
           </div>
-          <Button className="cursor-pointer" onClick={handleNewConnection}>
-            <Plus className="size-4" />
-            New Connection
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <LocalDatabaseDiscoverySheet connections={connections ?? []} />
+            <Button
+              variant="outline"
+              onClick={() =>
+                void importConnections
+                  .mutateAsync()
+                  .then((profiles) => {
+                    if (profiles.length) toast.success(`Imported ${profiles.length} connections`)
+                  })
+                  .catch((error) => toast.error(error.message))
+              }
+              disabled={importConnections.isPending}
+            >
+              <Upload className="size-4" />
+              Import
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                void exportConnections
+                  .mutateAsync()
+                  .then((result) => {
+                    if (result.exported) toast.success(`Exported ${result.exported} connections`)
+                  })
+                  .catch((error) => toast.error(error.message))
+              }
+              disabled={!hasConnections || exportConnections.isPending}
+            >
+              <Download className="size-4" />
+              Export
+            </Button>
+            <Button className="cursor-pointer" onClick={handleNewConnection}>
+              <Plus className="size-4" />
+              New Connection
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -65,9 +115,25 @@ export function ConnectionList() {
           ))}
         </div>
       ) : hasConnections ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {connections?.map((profile) => (
-            <ConnectionCard key={profile.id} profile={profile} onEdit={handleEditConnection} />
+        <div className="space-y-5">
+          {groupedConnections.map(([group, profiles], index) => (
+            <section key={group} aria-labelledby={`connection-group-${index}`}>
+              <h3
+                id={`connection-group-${index}`}
+                className="mb-2 text-sm font-medium text-muted-foreground"
+              >
+                {group} ({profiles.length})
+              </h3>
+              <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+                {profiles.map((profile) => (
+                  <ConnectionCard
+                    key={profile.id}
+                    profile={profile}
+                    onEdit={handleEditConnection}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       ) : (

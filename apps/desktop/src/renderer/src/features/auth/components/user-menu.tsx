@@ -1,12 +1,6 @@
-import { CircleAlert, Loader2, LogOut, Moon, Settings, Sun } from 'lucide-react'
-import { fullSignOut } from '@renderer/features/auth/lib/auth'
-import { useSettingsStore } from '@renderer/features/settings/stores/settings-store'
-import { useTheme } from '@renderer/shared/hooks/use-theme'
-import { useUpdateState } from '@renderer/shared/hooks/use-update-state'
 import { UpdateMenuItems } from '@renderer/components/shell/update-menu-items'
-import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
-import { useNavigate } from '@tanstack/react-router'
 import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from '@renderer/components/ui/avatar'
+import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +10,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { fullSignOut } from '@renderer/features/auth/lib/auth'
+import { requestSignIn } from '@renderer/features/auth/lib/auth-utils'
+import { useAuthStore } from '@renderer/features/auth/stores/auth-store'
+import { useSettingsStore } from '@renderer/features/settings/stores/settings-store'
+import { useTheme } from '@renderer/shared/hooks/use-theme'
+import { useUpdateState } from '@renderer/shared/hooks/use-update-state'
+import { useNavigate } from '@tanstack/react-router'
+import { CircleAlert, Loader2, LogIn, LogOut, Moon, Settings, Sun } from 'lucide-react'
 
 export function UserMenu() {
   const { user, isLoading } = useAuthStore()
@@ -23,7 +26,25 @@ export function UserMenu() {
   const navigate = useNavigate()
   const updateState = useUpdateState()
 
-  if (!user) return null
+  if (!user) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Sign in"
+            className="h-8 w-8 cursor-pointer"
+            onClick={() => void requestSignIn().catch(console.error)}
+          >
+            <LogIn aria-hidden="true" className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Sign in (optional)</TooltipContent>
+      </Tooltip>
+    )
+  }
 
   const initials = user.name
     .split(' ')

@@ -3,6 +3,7 @@ import { registerAuthHandlers } from './auth-handlers'
 import { registerCliHandlers } from './cli-handlers'
 import { registerConnectionHandlers } from './connection-handlers'
 import { registerDashboardHandlers } from './dashboard-handlers'
+import { registerDatabaseToolHandlers } from './database-tool-handlers'
 import { registerQueryHandlers } from './query-handlers'
 import { registerSavedQueryHandlers } from './saved-query-handlers'
 import { registerSchemaHandlers } from './schema-handlers'
@@ -16,6 +17,7 @@ export function registerAllIpcHandlers() {
   registerCliHandlers()
   registerConnectionHandlers()
   registerDashboardHandlers()
+  registerDatabaseToolHandlers()
   registerQueryHandlers()
   registerSchemaHandlers()
   registerTableHandlers()

@@ -73,9 +73,7 @@ export function registerConnectionCommands(program: Command): void {
 
   connCmd
     .command('add')
-    .description(
-      'Add a new Postgres connection (without password — fill it in via the desktop app)'
-    )
+    .description('Add Postgres connection metadata (credentials stay in ~/.pgpass or environment)')
     .requiredOption('-n, --name <name>', 'connection name (e.g. "Production")')
     .requiredOption('--host <host>', 'database host', 'localhost')
     .option('-p, --port <port>', 'database port', '5432')
@@ -114,9 +112,8 @@ export function registerConnectionCommands(program: Command): void {
           })) {
             if (!value.trim()) throw new CliError('usage', `${field} cannot be empty.`)
           }
-          // The CLI never accepts secrets: agents add the connection shell,
-          // the user fills the password in the desktop app. Until then,
-          // test/query commands fail with a clear connection error.
+          // The CLI never accepts or decrypts desktop credentials. libpq-style
+          // environment variables and ~/.pgpass remain available to the driver.
           const profile = addConnection({
             name: opts.name.trim(),
             host: opts.host.trim(),
@@ -131,7 +128,7 @@ export function registerConnectionCommands(program: Command): void {
             type: profile.type,
             message:
               `Connection "${profile.name}" added without a password. ` +
-              `Fill it in via the DBDesk desktop app (or use a ~/.pgpass entry), ` +
+              `Configure ~/.pgpass (or PGPASSWORD), ` +
               `then verify with "dbdesk connection test ${profile.name}".`
           }
         })
@@ -170,7 +167,7 @@ export function registerConnectionCommands(program: Command): void {
             'connection-failed',
             `Could not connect to "${conn.name}": ${err instanceof Error ? err.message : String(err)}`,
             !hasPassword
-              ? 'This connection has no password yet — fill it in via the DBDesk desktop app.'
+              ? 'Desktop credentials are OS-encrypted and unavailable to the CLI. Configure ~/.pgpass or PGPASSWORD.'
               : 'Check host/port/database/user and that the server accepts remote connections.'
           )
         })

@@ -72,3 +72,22 @@ export function useDeleteConnection() {
     }
   })
 }
+
+export function useExportConnections() {
+  return useMutation({ mutationFn: () => dbdeskClient.exportConnections() })
+}
+
+export function useImportConnections() {
+  return useMutation({
+    mutationFn: () => dbdeskClient.importConnections(),
+    onSuccess: (_result, _variables, _ctx, client) => {
+      client.client.invalidateQueries({ queryKey: keys.connections })
+    }
+  })
+}
+
+export function useDiscoverLocalDatabases() {
+  return useMutation({
+    mutationFn: ({ port }: { port: number }) => dbdeskClient.discoverLocalDatabases(port)
+  })
+}

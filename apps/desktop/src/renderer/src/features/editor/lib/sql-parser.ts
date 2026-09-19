@@ -4,9 +4,35 @@ type StatementSpan = {
   query: string
   startLineNumber: number
   endLineNumber: number
+  startOffset: number
+  endOffset: number
 }
 
-const DANGEROUS_SQL_KEYWORDS = ['DELETE', 'UPDATE', 'INSERT', 'DROP', 'TRUNCATE', 'ALTER', 'RENAME']
+const DANGEROUS_SQL_KEYWORDS = [
+  'ALTER',
+  'ANALYZE',
+  'CALL',
+  'CLUSTER',
+  'COMMENT',
+  'COPY',
+  'CREATE',
+  'DELETE',
+  'DO',
+  'DROP',
+  'GRANT',
+  'INTO',
+  'INSERT',
+  'MERGE',
+  'REASSIGN',
+  'REFRESH',
+  'REINDEX',
+  'RENAME',
+  'REVOKE',
+  'SECURITY',
+  'TRUNCATE',
+  'UPDATE',
+  'VACUUM'
+]
 const DOLLAR_QUOTE_TAG_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
 
 const readDollarQuoteTag = (text: string, start: number): string | null => {
@@ -35,6 +61,7 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
   const statements: StatementSpan[] = []
   let currentQuery = ''
   let statementStartLine: number | null = null
+  let statementStartOffset: number | null = null
   let statementEndLine = 1
   let lineNumber = 1
   let lineComment = false
@@ -43,9 +70,12 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
   let doubleQuote = false
   let dollarQuoteTag: string | null = null
 
+  let sourceIndex = 0
+
   const appendText = (text: string, marksStatement = true) => {
     if (marksStatement && statementStartLine === null && text.trim()) {
       statementStartLine = lineNumber
+      statementStartOffset = sourceIndex
     }
 
     currentQuery += text
@@ -67,24 +97,27 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
     }
   }
 
-  const flushStatement = () => {
+  const flushStatement = (endOffset: number) => {
     const query = currentQuery.trim()
-    if (query && statementStartLine !== null) {
+    if (query && statementStartLine !== null && statementStartOffset !== null) {
       statements.push({
         query,
         startLineNumber: statementStartLine,
-        endLineNumber: statementEndLine
+        endLineNumber: statementEndLine,
+        startOffset: statementStartOffset,
+        endOffset
       })
     }
 
     currentQuery = ''
     statementStartLine = null
+    statementStartOffset = null
     statementEndLine = lineNumber
   }
 
-  for (let index = 0; index < sql.length; index++) {
-    const char = sql[index]
-    const nextChar = sql[index + 1]
+  for (; sourceIndex < sql.length; sourceIndex++) {
+    const char = sql[sourceIndex]
+    const nextChar = sql[sourceIndex + 1]
 
     if (lineComment) {
       if (char === '\n') {
@@ -98,13 +131,13 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
     if (blockCommentDepth > 0) {
       if (char === '/' && nextChar === '*') {
         blockCommentDepth++
-        index++
+        sourceIndex++
         continue
       }
 
       if (char === '*' && nextChar === '/') {
         blockCommentDepth--
-        index++
+        sourceIndex++
         continue
       }
 
@@ -116,9 +149,9 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
     }
 
     if (dollarQuoteTag) {
-      if (sql.startsWith(dollarQuoteTag, index)) {
+      if (sql.startsWith(dollarQuoteTag, sourceIndex)) {
         appendText(dollarQuoteTag)
-        index += dollarQuoteTag.length - 1
+        sourceIndex += dollarQuoteTag.length - 1
         dollarQuoteTag = null
         continue
       }
@@ -135,7 +168,7 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
       if (char === "'") {
         if (nextChar === "'") {
           appendText(nextChar)
-          index++
+          sourceIndex++
         } else {
           singleQuote = false
         }
@@ -150,7 +183,7 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
       if (char === '"') {
         if (nextChar === '"') {
           appendText(nextChar)
-          index++
+          sourceIndex++
         } else {
           doubleQuote = false
         }
@@ -163,14 +196,14 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
     if (char === '-' && nextChar === '-') {
       appendSpace()
       lineComment = true
-      index++
+      sourceIndex++
       continue
     }
 
     if (char === '/' && nextChar === '*') {
       appendSpace()
       blockCommentDepth = 1
-      index++
+      sourceIndex++
       continue
     }
 
@@ -187,17 +220,17 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
     }
 
     if (char === '$') {
-      const tag = readDollarQuoteTag(sql, index)
+      const tag = readDollarQuoteTag(sql, sourceIndex)
       if (tag) {
         dollarQuoteTag = tag
         appendText(tag)
-        index += tag.length - 1
+        sourceIndex += tag.length - 1
         continue
       }
     }
 
     if (char === ';') {
-      flushStatement()
+      flushStatement(sourceIndex)
       continue
     }
 
@@ -214,7 +247,7 @@ const extractStatementSpans = (sql: string): StatementSpan[] => {
     appendText(char)
   }
 
-  flushStatement()
+  flushStatement(sql.length)
 
   return statements
 }
@@ -239,7 +272,11 @@ const expandBlockEndLine = (lines: string[], endLineNumber: number): number => {
   return index + 1
 }
 
-const hasBlankSeparator = (lines: string[], fromLineNumber: number, toLineNumber: number): boolean => {
+const hasBlankSeparator = (
+  lines: string[],
+  fromLineNumber: number,
+  toLineNumber: number
+): boolean => {
   for (let lineIndex = fromLineNumber; lineIndex < toLineNumber - 1; lineIndex++) {
     if (lines[lineIndex]?.trim() === '') {
       return true
@@ -363,6 +400,25 @@ export const splitQueryBySemicolons = (sql: string): string[] => {
   return extractStatementSpans(sql).map((statement) => statement.query)
 }
 
+export const getQueryAtOffset = (sql: string, offset: number): string => {
+  const statements = extractStatementSpans(sql)
+  const statement = statements.find(
+    ({ startOffset, endOffset }) => offset >= startOffset && offset <= endOffset
+  )
+
+  if (statement) {
+    return statement.query
+  }
+
+  let closestStatement: StatementSpan | undefined
+  for (const candidate of statements) {
+    if (candidate.endOffset >= offset) break
+    closestStatement = candidate
+  }
+
+  return closestStatement?.query ?? statements[0]?.query ?? ''
+}
+
 export const getEditorQueries = (sql: string): EditorQueryBlock[] => {
   const statements = extractStatementSpans(sql)
   if (statements.length === 0) {
@@ -403,23 +459,46 @@ export const getEditorQueries = (sql: string): EditorQueryBlock[] => {
   return blocks
 }
 
+export const getQueriesForExecution = (editorContent: string, runnableQuery?: string): string[] => {
+  if (runnableQuery !== undefined) {
+    return splitQueryBySemicolons(runnableQuery)
+  }
+
+  return getEditorQueries(editorContent)
+    .flatMap((block) => block.queries)
+    .filter(Boolean)
+}
+
 // Patterns to extract a meaningful target name from a query for tab labelling.
 // Order matters: more specific multi-word verbs come before single-word ones.
 const VERB_PATTERNS: { verb: string; tablePattern: RegExp }[] = [
-  { verb: 'SELECT',       tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'INSERT INTO',  tablePattern: /\bINSERT\s+INTO\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'UPDATE',       tablePattern: /\bUPDATE\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'DELETE FROM',  tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'DELETE',       tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'CREATE TABLE', tablePattern: /\bCREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'CREATE VIEW',  tablePattern: /\bCREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'CREATE INDEX', tablePattern: /\bCREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:["\w]+)\s+ON\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'ALTER TABLE',  tablePattern: /\bALTER\s+TABLE\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'DROP TABLE',   tablePattern: /\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'DROP VIEW',    tablePattern: /\bDROP\s+VIEW\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'TRUNCATE',     tablePattern: /\bTRUNCATE\s+(?:TABLE\s+)?(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'WITH',         tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'CALL',         tablePattern: /\bCALL\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'SELECT', tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'INSERT INTO', tablePattern: /\bINSERT\s+INTO\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'UPDATE', tablePattern: /\bUPDATE\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'DELETE FROM', tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'DELETE', tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  {
+    verb: 'CREATE TABLE',
+    tablePattern:
+      /\bCREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i
+  },
+  {
+    verb: 'CREATE VIEW',
+    tablePattern: /\bCREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(?:["\w.]+\.)?(["\w]+)/i
+  },
+  {
+    verb: 'CREATE INDEX',
+    tablePattern: /\bCREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:["\w]+)\s+ON\s+(?:["\w.]+\.)?(["\w]+)/i
+  },
+  { verb: 'ALTER TABLE', tablePattern: /\bALTER\s+TABLE\s+(?:["\w.]+\.)?(["\w]+)/i },
+  {
+    verb: 'DROP TABLE',
+    tablePattern: /\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i
+  },
+  { verb: 'DROP VIEW', tablePattern: /\bDROP\s+VIEW\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'TRUNCATE', tablePattern: /\bTRUNCATE\s+(?:TABLE\s+)?(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'WITH', tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'CALL', tablePattern: /\bCALL\s+(?:["\w.]+\.)?(["\w]+)/i }
 ]
 
 export const getQueryTabLabel = (query: string): string => {
@@ -427,10 +506,7 @@ export const getQueryTabLabel = (query: string): string => {
   for (const { verb, tablePattern } of VERB_PATTERNS) {
     // Check if the query starts with this verb (case-insensitive, allow whitespace)
     const verbWords = verb.split(' ')
-    const verbRegex = new RegExp(
-      `^\\s*${verbWords.map((w) => `(?:${w})`).join('\\s+')}\\b`,
-      'i'
-    )
+    const verbRegex = new RegExp(`^\\s*${verbWords.map((w) => `(?:${w})`).join('\\s+')}\\b`, 'i')
     if (!verbRegex.test(stripped)) {
       continue
     }
@@ -448,3 +524,6 @@ export const hasDangerousSqlKeywords = (query: string): boolean => {
   const dangerousKeywordPattern = new RegExp(`\\b(?:${DANGEROUS_SQL_KEYWORDS.join('|')})\\b`, 'i')
   return dangerousKeywordPattern.test(sanitizedQuery)
 }
+
+export const requiresSqlConfirmation = (queries: string[], production: boolean): boolean =>
+  production || queries.some(hasDangerousSqlKeywords)

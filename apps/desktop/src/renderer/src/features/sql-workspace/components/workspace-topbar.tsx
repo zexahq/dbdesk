@@ -16,9 +16,12 @@ import { saveCurrentWorkspace } from '@renderer/features/sql-workspace/lib/works
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import type { Tab } from '@renderer/features/sql-workspace/stores/tab-store'
 import { useRouter } from '@tanstack/react-router'
-import { PanelLeftClose, PanelLeftOpen, Plus, Unplug } from 'lucide-react'
-import { useCallback, useMemo } from 'react'
+import { ArchiveRestore, PanelLeftClose, PanelLeftOpen, Plus, Unplug, Wrench } from 'lucide-react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { DatabaseToolsDialog } from './dialogs/database-tools-dialog'
 import { SortableTabButton } from './sortable-tab-button'
+
+const PostgresAdminDialog = lazy(() => import('./postgres-admin-dialog'))
 
 interface WorkspaceTopbarProps {
   profile: SQLConnectionProfile
@@ -35,6 +38,8 @@ export function WorkspaceTopbar({
 }: WorkspaceTopbarProps) {
   const router = useRouter()
   const { mutate: disconnect, isPending: isDisconnecting } = useDisconnect()
+  const [isDatabaseToolsOpen, setIsDatabaseToolsOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
 
   const { reset: resetWorkspace } = useSqlWorkspaceStore()
 
@@ -93,6 +98,17 @@ export function WorkspaceTopbar({
         <Button
           variant="ghost"
           size="icon"
+          className="h-full w-10 cursor-pointer rounded-none border-l border-border/50 shrink-0"
+          onClick={() => setIsDatabaseToolsOpen(true)}
+          title="Backup or restore database"
+        >
+          <ArchiveRestore className="size-4" />
+          <span className="sr-only">Backup or restore database</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
           className="h-full w-10 rounded-none border-r border-border/50 shrink-0"
           onClick={() => onSidebarOpenChange(!isSidebarOpen)}
         >
@@ -138,6 +154,17 @@ export function WorkspaceTopbar({
         <Button
           variant="ghost"
           size="icon"
+          className="h-full w-10 cursor-pointer rounded-none border-l border-border/50 shrink-0"
+          onClick={() => setAdminOpen(true)}
+          title="PostgreSQL administration"
+        >
+          <Wrench className="size-4" />
+          <span className="sr-only">Open PostgreSQL administration</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
           className="h-full w-10 cursor-pointer rounded-none border-l border-border/50 shrink-0 hover:bg-destructive/10 hover:text-destructive"
           onClick={() => void handleDisconnect()}
           disabled={isDisconnecting}
@@ -146,6 +173,23 @@ export function WorkspaceTopbar({
           <span className="sr-only">Disconnect</span>
         </Button>
       </div>
+      <DatabaseToolsDialog
+        profile={profile}
+        open={isDatabaseToolsOpen}
+        onOpenChange={setIsDatabaseToolsOpen}
+      />
+      {adminOpen ? (
+        <Suspense fallback={null}>
+          <PostgresAdminDialog
+            connectionId={profile.id}
+            connectionName={profile.name}
+            production={profile.options.environment === 'production'}
+            readOnly={profile.options.readOnly === true}
+            open={adminOpen}
+            onOpenChange={setAdminOpen}
+          />
+        </Suspense>
+      ) : null}
     </>
   )
 }

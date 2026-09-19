@@ -1,0 +1,1 @@
+ALTER TABLE `connection_profiles` ADD `secret_json` text;

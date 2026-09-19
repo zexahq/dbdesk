@@ -2,6 +2,10 @@ import type {
   ColumnDefinition,
   ConnectionWorkspace,
   DashboardConfig,
+  DatabaseBackupFormat,
+  DatabaseToolMode,
+  DatabaseToolProgress,
+  DatabaseToolRequest,
   DatabaseType,
   DBConnectionOptions,
   ExportTableOptions,
@@ -30,30 +34,53 @@ export const dbdeskAPI = {
   connect: (connectionId: string) => typedInvoke('connections:connect', { connectionId }),
   disconnect: (connectionId: string) => typedInvoke('connections:disconnect', { connectionId }),
   deleteConnection: (connectionId: string) => typedInvoke('connections:delete', { connectionId }),
+  exportConnections: () => typedInvoke('connections:export'),
+  importConnections: () => typedInvoke('connections:import'),
+  discoverLocalDatabases: (port: number) => typedInvoke('connections:discover-local', { port }),
+
+  // ── PostgreSQL backup / restore ──
+  chooseDatabaseToolPath: (
+    connectionId: string,
+    mode: DatabaseToolMode,
+    format: DatabaseBackupFormat
+  ) => typedInvoke('database-tools:choose-path', { connectionId, mode, format }),
+  previewDatabaseTool: (request: DatabaseToolRequest) =>
+    typedInvoke('database-tools:preview', request),
+  startDatabaseTool: (request: DatabaseToolRequest, jobId: string) =>
+    typedInvoke('database-tools:start', { ...request, jobId }),
+  cancelDatabaseTool: (jobId: string) => typedInvoke('database-tools:cancel', { jobId }),
+  onDatabaseToolProgress(callback: (progress: DatabaseToolProgress) => void): () => void {
+    const handler = (_event: Electron.IpcRendererEvent, progress: DatabaseToolProgress) =>
+      callback(progress)
+    ipcRenderer.on('database-tools:progress', handler)
+    return () => ipcRenderer.removeListener('database-tools:progress', handler)
+  },
 
   // ── Query ──
   runQuery: (
     connectionId: string,
     query: string,
-    options?: { limit?: number; offset?: number; queryId?: string }
+    options?: { limit?: number; offset?: number; queryId?: string; readOnly?: boolean }
   ) =>
     typedInvoke('query:run', {
       connectionId,
       query,
       limit: options?.limit,
       offset: options?.offset,
-      queryId: options?.queryId
+      queryId: options?.queryId,
+      readOnly: options?.readOnly
     }),
   runManyQueries: (
     connectionId: string,
     queries: string[],
-    options?: { limit?: number; offset?: number }
+    options?: { limit?: number; offset?: number; readOnly?: boolean }
   ) =>
     typedInvoke('query:runMany', {
       connectionId,
       queries,
       limit: options?.limit,
-      offset: options?.offset
+      offset: options?.offset,
+      readOnly: options?.readOnly
     }),
   cancelQuery: (connectionId: string, queryId: string) =>
     typedInvoke('query:cancel', { connectionId, queryId }),

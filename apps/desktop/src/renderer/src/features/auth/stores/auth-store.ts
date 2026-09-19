@@ -62,10 +62,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   refreshSession: async () => {
     try {
-      const [session, tokenResult] = await Promise.all([
-        window.dbdesk.getSession(),
-        window.dbdesk.getToken()
-      ])
+      const session = await window.dbdesk.getSession()
+      const tokenResult = session?.user ? await window.dbdesk.getToken() : { token: null }
 
       if (session?.user) {
         set({

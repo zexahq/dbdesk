@@ -1,11 +1,18 @@
 import type { QueryResultRow, SQLConnectionProfile } from '@dbdesk/shared/types'
-import { useDeleteTableRows, useTableData, useUpdateTableCell } from '@renderer/features/sql-workspace/queries/schema'
+import { SqlTable } from '@renderer/features/data-table/components'
+import { ForeignKeyPreviewSheet } from '@renderer/features/data-table/components/foreign-key-preview-sheet'
+import type { ForeignKeyNavigation } from '@renderer/features/data-table/lib/foreign-key-navigation'
+import {
+  useDeleteTableRows,
+  useTableData,
+  useTableIntrospection,
+  useUpdateTableCell
+} from '@renderer/features/sql-workspace/queries/schema'
 import { toast } from '@renderer/shared/lib/toast'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { queryClient } from '@renderer/shared/lib/query-client'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { useCallback, useEffect, useState } from 'react'
-import { SqlTable } from '@renderer/features/data-table/components'
 import { SqlBottombar } from './sql-bottombar'
 import { SqlStructure } from './sql-structure'
 import { SqlTopbar } from './sql-topbar'
@@ -19,8 +26,12 @@ export function TableView({ profile, tabId }: TableViewProps) {
   const activeTab = useTabStore((s) => s.findTableTabById(tabId))
   const updateTableTab = useTabStore((s) => s.updateTableTab)
   const makeTabPermanent = useTabStore((s) => s.makeTabPermanent)
+  const addFilteredTableTab = useTabStore((s) => s.addFilteredTableTab)
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [foreignKeyNavigation, setForeignKeyNavigation] = useState<ForeignKeyNavigation | null>(
+    null
+  )
 
   // Reset ephemeral state when tab changes
   useEffect(() => {
@@ -44,6 +55,8 @@ export function TableView({ profile, tabId }: TableViewProps) {
         }
       : undefined
   )
+
+  const { data: tableInfo } = useTableIntrospection(profile.id, activeTab?.schema, activeTab?.table)
 
   const { mutateAsync: deleteRowsMutation, isPending: isDeletePending } = useDeleteTableRows(
     profile.id
@@ -146,6 +159,24 @@ export function TableView({ profile, tabId }: TableViewProps) {
     }
   }, [activeTab?.id, activeTab?.isTemporary, makeTabPermanent])
 
+  const handleForeignKeyOpen = useCallback(
+    (navigation: ForeignKeyNavigation) => {
+      handleTableInteract()
+      setForeignKeyNavigation(navigation)
+    },
+    [handleTableInteract]
+  )
+
+  const handleOpenForeignKeyTarget = useCallback(
+    (navigation: ForeignKeyNavigation) => {
+      addFilteredTableTab(navigation.referencedSchema, navigation.referencedTable, [
+        navigation.filter
+      ])
+      setForeignKeyNavigation(null)
+    },
+    [addFilteredTableTab]
+  )
+
   if (!activeTab) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">
@@ -177,11 +208,15 @@ export function TableView({ profile, tabId }: TableViewProps) {
             onRowSelectionChange={setRowSelection}
             tabId={activeTab.id}
             sortRules={activeTab.sortRules}
+            constraints={tableInfo?.constraints}
+            onForeignKeyOpen={handleForeignKeyOpen}
           />
         )}
         {activeTab.view === 'structure' && (
           <SqlStructure
             connectionId={profile.id}
+            connectionName={profile.name}
+            production={profile.options.environment === 'production'}
             schema={activeTab.schema}
             table={activeTab.table}
           />
@@ -196,7 +231,12 @@ export function TableView({ profile, tabId }: TableViewProps) {
           onOffsetChange={handleOffsetChange}
         />
       )}
-
+      <ForeignKeyPreviewSheet
+        connectionId={profile.id}
+        navigation={foreignKeyNavigation}
+        onClose={() => setForeignKeyNavigation(null)}
+        onOpenTarget={handleOpenForeignKeyTarget}
+      />
     </>
   )
 }

@@ -5,6 +5,8 @@ import type {
   CreateTableResult,
   DashboardConfig,
   DashboardExport,
+  DatabaseBackupFormat,
+  DatabaseToolRequest,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableResult,
@@ -69,6 +71,50 @@ export interface IpcContract {
     payload: { connectionId: string }
     result: { success: boolean }
   }
+  'connections:export': {
+    payload: void
+    result: { exported: number; filePath?: string }
+  }
+  'connections:import': {
+    payload: void
+    result: ConnectionProfile[]
+  }
+  'connections:discover-local': {
+    payload: { port: number }
+    result: Array<{
+      name: string
+      options: {
+        host: string
+        port: number
+        database: string
+        user: string
+        password: string
+        sslMode: 'disable'
+      }
+    }>
+  }
+
+  // -- PostgreSQL backup / restore --
+  'database-tools:choose-path': {
+    payload: {
+      connectionId: string
+      mode: DatabaseToolRequest['mode']
+      format: DatabaseBackupFormat
+    }
+    result: { filePath: string | null }
+  }
+  'database-tools:preview': {
+    payload: DatabaseToolRequest
+    result: { command: string }
+  }
+  'database-tools:start': {
+    payload: DatabaseToolRequest & { jobId: string }
+    result: { started: boolean }
+  }
+  'database-tools:cancel': {
+    payload: { jobId: string }
+    result: { cancelled: boolean }
+  }
 
   // -- Query --
   'query:run': {
@@ -78,11 +124,18 @@ export interface IpcContract {
       limit?: number
       offset?: number
       queryId?: string
+      readOnly?: boolean
     }
     result: QueryResult
   }
   'query:runMany': {
-    payload: { connectionId: string; queries: string[]; limit?: number; offset?: number }
+    payload: {
+      connectionId: string
+      queries: string[]
+      limit?: number
+      offset?: number
+      readOnly?: boolean
+    }
     result: QueryBatchResult[]
   }
   'query:cancel': {

@@ -18,6 +18,7 @@ export type {
   BaseTableFilterCondition,
   ColumnDefinition,
   ColumnInfo,
+  ConnectionEnvironment,
   ConstraintInfo,
   CreateTableOptions,
   CreateTableResult,
@@ -35,6 +36,7 @@ export type {
   PostgreSQLSslMode,
   SQLAdapter,
   SQLConnectionOptions,
+  SSHTunnelOptions,
   SchemaWithTables,
   SqlParameter,
   TableDataColumn,
@@ -110,3 +112,10 @@ export type {
 } from './dashboard'
 
 export type { UpdateState } from './update'
+
+export type {
+  DatabaseBackupFormat,
+  DatabaseToolMode,
+  DatabaseToolProgress,
+  DatabaseToolRequest
+} from './database-tools'
