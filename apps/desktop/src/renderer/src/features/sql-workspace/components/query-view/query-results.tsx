@@ -1,8 +1,17 @@
 import type { QueryBatchResult, QueryResult } from '@dbdesk/shared/types'
 import { Button } from '@renderer/components/ui/button'
-import { cleanErrorMessage } from '@renderer/shared/lib/utils'
 import { getQueryTabLabel } from '@renderer/features/editor/lib/sql-parser'
-import { CircleCheck, CircleX, FileText, Play, Square } from 'lucide-react'
+import type { QueryPlan } from '@renderer/features/sql-workspace/lib/query-plan'
+import { cleanErrorMessage } from '@renderer/shared/lib/utils'
+import {
+  ChartNoAxesColumnIncreasing,
+  CircleCheck,
+  CircleX,
+  FileText,
+  Play,
+  Square
+} from 'lucide-react'
+import { QueryPlanView } from './query-plan-view'
 import { SimpleTable } from './simple-table'
 
 interface QueryResultsProps {
@@ -11,7 +20,10 @@ interface QueryResultsProps {
   activeResultIndex?: number
   isLoading?: boolean
   error?: Error | null
+  plan?: QueryPlan
   onRun: () => void
+  onExplain: () => void
+  onExplainAnalyze: () => void
   onResultSelect?: (index: number) => void
   onCancel?: () => void
 }
@@ -34,11 +46,17 @@ export function QueryResults({
   activeResultIndex,
   isLoading,
   error,
+  plan,
   onRun,
+  onExplain,
+  onExplainAnalyze,
   onResultSelect,
   onCancel
 }: QueryResultsProps) {
-  const safeActiveResultIndex = Math.min(activeResultIndex ?? 0, Math.max((batchResults?.length ?? 1) - 1, 0))
+  const safeActiveResultIndex = Math.min(
+    activeResultIndex ?? 0,
+    Math.max((batchResults?.length ?? 1) - 1, 0)
+  )
   const activeBatchResult = batchResults?.[safeActiveResultIndex]
 
   return (
@@ -56,6 +74,26 @@ export function QueryResults({
               STOP
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 cursor-pointer text-xs"
+            onClick={onExplain}
+            disabled={isLoading}
+          >
+            <ChartNoAxesColumnIncreasing className="size-4" />
+            EXPLAIN
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 cursor-pointer text-xs"
+            onClick={onExplainAnalyze}
+            disabled={isLoading}
+          >
+            <ChartNoAxesColumnIncreasing className="size-4" />
+            EXPLAIN ANALYZE
+          </Button>
           <Button
             size="sm"
             className="h-8 text-xs cursor-pointer"
@@ -92,6 +130,8 @@ export function QueryResults({
               <p className="text-sm">Please wait</p>
             </div>
           </div>
+        ) : plan ? (
+          <QueryPlanView plan={plan} />
         ) : batchResults && batchResults.length > 0 ? (
           activeBatchResult?.error ? (
             <div className="flex w-full items-center justify-center text-center text-destructive">
@@ -99,7 +139,10 @@ export function QueryResults({
             </div>
           ) : activeBatchResult?.result?.columns.length ? (
             <div className="h-full w-full">
-              <SimpleTable columns={activeBatchResult.result.columns} data={activeBatchResult.result.rows} />
+              <SimpleTable
+                columns={activeBatchResult.result.columns}
+                data={activeBatchResult.result.rows}
+              />
             </div>
           ) : activeBatchResult?.result ? (
             <div className="flex w-full items-center justify-center text-center text-muted-foreground">

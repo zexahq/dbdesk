@@ -16,6 +16,10 @@ interface DangerousQueryDialogProps {
   queryCount: number
   connectionName: string
   production: boolean
+  title?: string
+  description?: string
+  confirmLabel?: string
+  statement?: string
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
 }
@@ -25,6 +29,10 @@ export function DangerousQueryDialog({
   queryCount,
   connectionName,
   production,
+  title,
+  description,
+  confirmLabel = 'Run anyway',
+  statement,
   onOpenChange,
   onConfirm
 }: DangerousQueryDialogProps) {
@@ -41,20 +49,27 @@ export function DangerousQueryDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {production ? 'Confirm production query?' : 'Run potentially destructive SQL?'}
+            {title ??
+              (production ? 'Confirm production query?' : 'Run potentially destructive SQL?')}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {production ? (
-              'Every query on a production connection requires explicit confirmation.'
-            ) : (
-              <>
-                {queryCount === 1
-                  ? 'This statement includes a keyword that can modify or remove data.'
-                  : `These ${queryCount} statements include keywords that can modify or remove data.`}{' '}
-                Confirm before continuing.
-              </>
-            )}
+            {description ??
+              (production ? (
+                'Every query on a production connection requires explicit confirmation.'
+              ) : (
+                <>
+                  {queryCount === 1
+                    ? 'This statement includes a keyword that can modify or remove data.'
+                    : `These ${queryCount} statements include keywords that can modify or remove data.`}{' '}
+                  Confirm before continuing.
+                </>
+              ))}
           </AlertDialogDescription>
+          {statement ? (
+            <pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">
+              {statement}
+            </pre>
+          ) : null}
           {production && (
             <div className="space-y-2 pt-2">
               <p className="text-sm">
@@ -72,7 +87,7 @@ export function DangerousQueryDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={!canConfirm}>
-            Run anyway
+            {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
