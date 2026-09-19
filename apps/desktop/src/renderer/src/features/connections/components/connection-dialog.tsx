@@ -19,7 +19,7 @@ export function ConnectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg w-2xl max-w-none!">
+      <DialogContent className="max-h-[90vh] w-2xl max-w-none! overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{connection ? 'Edit Connection' : 'New Connection'}</DialogTitle>
           <DialogDescription>

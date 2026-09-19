@@ -12,14 +12,15 @@ const IDLE_TIMEOUT_MS = 10 * 60 * 1000
 let cleanupTimer: ReturnType<typeof setInterval> | null = null
 
 function getOptions(profile: ConnectionProfile): SQLConnectionOptions {
-  const opts = profile.options as unknown as Record<string, unknown>
+  const opts = profile.options as Partial<SQLConnectionOptions>
   return {
+    ...opts,
     host: String(opts.host ?? 'localhost'),
     port: Number(opts.port ?? 5432),
     database: String(opts.database ?? ''),
     user: String(opts.user ?? ''),
     password: String(opts.password ?? ''),
-    sslMode: opts.sslMode as SQLConnectionOptions['sslMode']
+    sslMode: opts.sslMode
   }
 }
 

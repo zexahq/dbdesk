@@ -29,6 +29,7 @@ export const queryInputSchema = connectionIdentifierSchema.extend({
   limit: z.number().int().min(1).default(50).optional(),
   offset: z.number().int().min(0).default(0).optional(),
   queryId: z.string().min(1).optional(),
+  readOnly: z.boolean().optional(),
 })
 
 export const queryCancelInputSchema = connectionIdentifierSchema.extend({
@@ -39,6 +40,7 @@ export const queryBatchInputSchema = connectionIdentifierSchema.extend({
   queries: z.array(z.string().min(1, 'query is required')).min(1, 'queries are required'),
   limit: z.number().int().min(1).default(50).optional(),
   offset: z.number().int().min(0).default(0).optional(),
+  readOnly: z.boolean().optional(),
 })
 
 // ── Table Data Input ──

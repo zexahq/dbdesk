@@ -1,5 +1,5 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, ipcMain, Menu, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, powerMonitor, protocol, shell } from 'electron'
 import { join } from 'path'
 
 import icon from '../../resources/icon.png?asset'
@@ -292,6 +292,11 @@ app.whenReady().then(async () => {
 
   registerAllIpcHandlers()
   initAutoUpdater()
+
+  powerMonitor.on('resume', () => {
+    void connectionManager.reconnectAll()
+  })
+  setInterval(() => void connectionManager.reconnectDisconnected(), 15_000)
 
   // In dev on Linux, start a Unix socket server so that the .desktop file
   // relay script can forward deep link URLs to this running instance.

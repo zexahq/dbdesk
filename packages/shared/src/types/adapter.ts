@@ -56,6 +56,7 @@ export interface QueryBatchResult {
 export interface BaseAdapter {
   connect(): Promise<void>
   disconnect(): Promise<void>
+  isHealthy?(): boolean
   runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult>
   runManyQueries(queries: string[], options?: RunQueryOptions): Promise<QueryBatchResult[]>
   /**
