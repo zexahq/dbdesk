@@ -60,6 +60,15 @@ export function useDataTable<TData, TValue = unknown>({
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({})
   const updateTableTab = useTabStore((s) => s.updateTableTab)
 
+  const handleFocusableCellFocus = useCallback(
+    (rowIndex: number, columnId: string) => {
+      setFocusedCell({ rowIndex, columnId })
+      setEditingCell(null)
+      onTableInteract?.()
+    },
+    [onTableInteract]
+  )
+
   // Handle row selection change (keep separate from cell selection)
   const handleRowSelectionChange = useCallback(
     (updater: Updater<RowSelectionState>) => {
@@ -84,7 +93,8 @@ export function useDataTable<TData, TValue = unknown>({
       rowSelection
     },
     meta: {
-      ...(sortRules && { sortRules })
+      ...(sortRules && { sortRules }),
+      onCellFocus: handleFocusableCellFocus
     },
     onColumnSizingChange: setColumnSizing,
     onRowSelectionChange: handleRowSelectionChange
