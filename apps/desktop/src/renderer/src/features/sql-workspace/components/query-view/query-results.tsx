@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui
 import { getColumns } from '@renderer/features/data-table/components/columns'
 import { DataTable } from '@renderer/features/data-table/components/data-table'
 import { getQueryTabLabel } from '@renderer/features/editor/lib/sql-parser'
+import type { QueryPlan } from '@renderer/features/sql-workspace/lib/query-plan'
 import {
   useTableIntrospection,
   useUpdateTableCell
@@ -25,6 +26,7 @@ import { toast } from '@renderer/shared/lib/toast'
 import { cleanErrorMessage } from '@renderer/shared/lib/utils'
 import type { RowSelectionState } from '@tanstack/react-table'
 import {
+  ChartNoAxesColumnIncreasing,
   CircleCheck,
   CircleX,
   Copy,
@@ -43,6 +45,7 @@ import {
   serializeQueryResult,
   type ResultExportFormat
 } from './result-tools'
+import { QueryPlanView } from './query-plan-view'
 import { SimpleTable } from './simple-table'
 
 interface QueryResultsProps {
@@ -56,7 +59,10 @@ interface QueryResultsProps {
   activePinnedResultId?: string
   isLoading?: boolean
   error?: Error | null
+  plan?: QueryPlan
   onRun: () => void
+  onExplain: () => void
+  onExplainAnalyze: () => void
   onResultSelect?: (index: number) => void
   onPinnedResultSelect: (id?: string) => void
   onPinResult: () => void
@@ -82,7 +88,10 @@ export function QueryResults({
   activePinnedResultId,
   isLoading,
   error,
+  plan,
   onRun,
+  onExplain,
+  onExplainAnalyze,
   onResultSelect,
   onPinnedResultSelect,
   onPinResult,
@@ -241,7 +250,7 @@ export function QueryResults({
     )
   }
 
-  const hasResultTools = Boolean(displayedResult?.columns.length)
+  const hasResultTools = !plan && Boolean(displayedResult?.columns.length)
 
   return (
     <div className="flex h-full w-full flex-col border-t">
@@ -309,7 +318,32 @@ export function QueryResults({
               STOP
             </Button>
           ) : null}
-          <Button size="sm" className="h-8 text-xs" onClick={handleRun} disabled={isLoading}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 cursor-pointer text-xs"
+            onClick={onExplain}
+            disabled={isLoading}
+          >
+            <ChartNoAxesColumnIncreasing className="size-4" />
+            EXPLAIN
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 cursor-pointer text-xs"
+            onClick={onExplainAnalyze}
+            disabled={isLoading}
+          >
+            <ChartNoAxesColumnIncreasing className="size-4" />
+            EXPLAIN ANALYZE
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 cursor-pointer text-xs"
+            onClick={handleRun}
+            disabled={isLoading}
+          >
             <Play className="size-4" />
             RUN
           </Button>
@@ -368,6 +402,8 @@ export function QueryResults({
               <p className="text-sm">Please wait</p>
             </div>
           </div>
+        ) : plan ? (
+          <QueryPlanView plan={plan} />
         ) : displayedError ? (
           <div className="flex w-full items-center justify-center text-center text-destructive">
             <p>Error: {cleanErrorMessage(displayedError)}</p>

@@ -1,5 +1,6 @@
 import type { SQLDatabaseType } from '@dbdesk/shared/types'
 import Editor, { type Monaco } from '@monaco-editor/react'
+import { getQueryAtOffset } from '@renderer/features/editor/lib/sql-parser'
 import { EXECUTE_ACTIVE_QUERY_EVENT } from '@renderer/features/sql-workspace/lib/commands'
 import { useTheme } from '@renderer/shared/hooks/use-theme'
 import type { editor } from 'monaco-editor'
@@ -49,7 +50,8 @@ interface SqlEditorProps {
   value: string
   onChange: (value: string) => void
   language: SQLDatabaseType
-  onExecute?: () => void
+  onExecute?: (query?: string) => void
+  onRunnableQueryChange?: (query: string) => void
 }
 
 const LANGUAGE_MAP: Record<SQLDatabaseType, LanguageIdEnum> = {
@@ -60,11 +62,33 @@ export const getLanguageId = (type: SQLDatabaseType): LanguageIdEnum => {
   return LANGUAGE_MAP[type] ?? LanguageIdEnum.PG
 }
 
-export default function SqlEditor({ tabId, value, onChange, language, onExecute }: SqlEditorProps) {
+const getRunnableQuery = (editorInstance: editor.IStandaloneCodeEditor): string => {
+  const model = editorInstance.getModel()
+  if (!model) return ''
+
+  const selection = editorInstance.getSelection()
+  if (selection && !selection.isEmpty()) {
+    const selectedQuery = model.getValueInRange(selection).trim()
+    if (selectedQuery) return selectedQuery
+  }
+
+  const position = editorInstance.getPosition()
+  return getQueryAtOffset(model.getValue(), position ? model.getOffsetAt(position) : 0)
+}
+
+export default function SqlEditor({
+  tabId,
+  value,
+  onChange,
+  language,
+  onExecute,
+  onRunnableQueryChange
+}: SqlEditorProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const onExecuteRef = useRef(onExecute)
+  const onRunnableQueryChangeRef = useRef(onRunnableQueryChange)
   const focusFrameRef = useRef<number | null>(null)
   const [height, setHeight] = useState('400px')
 
@@ -78,10 +102,17 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
   }, [onExecute])
 
   useEffect(() => {
-    const execute = () => onExecuteRef.current?.()
+    const execute = () => {
+      const editorInstance = editorRef.current
+      onExecuteRef.current?.(editorInstance ? getRunnableQuery(editorInstance) : undefined)
+    }
     window.addEventListener(EXECUTE_ACTIVE_QUERY_EVENT, execute)
     return () => window.removeEventListener(EXECUTE_ACTIVE_QUERY_EVENT, execute)
   }, [])
+
+  useEffect(() => {
+    onRunnableQueryChangeRef.current = onRunnableQueryChange
+  }, [onRunnableQueryChange])
 
   const focusEditor = useCallback((editorInstance = editorRef.current) => {
     if (!editorInstance) return
@@ -130,13 +161,21 @@ export default function SqlEditor({ tabId, value, onChange, language, onExecute 
     editorRef.current = editorInstance
     focusEditor(editorInstance)
 
+    const notifyRunnableQuery = () => {
+      onRunnableQueryChangeRef.current?.(getRunnableQuery(editorInstance))
+    }
+    notifyRunnableQuery()
+    editorInstance.onDidChangeModelContent(notifyRunnableQuery)
+    editorInstance.onDidChangeCursorPosition(notifyRunnableQuery)
+    editorInstance.onDidChangeCursorSelection(notifyRunnableQuery)
+
     // Register Ctrl+Enter keybinding for query execution
     editorInstance.addAction({
       id: 'execute-query',
       label: 'Execute Query',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Enter],
       run: () => {
-        onExecuteRef.current?.()
+        onExecuteRef.current?.(getRunnableQuery(editorInstance))
       }
     })
 

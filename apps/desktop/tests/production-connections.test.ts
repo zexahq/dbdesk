@@ -120,6 +120,7 @@ describe('production connection builders', () => {
     expect(isReadOnlyQuery('COMMIT; DELETE FROM users')).toBe(false)
     expect(isReadOnlyQuery('SELECT 1; DELETE FROM users')).toBe(false)
     expect(requiresSqlConfirmation(['SELECT 1'], false)).toBe(false)
+    expect(requiresSqlConfirmation(['SELECT 1'], true)).toBe(true)
     expect(requiresSqlConfirmation(['SELECT pg_terminate_backend(42)'], true)).toBe(true)
   })
 

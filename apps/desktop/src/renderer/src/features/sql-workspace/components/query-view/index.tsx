@@ -5,23 +5,25 @@ import type {
   SQLConnectionProfile
 } from '@dbdesk/shared/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
-import { DangerousQueryDialog } from '@renderer/features/sql-workspace/components/dialogs/dangerous-query-dialog'
-import SqlEditor from '@renderer/features/editor/components/sql-editor'
-import {
-  getEditorQueries,
-  getQueryTabLabel,
-  requiresSqlConfirmation
-} from '@renderer/features/editor/lib/sql-parser'
-import {
-  useRunManyQueries,
-  useCancelQuery,
-  useRunQuery
-} from '@renderer/features/sql-workspace/queries/query'
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup
 } from '@renderer/components/ui/resizable'
+import SqlEditor from '@renderer/features/editor/components/sql-editor'
+import {
+  getQueriesForExecution,
+  getQueryTabLabel,
+  requiresSqlConfirmation,
+  splitQueryBySemicolons
+} from '@renderer/features/editor/lib/sql-parser'
+import { DangerousQueryDialog } from '@renderer/features/sql-workspace/components/dialogs/dangerous-query-dialog'
+import { parseQueryPlan, type QueryPlan } from '@renderer/features/sql-workspace/lib/query-plan'
+import {
+  useCancelQuery,
+  useRunManyQueries,
+  useRunQuery
+} from '@renderer/features/sql-workspace/queries/query'
 import { useSavedQueriesStore } from '@renderer/features/sql-workspace/stores/saved-queries-store'
 import { useTabStore } from '@renderer/features/sql-workspace/stores/tab-store'
 import { toast } from '@renderer/shared/lib/toast'
@@ -35,11 +37,7 @@ interface QueryViewProps {
   tabId: string
 }
 
-type PendingExecution = {
-  queries: string[]
-  limit: number
-  offset: number
-}
+type PendingExecution = { queries: string[]; limit: number; offset: number }
 
 export function QueryView({ profile, tabId }: QueryViewProps) {
   const activeTab = useTabStore((s) => s.findQueryTabById(tabId))
@@ -48,6 +46,11 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
   const updateQuery = useSavedQueriesStore((s) => s.updateQuery)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const [pendingExecution, setPendingExecution] = useState<PendingExecution | null>(null)
+  const [pendingExplain, setPendingExplain] = useState<{
+    query: string
+    analyze: boolean
+  } | null>(null)
+  const [planResult, setPlanResult] = useState<{ tabId: string; plan: QueryPlan } | null>(null)
 
   const {
     mutateAsync: runQueryMutation,
@@ -68,6 +71,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
 
   // Tracks the queryId of the in-flight execution so the user can cancel it.
   const currentQueryIdRef = useRef<string | null>(null)
+  const runnableQueryRef = useRef<{ tabId: string; query: string } | null>(null)
 
   const isQueryTabSaved = queries.some((q) => q.id === tabId)
 
@@ -127,6 +131,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
     ? Math.min(Math.max(activeTab.activeResultIndex ?? 0, 0), batchResultCount - 1)
     : 0
   const activeBatchResult = activeTab.batchResults?.[safeActiveResultIndex]
+  const activePlan = planResult?.tabId === activeTab.id ? planResult.plan : undefined
   const activePinnedResult = activeTab.pinnedResults.find(
     (result) => result.id === activeTab.activePinnedResultId
   )
@@ -189,6 +194,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
     }
 
     try {
+      setPlanResult(null)
       const results = await runManyQueriesMutation({
         queries: queriesToRun,
         options: { limit, offset }
@@ -199,27 +205,81 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
     }
   }
 
-  const queueDangerousExecution = async (queriesToRun: string[], limit: number, offset: number) => {
-    if (requiresSqlConfirmation(queriesToRun, profile.options.environment === 'production')) {
-      setPendingExecution({ queries: queriesToRun, limit, offset })
+  const executeExplain = async (query: string, analyze: boolean) => {
+    const queryId = crypto.randomUUID()
+    currentQueryIdRef.current = queryId
+    setPlanResult(null)
+
+    try {
+      const result = await runQueryMutation({
+        query: `EXPLAIN (${analyze ? 'ANALYZE, ' : ''}FORMAT JSON) ${query}`,
+        options: { queryId }
+      })
+      try {
+        const planColumn = result.columns.find((column) => column.toLowerCase() === 'query plan')
+        const planValue = result.rows[0]?.[planColumn ?? 'QUERY PLAN']
+        setPlanResult({ tabId: activeTab.id, plan: parseQueryPlan(planValue) })
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to parse query plan')
+      }
+    } catch {
+      // The mutation error is rendered in the results panel.
+    } finally {
+      if (currentQueryIdRef.current === queryId) currentQueryIdRef.current = null
+    }
+  }
+
+  const queueDangerousExecution = async (execution: PendingExecution) => {
+    if (requiresSqlConfirmation(execution.queries, profile.options.environment === 'production')) {
+      setPendingExecution(execution)
       return
     }
 
-    await executeQueries(queriesToRun, limit, offset)
+    await executeQueries(execution.queries, execution.limit, execution.offset)
   }
 
-  const handleRunQuery = async () => {
-    const blocks = getEditorQueries(activeTab.editorContent)
-    if (blocks.length === 0) {
+  const handleRunQuery = async (runnableQuery?: string) => {
+    const queriesToRun = getQueriesForExecution(activeTab.editorContent, runnableQuery)
+    if (queriesToRun.length === 0) {
       toast.error('Query cannot be empty')
       return
     }
 
     const limit = activeTab.limit ?? 50
     const offset = 0
-    const queriesToRun = blocks.flatMap((block) => block.queries).filter(Boolean)
+    await queueDangerousExecution({ queries: queriesToRun, limit, offset })
+  }
 
-    await queueDangerousExecution(queriesToRun, limit, offset)
+  const getExplainQuery = () => {
+    const runnableQuery =
+      runnableQueryRef.current?.tabId === activeTab.id
+        ? runnableQueryRef.current.query
+        : activeTab.editorContent
+    const queriesToExplain = splitQueryBySemicolons(runnableQuery)
+    if (queriesToExplain.length === 0) {
+      toast.error('Query cannot be empty')
+      return null
+    }
+    if (queriesToExplain.length > 1) {
+      toast.error('Select one statement to explain')
+      return null
+    }
+    return queriesToExplain[0]
+  }
+
+  const handleExplain = () => {
+    const query = getExplainQuery()
+    if (!query) return
+    if (profile.options.environment === 'production') {
+      setPendingExplain({ query, analyze: false })
+      return
+    }
+    void executeExplain(query, false)
+  }
+
+  const handleExplainAnalyze = () => {
+    const query = getExplainQuery()
+    if (query) setPendingExplain({ query, analyze: true })
   }
 
   const executeSingleQueryWithPagination = async (query: string, limit: number, offset: number) => {
@@ -342,6 +402,9 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
               onChange={(value) => updateQueryTab(activeTab.id, { editorContent: value })}
               language={profile.type}
               onExecute={handleRunQuery}
+              onRunnableQueryChange={(query) => {
+                runnableQueryRef.current = { tabId: activeTab.id, query }
+              }}
             />
           </div>
         </ResizablePanel>
@@ -358,8 +421,12 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
             activePinnedResultId={activeTab.activePinnedResultId}
             isLoading={isExecuting}
             error={executionError}
+            plan={activePlan}
             onRun={handleRunQuery}
+            onExplain={handleExplain}
+            onExplainAnalyze={handleExplainAnalyze}
             onResultSelect={(index) => {
+              setPlanResult(null)
               const result = activeTab.batchResults?.[index]?.result
               updateQueryTab(activeTab.id, {
                 activeResultIndex: index,
@@ -368,9 +435,10 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
                 offset: result?.offset ?? 0
               })
             }}
-            onPinnedResultSelect={(id) =>
+            onPinnedResultSelect={(id) => {
+              setPlanResult(null)
               updateQueryTab(activeTab.id, { activePinnedResultId: id })
-            }
+            }}
             onPinResult={handlePinResult}
             onUnpinResult={handleUnpinResult}
             onResultRowsChange={handleResultRowsChange}
@@ -379,7 +447,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {visibleResult && (
+      {!isExecuting && !activePlan && visibleResult && (
         <QueryBottombar
           resultLabel={batchResultLabel}
           totalRows={visibleResult.totalRowCount ?? visibleResult.rowCount}
@@ -436,6 +504,30 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
           }
 
           void executeQueries(execution.queries, execution.limit, execution.offset)
+        }}
+      />
+
+      <DangerousQueryDialog
+        open={pendingExplain !== null}
+        queryCount={1}
+        connectionName={profile.name}
+        production={profile.options.environment === 'production'}
+        title={pendingExplain?.analyze ? 'Run EXPLAIN ANALYZE?' : undefined}
+        description={
+          pendingExplain?.analyze
+            ? 'PostgreSQL will execute the statement below to collect actual timings. It may modify data or trigger side effects.'
+            : undefined
+        }
+        confirmLabel={pendingExplain?.analyze ? 'Run and analyze' : 'Run and explain'}
+        statement={pendingExplain?.query}
+        onOpenChange={(open) => {
+          if (!open) setPendingExplain(null)
+        }}
+        onConfirm={() => {
+          const explain = pendingExplain
+          setPendingExplain(null)
+          if (!explain) return
+          void executeExplain(explain.query, explain.analyze)
         }}
       />
     </>
