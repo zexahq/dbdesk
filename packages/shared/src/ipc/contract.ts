@@ -80,7 +80,7 @@ export interface IpcContract {
     result: ConnectionProfile[]
   }
   'connections:discover-local': {
-    payload: void
+    payload: { port: number }
     result: Array<{
       name: string
       options: {

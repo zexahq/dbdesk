@@ -36,7 +36,7 @@ export const dbdeskAPI = {
   deleteConnection: (connectionId: string) => typedInvoke('connections:delete', { connectionId }),
   exportConnections: () => typedInvoke('connections:export'),
   importConnections: () => typedInvoke('connections:import'),
-  discoverLocalDatabases: () => typedInvoke('connections:discover-local'),
+  discoverLocalDatabases: (port: number) => typedInvoke('connections:discover-local', { port }),
 
   // ── PostgreSQL backup / restore ──
   chooseDatabaseToolPath: (

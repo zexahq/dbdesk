@@ -6,6 +6,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { userInfo } from 'node:os'
 import { Client } from 'pg'
 import { z } from 'zod'
+import { deduplicateLocalDatabases } from '@dbdesk/shared/utils/local-database-discovery'
 import { adapterRegistry } from '../adapters'
 import { connectionManager } from '../connectionManager'
 import { deleteAllDashboardsForConnection } from '../dashboard-storage'
@@ -48,14 +49,11 @@ const connectionExportSchema = z.object({
   )
 })
 
-const discoverLocalPostgres = async () => {
+const discoverLocalPostgres = async ({ port }: { port: number }) => {
   const hosts =
     process.platform === 'win32' ? ['localhost'] : ['/var/run/postgresql', '/tmp', 'localhost']
-  const ports = [5432, 5433]
   const users = Array.from(new Set([userInfo().username, 'postgres']))
-  const attempts = hosts.flatMap((host) =>
-    ports.flatMap((port) => users.map((user) => ({ host, port, user })))
-  )
+  const attempts = hosts.flatMap((host) => users.map((user) => ({ host, port, user })))
 
   const results = await Promise.allSettled(
     attempts.map(async ({ host, port, user }) => {
@@ -79,19 +77,13 @@ const discoverLocalPostgres = async () => {
     })
   )
 
-  const databases = new Map<
-    string,
-    { host: string; port: number; user: string; database: string }
-  >()
+  const databases: Array<{ host: string; port: number; user: string; database: string }> = []
   for (const result of results) {
     if (result.status !== 'fulfilled') continue
-    for (const database of result.value) {
-      const key = `${database.host}:${database.port}/${database.database}`
-      if (!databases.has(key)) databases.set(key, database)
-    }
+    databases.push(...result.value)
   }
 
-  return Array.from(databases.values()).map(({ host, port, user, database }) => ({
+  return deduplicateLocalDatabases(databases).map(({ host, port, user, database }) => ({
     name: database,
     options: { host, port, database, user, password: '', sslMode: 'disable' as const }
   }))

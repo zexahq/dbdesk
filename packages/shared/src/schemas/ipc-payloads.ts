@@ -9,6 +9,10 @@ export const connectionIdentifierSchema = z.object({
   connectionId: z.string().min(1, 'connectionId is required')
 })
 
+export const localDatabaseDiscoverySchema = z.object({
+  port: z.number().int().min(1).max(65535)
+})
+
 // ── PostgreSQL backup / restore ──
 
 const databaseToolModeSchema = z.enum(['backup', 'restore'])

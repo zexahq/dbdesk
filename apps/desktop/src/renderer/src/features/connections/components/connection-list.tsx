@@ -1,28 +1,25 @@
 import type { ConnectionProfile, DatabaseType } from '@dbdesk/shared/types'
 import {
   useConnections,
-  useCreateConnection,
-  useDiscoverLocalDatabases,
   useExportConnections,
   useImportConnections
 } from '@renderer/features/connections/queries/connections'
 import { Button } from '@renderer/components/ui/button'
 import { Skeleton } from '@renderer/components/ui/skeleton'
 import { toast } from '@renderer/shared/lib/toast'
-import { Download, Plus, Search, Upload } from 'lucide-react'
+import { Download, Plus, Upload } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { ConnectionCard } from './connection-card'
 import { ConnectionDialog } from './connection-dialog'
+import { LocalDatabaseDiscoverySheet } from './local-database-discovery-sheet'
 
 export function ConnectionList() {
   const { data: connections, isLoading, isError, error } = useConnections()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingConnection, setEditingConnection] = useState<ConnectionProfile | null>(null)
   const [selectedDatabaseType, setSelectedDatabaseType] = useState<DatabaseType | null>(null)
-  const createConnection = useCreateConnection()
   const exportConnections = useExportConnections()
   const importConnections = useImportConnections()
-  const discoverLocal = useDiscoverLocalDatabases()
 
   const handleNewConnection = () => {
     setSelectedDatabaseType('postgres')
@@ -55,43 +52,6 @@ export function ConnectionList() {
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b))
   }, [connections])
 
-  const handleDiscoverLocal = async () => {
-    try {
-      const discovered = await discoverLocal.mutateAsync()
-      const existing = new Set(
-        (connections ?? []).flatMap((profile) =>
-          'host' in profile.options && 'database' in profile.options
-            ? [`${profile.options.host}:${profile.options.port}/${profile.options.database}`]
-            : []
-        )
-      )
-      const newDatabases = discovered.filter(
-        ({ options }) => !existing.has(`${options.host}:${options.port}/${options.database}`)
-      )
-      await Promise.all(
-        newDatabases.map(({ name, options }) =>
-          createConnection.mutateAsync({
-            name,
-            type: 'postgres',
-            options: {
-              ...options,
-              group: 'Local',
-              color: '#22c55e',
-              environment: 'development'
-            }
-          })
-        )
-      )
-      toast.success(
-        newDatabases.length
-          ? `Added ${newDatabases.length} local database${newDatabases.length === 1 ? '' : 's'}`
-          : 'No new local databases found'
-      )
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Local discovery failed')
-    }
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-4">
@@ -103,14 +63,7 @@ export function ConnectionList() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() => void handleDiscoverLocal()}
-              disabled={discoverLocal.isPending || createConnection.isPending}
-            >
-              <Search className="size-4" />
-              Discover Local
-            </Button>
+            <LocalDatabaseDiscoverySheet connections={connections ?? []} />
             <Button
               variant="outline"
               onClick={() =>

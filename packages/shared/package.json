@@ -37,6 +37,10 @@
     "./utils/dashboard-json": {
       "types": "./src/utils/dashboard-json.ts",
       "default": "./src/utils/dashboard-json.ts"
+    },
+    "./utils/local-database-discovery": {
+      "types": "./src/utils/local-database-discovery.ts",
+      "default": "./src/utils/local-database-discovery.ts"
     }
   },
   "scripts": {

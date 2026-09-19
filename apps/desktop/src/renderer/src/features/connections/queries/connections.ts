@@ -87,5 +87,7 @@ export function useImportConnections() {
 }
 
 export function useDiscoverLocalDatabases() {
-  return useMutation({ mutationFn: () => dbdeskClient.discoverLocalDatabases() })
+  return useMutation({
+    mutationFn: ({ port }: { port: number }) => dbdeskClient.discoverLocalDatabases(port)
+  })
 }

@@ -11,7 +11,6 @@ import { horizontalListSortingStrategy, SortableContext } from '@dnd-kit/sortabl
 import { useDisconnect } from '@renderer/features/connections/queries/connections'
 import { TabNavigation } from '@renderer/features/sql-workspace/components/table-view/tab-navigation'
 import { Button } from '@renderer/components/ui/button'
-import { Badge } from '@renderer/components/ui/badge'
 import { useWorkspaceTabs } from '@renderer/features/sql-workspace/hooks/use-workspace-tabs'
 import { saveCurrentWorkspace } from '@renderer/features/sql-workspace/lib/workspace'
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
@@ -120,19 +119,6 @@ export function WorkspaceTopbar({
           )}
           <span className="sr-only">Toggle sidebar</span>
         </Button>
-
-        <Badge
-          variant="outline"
-          className="ml-2 shrink-0 uppercase"
-          style={
-            profile.options.color
-              ? { borderColor: profile.options.color, color: profile.options.color }
-              : undefined
-          }
-        >
-          {profile.options.environment ?? 'development'}
-          {profile.options.readOnly ? ' · read-only' : ''}
-        </Badge>
 
         <div className="flex-1 h-full overflow-x-auto no-scrollbar">
           <DndContext
