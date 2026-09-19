@@ -112,3 +112,10 @@ export type {
 } from './dashboard'
 
 export type { UpdateState } from './update'
+
+export type {
+  DatabaseBackupFormat,
+  DatabaseToolMode,
+  DatabaseToolProgress,
+  DatabaseToolRequest
+} from './database-tools'

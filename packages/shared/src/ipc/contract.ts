@@ -5,6 +5,8 @@ import type {
   CreateTableResult,
   DashboardConfig,
   DashboardExport,
+  DatabaseBackupFormat,
+  DatabaseToolRequest,
   DatabaseType,
   DBConnectionOptions,
   DeleteTableResult,
@@ -90,6 +92,28 @@ export interface IpcContract {
         sslMode: 'disable'
       }
     }>
+  }
+
+  // -- PostgreSQL backup / restore --
+  'database-tools:choose-path': {
+    payload: {
+      connectionId: string
+      mode: DatabaseToolRequest['mode']
+      format: DatabaseBackupFormat
+    }
+    result: { filePath: string | null }
+  }
+  'database-tools:preview': {
+    payload: DatabaseToolRequest
+    result: { command: string }
+  }
+  'database-tools:start': {
+    payload: DatabaseToolRequest & { jobId: string }
+    result: { started: boolean }
+  }
+  'database-tools:cancel': {
+    payload: { jobId: string }
+    result: { cancelled: boolean }
   }
 
   // -- Query --

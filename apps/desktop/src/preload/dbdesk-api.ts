@@ -2,6 +2,10 @@ import type {
   ColumnDefinition,
   ConnectionWorkspace,
   DashboardConfig,
+  DatabaseBackupFormat,
+  DatabaseToolMode,
+  DatabaseToolProgress,
+  DatabaseToolRequest,
   DatabaseType,
   DBConnectionOptions,
   ExportTableOptions,
@@ -33,6 +37,24 @@ export const dbdeskAPI = {
   exportConnections: () => typedInvoke('connections:export'),
   importConnections: () => typedInvoke('connections:import'),
   discoverLocalDatabases: () => typedInvoke('connections:discover-local'),
+
+  // ── PostgreSQL backup / restore ──
+  chooseDatabaseToolPath: (
+    connectionId: string,
+    mode: DatabaseToolMode,
+    format: DatabaseBackupFormat
+  ) => typedInvoke('database-tools:choose-path', { connectionId, mode, format }),
+  previewDatabaseTool: (request: DatabaseToolRequest) =>
+    typedInvoke('database-tools:preview', request),
+  startDatabaseTool: (request: DatabaseToolRequest, jobId: string) =>
+    typedInvoke('database-tools:start', { ...request, jobId }),
+  cancelDatabaseTool: (jobId: string) => typedInvoke('database-tools:cancel', { jobId }),
+  onDatabaseToolProgress(callback: (progress: DatabaseToolProgress) => void): () => void {
+    const handler = (_event: Electron.IpcRendererEvent, progress: DatabaseToolProgress) =>
+      callback(progress)
+    ipcRenderer.on('database-tools:progress', handler)
+    return () => ipcRenderer.removeListener('database-tools:progress', handler)
+  },
 
   // ── Query ──
   runQuery: (

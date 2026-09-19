@@ -17,8 +17,9 @@ import { saveCurrentWorkspace } from '@renderer/features/sql-workspace/lib/works
 import { useSqlWorkspaceStore } from '@renderer/features/sql-workspace/stores/sql-workspace-store'
 import type { Tab } from '@renderer/features/sql-workspace/stores/tab-store'
 import { useRouter } from '@tanstack/react-router'
-import { PanelLeftClose, PanelLeftOpen, Plus, Unplug } from 'lucide-react'
-import { useCallback, useMemo } from 'react'
+import { ArchiveRestore, PanelLeftClose, PanelLeftOpen, Plus, Unplug } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { DatabaseToolsDialog } from './dialogs/database-tools-dialog'
 import { SortableTabButton } from './sortable-tab-button'
 
 interface WorkspaceTopbarProps {
@@ -36,6 +37,7 @@ export function WorkspaceTopbar({
 }: WorkspaceTopbarProps) {
   const router = useRouter()
   const { mutate: disconnect, isPending: isDisconnecting } = useDisconnect()
+  const [isDatabaseToolsOpen, setIsDatabaseToolsOpen] = useState(false)
 
   const { reset: resetWorkspace } = useSqlWorkspaceStore()
 
@@ -91,6 +93,17 @@ export function WorkspaceTopbar({
         onAddQueryTab={handleAddQueryTab}
       />
       <div className="border-b h-10 bg-muted/20 flex items-center">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-full w-10 cursor-pointer rounded-none border-l border-border/50 shrink-0"
+          onClick={() => setIsDatabaseToolsOpen(true)}
+          title="Backup or restore database"
+        >
+          <ArchiveRestore className="size-4" />
+          <span className="sr-only">Backup or restore database</span>
+        </Button>
+
         <Button
           variant="ghost"
           size="icon"
@@ -160,6 +173,11 @@ export function WorkspaceTopbar({
           <span className="sr-only">Disconnect</span>
         </Button>
       </div>
+      <DatabaseToolsDialog
+        profile={profile}
+        open={isDatabaseToolsOpen}
+        onOpenChange={setIsDatabaseToolsOpen}
+      />
     </>
   )
 }
