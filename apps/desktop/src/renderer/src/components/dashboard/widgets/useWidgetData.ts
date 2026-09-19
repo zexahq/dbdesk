@@ -133,7 +133,7 @@ export function useWidgetData(
         )
       }
 
-      return dbdeskClient.runQuery(connectionId, resolvedQueryContent, { limit })
+      return dbdeskClient.runQuery(connectionId, resolvedQueryContent, { limit, readOnly: true })
     },
     enabled: hasQuery && canRunQuery,
     staleTime: 30_000, // 30 seconds before considered stale

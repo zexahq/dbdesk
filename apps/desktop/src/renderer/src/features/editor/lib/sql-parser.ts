@@ -6,7 +6,31 @@ type StatementSpan = {
   endLineNumber: number
 }
 
-const DANGEROUS_SQL_KEYWORDS = ['DELETE', 'UPDATE', 'INSERT', 'DROP', 'TRUNCATE', 'ALTER', 'RENAME']
+const DANGEROUS_SQL_KEYWORDS = [
+  'ALTER',
+  'ANALYZE',
+  'CALL',
+  'CLUSTER',
+  'COMMENT',
+  'COPY',
+  'CREATE',
+  'DELETE',
+  'DO',
+  'DROP',
+  'GRANT',
+  'INTO',
+  'INSERT',
+  'MERGE',
+  'REASSIGN',
+  'REFRESH',
+  'REINDEX',
+  'RENAME',
+  'REVOKE',
+  'SECURITY',
+  'TRUNCATE',
+  'UPDATE',
+  'VACUUM'
+]
 const DOLLAR_QUOTE_TAG_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
 
 const readDollarQuoteTag = (text: string, start: number): string | null => {
@@ -239,7 +263,11 @@ const expandBlockEndLine = (lines: string[], endLineNumber: number): number => {
   return index + 1
 }
 
-const hasBlankSeparator = (lines: string[], fromLineNumber: number, toLineNumber: number): boolean => {
+const hasBlankSeparator = (
+  lines: string[],
+  fromLineNumber: number,
+  toLineNumber: number
+): boolean => {
   for (let lineIndex = fromLineNumber; lineIndex < toLineNumber - 1; lineIndex++) {
     if (lines[lineIndex]?.trim() === '') {
       return true
@@ -406,20 +434,33 @@ export const getEditorQueries = (sql: string): EditorQueryBlock[] => {
 // Patterns to extract a meaningful target name from a query for tab labelling.
 // Order matters: more specific multi-word verbs come before single-word ones.
 const VERB_PATTERNS: { verb: string; tablePattern: RegExp }[] = [
-  { verb: 'SELECT',       tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'INSERT INTO',  tablePattern: /\bINSERT\s+INTO\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'UPDATE',       tablePattern: /\bUPDATE\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'DELETE FROM',  tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'DELETE',       tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'CREATE TABLE', tablePattern: /\bCREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'CREATE VIEW',  tablePattern: /\bCREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'CREATE INDEX', tablePattern: /\bCREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:["\w]+)\s+ON\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'ALTER TABLE',  tablePattern: /\bALTER\s+TABLE\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'DROP TABLE',   tablePattern: /\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'DROP VIEW',    tablePattern: /\bDROP\s+VIEW\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'TRUNCATE',     tablePattern: /\bTRUNCATE\s+(?:TABLE\s+)?(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'WITH',         tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
-  { verb: 'CALL',         tablePattern: /\bCALL\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'SELECT', tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'INSERT INTO', tablePattern: /\bINSERT\s+INTO\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'UPDATE', tablePattern: /\bUPDATE\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'DELETE FROM', tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'DELETE', tablePattern: /\bDELETE\s+FROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  {
+    verb: 'CREATE TABLE',
+    tablePattern:
+      /\bCREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i
+  },
+  {
+    verb: 'CREATE VIEW',
+    tablePattern: /\bCREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(?:["\w.]+\.)?(["\w]+)/i
+  },
+  {
+    verb: 'CREATE INDEX',
+    tablePattern: /\bCREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:["\w]+)\s+ON\s+(?:["\w.]+\.)?(["\w]+)/i
+  },
+  { verb: 'ALTER TABLE', tablePattern: /\bALTER\s+TABLE\s+(?:["\w.]+\.)?(["\w]+)/i },
+  {
+    verb: 'DROP TABLE',
+    tablePattern: /\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i
+  },
+  { verb: 'DROP VIEW', tablePattern: /\bDROP\s+VIEW\s+(?:IF\s+EXISTS\s+)?(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'TRUNCATE', tablePattern: /\bTRUNCATE\s+(?:TABLE\s+)?(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'WITH', tablePattern: /\bFROM\s+(?:["\w.]+\.)?(["\w]+)/i },
+  { verb: 'CALL', tablePattern: /\bCALL\s+(?:["\w.]+\.)?(["\w]+)/i }
 ]
 
 export const getQueryTabLabel = (query: string): string => {
@@ -427,10 +468,7 @@ export const getQueryTabLabel = (query: string): string => {
   for (const { verb, tablePattern } of VERB_PATTERNS) {
     // Check if the query starts with this verb (case-insensitive, allow whitespace)
     const verbWords = verb.split(' ')
-    const verbRegex = new RegExp(
-      `^\\s*${verbWords.map((w) => `(?:${w})`).join('\\s+')}\\b`,
-      'i'
-    )
+    const verbRegex = new RegExp(`^\\s*${verbWords.map((w) => `(?:${w})`).join('\\s+')}\\b`, 'i')
     if (!verbRegex.test(stripped)) {
       continue
     }
@@ -448,3 +486,6 @@ export const hasDangerousSqlKeywords = (query: string): boolean => {
   const dangerousKeywordPattern = new RegExp(`\\b(?:${DANGEROUS_SQL_KEYWORDS.join('|')})\\b`, 'i')
   return dangerousKeywordPattern.test(sanitizedQuery)
 }
+
+export const requiresSqlConfirmation = (queries: string[], production: boolean): boolean =>
+  production || queries.some(hasDangerousSqlKeywords)

@@ -22,8 +22,9 @@ import type {
   UpdateTableCellOptions,
   UpdateTableCellResult
 } from '@dbdesk/shared/types'
+import { readFileSync } from 'node:fs'
 import { performance } from 'node:perf_hooks'
-import { Pool, type PoolClient, type QueryResult as PgQueryResult } from 'pg'
+import { Pool, type PoolClient, type PoolConfig, type QueryResult as PgQueryResult } from 'pg'
 
 import type { QueryResultRow } from 'pg'
 import {
@@ -34,24 +35,64 @@ import {
   buildUpdateCellQuery
 } from './queries'
 import { parsePostgresArray, quoteIdentifier } from './utils'
-import { isSelectableQuery, normalizeQuery } from './sql-parser'
+import { isReadOnlyQuery, isSelectableQuery, normalizeQuery } from './sql-parser'
+import { expandHomePath, SSHTunnel } from './ssh-tunnel'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
-function getSslConfig(sslMode?: PostgreSQLSslMode): boolean | object {
-  switch (sslMode) {
-    case 'disable':
-      return false
-    case 'allow':
-      return false
+export const getPostgresSslConnectionModes = (
+  mode: PostgreSQLSslMode = 'disable'
+): PostgreSQLSslMode[] =>
+  mode === 'prefer' ? ['require', 'disable'] : mode === 'allow' ? ['disable', 'require'] : [mode]
+
+export const buildPostgresToolEnv = (
+  options: Pick<
+    SQLConnectionOptions,
+    'sslMode' | 'sslRootCertPath' | 'sslClientCertPath' | 'sslClientKeyPath'
+  >
+): Record<string, string> => ({
+  PGSSLMODE: options.sslMode ?? 'disable',
+  ...(options.sslRootCertPath ? { PGSSLROOTCERT: expandHomePath(options.sslRootCertPath) } : {}),
+  ...(options.sslClientCertPath ? { PGSSLCERT: expandHomePath(options.sslClientCertPath) } : {}),
+  ...(options.sslClientKeyPath ? { PGSSLKEY: expandHomePath(options.sslClientKeyPath) } : {})
+})
+
+export function buildPostgresSslConfig(
+  options: Pick<
+    SQLConnectionOptions,
+    'host' | 'sslMode' | 'sslRootCertPath' | 'sslClientCertPath' | 'sslClientKeyPath'
+  >,
+  readFile: (path: string) => Buffer = readFileSync
+): PoolConfig['ssl'] {
+  if (options.sslMode === 'disable' || options.sslMode === 'allow') return false
+
+  const certificateOptions = {
+    ...(options.sslRootCertPath ? { ca: readFile(expandHomePath(options.sslRootCertPath)) } : {}),
+    ...(options.sslClientCertPath
+      ? { cert: readFile(expandHomePath(options.sslClientCertPath)) }
+      : {}),
+    ...(options.sslClientKeyPath ? { key: readFile(expandHomePath(options.sslClientKeyPath)) } : {})
+  }
+
+  switch (options.sslMode) {
     case 'prefer':
-      return { rejectUnauthorized: false }
+      return { ...certificateOptions, rejectUnauthorized: false }
     case 'require':
-      return { rejectUnauthorized: false }
+      return options.sslRootCertPath
+        ? {
+            ...certificateOptions,
+            rejectUnauthorized: true,
+            checkServerIdentity: () => undefined
+          }
+        : { ...certificateOptions, rejectUnauthorized: false }
     case 'verify-ca':
-      return true
+      return {
+        ...certificateOptions,
+        rejectUnauthorized: true,
+        checkServerIdentity: () => undefined
+      }
     case 'verify-full':
-      return true
+      return { ...certificateOptions, rejectUnauthorized: true, servername: options.host }
     default:
       return false
   }
@@ -59,6 +100,7 @@ function getSslConfig(sslMode?: PostgreSQLSslMode): boolean | object {
 
 export class PostgresAdapter implements SQLAdapter {
   private pool: Pool | null = null
+  private tunnel: SSHTunnel | null = null
   private readonly activeQueries = new Map<string, number>()
 
   constructor(private readonly options: SQLConnectionOptions) {}
@@ -68,51 +110,72 @@ export class PostgresAdapter implements SQLAdapter {
       return
     }
 
-    const pool = new Pool({
-      host: this.options.host,
-      port: this.options.port,
-      database: this.options.database,
-      user: this.options.user,
-      password: this.options.password,
-      ssl: getSslConfig(this.options.sslMode),
-      max: 10,
-      idleTimeoutMillis: DEFAULT_TIMEOUT_MS,
-      connectionTimeoutMillis: DEFAULT_TIMEOUT_MS
-    })
-
-    // pg emits an error on the pool when an idle client loses its database or
-    // network connection. Without a listener, Node treats that event as
-    // unhandled and exits the host process. pg removes the broken
-    // client itself, so logging here lets the next query create a fresh one.
-    pool.on('error', (error: unknown) => {
-      console.error(
-        `[postgres] idle client error for ${this.options.host}:${this.options.port}/${this.options.database}:`,
-        error instanceof Error ? error.message : error
-      )
-    })
-
-    try {
-      const client = await pool.connect()
-      try {
-        await client.query(QUERIES.TEST_CONNECTION)
-      } finally {
-        client.release()
-      }
-
-      this.pool = pool
-    } catch (error) {
-      await pool.end().catch(() => {})
-      throw error
+    let tunnel: SSHTunnel | null = null
+    if (this.options.sshTunnel?.enabled) {
+      tunnel = await SSHTunnel.start(this.options.sshTunnel, {
+        host: this.options.host,
+        port: this.options.port
+      })
     }
+
+    const sslModes = getPostgresSslConnectionModes(this.options.sslMode)
+    let lastError: unknown
+
+    for (const sslMode of sslModes) {
+      const pool = new Pool({
+        host: tunnel ? '127.0.0.1' : this.options.host,
+        port: tunnel?.localPort ?? this.options.port,
+        database: this.options.database,
+        user: this.options.user,
+        password: this.options.password,
+        ssl: buildPostgresSslConfig({ ...this.options, sslMode }),
+        statement_timeout: this.options.statementTimeoutMs || undefined,
+        max: 10,
+        idleTimeoutMillis: DEFAULT_TIMEOUT_MS,
+        connectionTimeoutMillis: DEFAULT_TIMEOUT_MS
+      })
+
+      // pg removes broken idle clients itself; the listener prevents an
+      // unhandled error from terminating Electron's main process.
+      pool.on('error', (error: unknown) => {
+        console.error(
+          `[postgres] idle client error for ${this.options.host}:${this.options.port}/${this.options.database}:`,
+          error instanceof Error ? error.message : error
+        )
+      })
+
+      try {
+        const client = await pool.connect()
+        try {
+          await client.query(QUERIES.TEST_CONNECTION)
+        } finally {
+          client.release()
+        }
+
+        this.pool = pool
+        this.tunnel = tunnel
+        return
+      } catch (error) {
+        lastError = error
+        await pool.end().catch(() => {})
+      }
+    }
+
+    await tunnel?.stop().catch(() => {})
+    throw lastError
   }
 
   public async disconnect(): Promise<void> {
-    if (!this.pool) {
-      return
-    }
-
-    await this.pool.end()
+    const pool = this.pool
+    const tunnel = this.tunnel
     this.pool = null
+    this.tunnel = null
+    await pool?.end().catch(() => {})
+    await tunnel?.stop().catch(() => {})
+  }
+
+  public isHealthy(): boolean {
+    return this.pool !== null && (!this.tunnel || this.tunnel.isActive)
   }
 
   public async runQuery(query: string, options?: RunQueryOptions): Promise<QueryResult> {
@@ -122,6 +185,10 @@ export class PostgresAdapter implements SQLAdapter {
     const normalizedQuery = normalizeQuery(query)
     const queryId = options?.queryId
     const readOnly = options?.readOnly === true
+
+    if (readOnly && !isReadOnlyQuery(normalizedQuery)) {
+      throw new Error('Read-only connections only allow one SELECT or SHOW statement at a time')
+    }
 
     // A dedicated client is required for cancellation and for read-only
     // enforcement (the query runs inside a READ ONLY transaction, so
@@ -171,6 +238,9 @@ export class PostgresAdapter implements SQLAdapter {
     const client = await pool.connect()
 
     try {
+      if (options?.readOnly) {
+        await client.query('START TRANSACTION READ ONLY')
+      }
       for (const query of queries) {
         const normalizedQuery = normalizeQuery(query).trim()
         if (!normalizedQuery) {
@@ -178,20 +248,36 @@ export class PostgresAdapter implements SQLAdapter {
         }
 
         const start = performance.now()
+        let savepointActive = false
 
         try {
+          if (options?.readOnly) {
+            await client.query('SAVEPOINT dbdesk_batch_statement')
+            savepointActive = true
+          }
+          if (options?.readOnly && !isReadOnlyQuery(normalizedQuery)) {
+            throw new Error('Read-only connections only allow SELECT or SHOW statements')
+          }
           const result = await this.executeNormalizedQueryOnClient(
             client,
             normalizedQuery,
             options,
             start
           )
+          if (savepointActive) {
+            await client.query('RELEASE SAVEPOINT dbdesk_batch_statement')
+            savepointActive = false
+          }
           results.push({
             query: normalizedQuery,
             result,
             executionTime: result.executionTime ?? performance.now() - start
           })
         } catch (error) {
+          if (savepointActive) {
+            await client.query('ROLLBACK TO SAVEPOINT dbdesk_batch_statement').catch(() => {})
+            await client.query('RELEASE SAVEPOINT dbdesk_batch_statement').catch(() => {})
+          }
           results.push({
             query: normalizedQuery,
             error: error instanceof Error ? error.message : 'Failed to execute query',
@@ -200,6 +286,9 @@ export class PostgresAdapter implements SQLAdapter {
         }
       }
     } finally {
+      if (options?.readOnly) {
+        await client.query('ROLLBACK').catch(() => {})
+      }
       client.release()
     }
 
@@ -675,7 +764,9 @@ export class PostgresAdapter implements SQLAdapter {
     const rowCount = typeof result?.rowCount === 'number' ? result.rowCount : rows.length
     const cmd = result?.command ?? ''
     const commandTag =
-      cmd && rowCount > 0 && !['SELECT', 'SHOW'].includes(cmd) ? `${cmd} ${rowCount}` : cmd || undefined
+      cmd && rowCount > 0 && !['SELECT', 'SHOW'].includes(cmd)
+        ? `${cmd} ${rowCount}`
+        : cmd || undefined
 
     return {
       rows,

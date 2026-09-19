@@ -1,6 +1,10 @@
 import type { ConnectionProfile } from '@dbdesk/shared/types'
 import { dbdeskClient } from '@renderer/shared/api/client'
-import { useConnect, useDeleteConnection } from '@renderer/features/connections/queries/connections'
+import {
+  useConnect,
+  useCreateConnection,
+  useDeleteConnection
+} from '@renderer/features/connections/queries/connections'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import {
@@ -33,12 +37,16 @@ const typeLabelMap: Record<ConnectionProfile['type'], { label: string; image: st
 export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
   const { mutateAsync: connect, isPending: isConnecting } = useConnect()
   const { mutateAsync: deleteConnection, isPending: isDeleting } = useDeleteConnection()
+  const { mutateAsync: createConnection, isPending: isDuplicating } = useCreateConnection()
   const navigate = useNavigate()
   const setCurrentConnection = useSqlWorkspaceStore((s) => s.setCurrentConnection)
   const reset = useTabStore((s) => s.reset)
   const loadFromSerialized = useTabStore((s) => s.loadFromSerialized)
 
-  const isBusy = isConnecting || isDeleting
+  const isBusy = isConnecting || isDeleting || isDuplicating
+  const environment = 'environment' in profile.options ? profile.options.environment : undefined
+  const color = 'color' in profile.options ? profile.options.color : undefined
+  const tags = 'tags' in profile.options ? profile.options.tags : undefined
 
   const lastConnectedLabel = useMemo(() => {
     if (!profile.lastConnectedAt) return 'Never connected'
@@ -80,76 +88,69 @@ export function ConnectionCard({ profile, onEdit }: ConnectionCardProps) {
     await deleteConnection(profile.id)
   }
 
+  const handleDuplicate = async () => {
+    await createConnection({
+      name: `${profile.name} copy`,
+      type: profile.type,
+      options: profile.options
+    })
+    toast.success(`Duplicated "${profile.name}"`)
+  }
+
   return (
-    <Card className="h-full">
-      <CardHeader className="gap-1">
+    <Card
+      className="h-full gap-3 py-3"
+      style={color ? { borderLeft: `4px solid ${color}` } : undefined}
+    >
+      <CardHeader className="gap-1 px-4">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-lg font-semibold">{profile.name}</CardTitle>
-          <Badge variant="secondary" className="flex items-center gap-2 px-2 py-1">
+          <CardTitle className="truncate text-base font-semibold">{profile.name}</CardTitle>
+          <Badge variant="secondary" className="flex shrink-0 items-center gap-1 px-2 py-1">
             <img
               src={typeLabelMap[profile.type].image}
               alt={typeLabelMap[profile.type].label}
-              className="size-5 mr-2"
+              className="size-4"
             />
-            {typeLabelMap[profile.type].label}
+            {environment ?? typeLabelMap[profile.type].label}
           </Badge>
         </div>
-        <CardDescription>{lastConnectedLabel}</CardDescription>
+        <CardDescription className="truncate">
+          {'host' in profile.options ? profile.options.host : '—'}
+          {'port' in profile.options && profile.options.port ? `:${profile.options.port}` : ''}
+          {'database' in profile.options ? ` / ${profile.options.database}` : ''}
+        </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3 text-sm">
-        <div>
-          <p className="text-xs uppercase text-muted-foreground">Host</p>
-          <p className="font-medium">
-            {'host' in profile.options ? profile.options.host : '—'}
-            {'port' in profile.options && profile.options.port ? `:${profile.options.port}` : ''}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {'database' in profile.options && (
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Database</p>
-              <p className="font-medium">{profile.options.database}</p>
-            </div>
-          )}
-          {'user' in profile.options && (
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">User</p>
-              <p className="font-medium">{profile.options.user}</p>
-            </div>
-          )}
-        </div>
+      <CardContent className="flex min-h-5 items-center gap-1 px-4 text-xs text-muted-foreground">
+        <span>{lastConnectedLabel}</span>
+        {tags?.map((tag) => (
+          <Badge key={tag} variant="outline" className="px-1.5 py-0 text-[10px]">
+            {tag}
+          </Badge>
+        ))}
       </CardContent>
-      <CardFooter className="flex items-center justify-between gap-2 w-full">
-        <div className="flex items-center gap-2 w-full">
-          <Button
-            size="sm"
-            variant="destructive"
-            className="w-1/2"
-            onClick={() => void handleDelete()}
-            disabled={isBusy}
-          >
-            {isDeleting ? 'Deleting…' : 'Delete'}
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="w-1/2"
-            onClick={() => onEdit?.(profile)}
-            disabled={isBusy}
-          >
-            Edit
-          </Button>
-        </div>
-        <div className="flex justify-end gap-2 w-full">
-          <Button
-            size="sm"
-            className="cursor-pointer w-1/2"
-            onClick={handleConnect}
-            disabled={isBusy}
-          >
-            {isConnecting ? 'Connecting…' : 'Connect'}
-          </Button>
-        </div>
+      <CardFooter className="grid grid-cols-4 gap-2 px-4">
+        <Button size="sm" onClick={handleConnect} disabled={isBusy}>
+          {isConnecting ? 'Connecting…' : 'Connect'}
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => onEdit?.(profile)} disabled={isBusy}>
+          Edit
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void handleDuplicate()}
+          disabled={isBusy}
+        >
+          {isDuplicating ? 'Copying…' : 'Duplicate'}
+        </Button>
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={() => void handleDelete()}
+          disabled={isBusy}
+        >
+          {isDeleting ? 'Deleting…' : 'Delete'}
+        </Button>
       </CardFooter>
     </Card>
   )

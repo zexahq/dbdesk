@@ -75,7 +75,10 @@ export function WidgetEditDialog({
     queryKey: ['query-preview', connectionId, selectedSavedQuery?.id],
     queryFn: async () => {
       if (!selectedSavedQuery) return null
-      return dbdeskClient.runQuery(connectionId, selectedSavedQuery.content, { limit: 1 })
+      return dbdeskClient.runQuery(connectionId, selectedSavedQuery.content, {
+        limit: 1,
+        readOnly: true
+      })
     },
     enabled: open && !!connectionId && queryMode === 'saved' && !!selectedSavedQuery,
     staleTime: 30_000,
@@ -85,7 +88,10 @@ export function WidgetEditDialog({
   // Mutation for validating custom queries
   const validateMutation = useMutation({
     mutationFn: async (query: string) => {
-      const result = await dbdeskClient.runQuery(connectionId, query, { limit: 1 })
+      const result = await dbdeskClient.runQuery(connectionId, query, {
+        limit: 1,
+        readOnly: true
+      })
       return { query, columns: result.columns, previewRow: result.rows[0] as Record<string, unknown> | undefined }
     },
     onSuccess: (data) => {
