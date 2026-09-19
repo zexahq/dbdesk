@@ -176,10 +176,7 @@ export function removeConnection(idOrName: string): boolean {
 
 import { buildDashboardConfigJson } from '@dbdesk/shared/utils/dashboard-json'
 
-// Dashboard operations. The CLI operates in the local (userId '') scope:
-// it lists every dashboard on a connection regardless of owner, since it
-// has no user identity. Rows the desktop app later claims keep working here
-// because lookups are by dashboardId, not by owner.
+// Dashboard operations are local-first and use the shared local (userId '') scope.
 
 function rowToDashboard(row: typeof dashboards.$inferSelect): DashboardConfig {
   // Prefer the full JSON document for content; columns stay authoritative

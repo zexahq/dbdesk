@@ -9,29 +9,21 @@ import {
   persistDashboard,
   saveDashboard
 } from '../dashboard-storage'
-import { authManager } from '../lib/auth-manager'
-import { ValidationError } from '../utils/errors'
 import { typedHandle } from './typed-handle'
 
-const getAuthenticatedUserId = async (): Promise<string> => {
-  const userId = (await authManager.getSession())?.user?.id
-  if (!userId) {
-    throw new ValidationError('You must be signed in to manage dashboards')
-  }
-  return userId
-}
+const LOCAL_USER_ID = ''
 
 export function registerDashboardHandlers() {
   typedHandle('dashboards:load', async ({ connectionId }) => {
-    return loadDashboards(connectionId, await getAuthenticatedUserId())
+    return loadDashboards(connectionId, LOCAL_USER_ID)
   })
 
   typedHandle('dashboards:get', async ({ connectionId, dashboardId }) => {
-    return getDashboard(connectionId, dashboardId, await getAuthenticatedUserId())
+    return getDashboard(connectionId, dashboardId, LOCAL_USER_ID)
   })
 
   typedHandle('dashboards:save', async (dashboard) => {
-    const userId = await getAuthenticatedUserId()
+    const userId = LOCAL_USER_ID
     const normalized: DashboardConfig = {
       ...(dashboard as DashboardConfig),
       userId,
@@ -42,7 +34,7 @@ export function registerDashboardHandlers() {
   })
 
   typedHandle('dashboards:delete', async ({ connectionId, dashboardId }) => {
-    return deleteDashboard(connectionId, dashboardId, await getAuthenticatedUserId())
+    return deleteDashboard(connectionId, dashboardId, LOCAL_USER_ID)
   })
 
   typedHandle('dashboards:persist', async ({ dashboardId }) => {
@@ -54,11 +46,11 @@ export function registerDashboardHandlers() {
   })
 
   typedHandle('dashboards:export', async (payload) => {
-    return exportDashboards(await getAuthenticatedUserId(), payload?.connectionId)
+    return exportDashboards(LOCAL_USER_ID, payload?.connectionId)
   })
 
   typedHandle('dashboards:import', async ({ dashboards, overwrite }) => {
-    const userId = await getAuthenticatedUserId()
+    const userId = LOCAL_USER_ID
     return importDashboards(dashboards as DashboardConfig[], userId, overwrite ?? false)
   })
 }

@@ -1,7 +1,12 @@
 import type { BrowserWindow } from 'electron'
-import { safeStorage } from 'electron'
 import { betterAuthClient } from './better-auth-client'
-import { getCachedSession, setCachedSession, clearCachedSession } from './session-cache'
+import { isSecureStorageAvailable } from './secure-storage'
+import {
+  clearCachedSession,
+  getCachedSession,
+  hasCachedSession,
+  setCachedSession
+} from './session-cache'
 
 interface SessionResponse {
   session: { id: string; expiresAt: string; token: string; userId: string }
@@ -14,18 +19,6 @@ interface SessionResponse {
  * common case, while still catching server-side revocation/expiry.
  */
 const VERIFY_AFTER_MS = 24 * 60 * 60 * 1000
-
-/**
- * True when OS-level encryption is unusable (e.g. Linux without a keyring).
- * Never throws; safe to call any time after app.ready().
- */
-function isEncryptionUsable(): boolean {
-  try {
-    return safeStorage.isEncryptionAvailable()
-  } catch {
-    return false
-  }
-}
 
 let _getWindow: (() => BrowserWindow | null) | null = null
 
@@ -90,7 +83,7 @@ export const authManager = {
   getSession(): SessionResponse | null {
     const cached = getCachedSession()
     if (cached) {
-      if (isEncryptionUsable() && Date.now() - cached.cachedAt > VERIFY_AFTER_MS) {
+      if (Date.now() - cached.cachedAt > VERIFY_AFTER_MS) {
         // Stale cache: re-verify in the background (may touch keychain once).
         void this.verifySessionInBackground()
       }
@@ -109,6 +102,12 @@ export const authManager = {
         }
       }
     }
+
+    // The plugin keeps its own OS-encrypted cookie. Recover a missing app cache
+    // in the background so local startup is never blocked by authentication.
+    // An existing but unreadable row means the keychain is temporarily
+    // unavailable, so leave it untouched for a later launch.
+    if (!hasCachedSession()) void this.verifySessionInBackground()
     return null
   },
 
@@ -118,13 +117,10 @@ export const authManager = {
    * Returns the session or null.
    */
   async getSessionFresh(): Promise<SessionResponse | null> {
-    // Storage unusable (e.g. Linux without an OS keyring) is not the same as
-    // logged out: serve the cache without clearing it, and skip a network
-    // round-trip that could never authenticate anyway.
-    if (!isEncryptionUsable()) {
-      console.log('[auth-manager] getSessionFresh: encryption unavailable, serving cache')
-      return this.getSession()
-    }
+    // The Electron plugin uses the same safeStorage key for its cookie. Without
+    // it, a fetch would look logged out and could erase otherwise valid caches.
+    if (!isSecureStorageAvailable()) return null
+
     try {
       const session = await betterAuthClient.getSession()
       const result = unwrapData<SessionResponse>(session)
@@ -157,17 +153,14 @@ export const authManager = {
    * Updates/clears the local cache and notifies the renderer of any changes.
    */
   async verifySessionInBackground(): Promise<void> {
+    const hadCache = getCachedSession() !== null
     const result = await this.getSessionFresh()
     if (result) {
       notifySessionRefreshed(result)
-    } else {
-      // Only clear + notify if we previously had a cached session
-      // (avoid spurious events if user is already logged out)
-      const hadCache = getCachedSession() !== null
-      if (hadCache) {
-        clearCachedSession()
-        notifySessionInvalidated()
-      }
+    } else if (hadCache && !hasCachedSession()) {
+      // getSessionFresh clears the row only when the server confirms the
+      // session is invalid. Network and keychain failures preserve it.
+      notifySessionInvalidated()
     }
   },
 

@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { Button } from '@renderer/components/ui/button'
 import { requestSignIn } from '@renderer/features/auth/lib/auth-utils'
 import DbDeskLogo from '@renderer/assets/dbdesk-logo.svg'
@@ -27,6 +27,9 @@ const AuthPage = () => {
         <div className="space-y-3">
           <Button onClick={handleLogin} variant="default" className="w-full" size="sm">
             Sign in
+          </Button>
+          <Button asChild variant="outline" className="w-full" size="sm">
+            <Link to="/">Continue offline</Link>
           </Button>
         </div>
       </div>
