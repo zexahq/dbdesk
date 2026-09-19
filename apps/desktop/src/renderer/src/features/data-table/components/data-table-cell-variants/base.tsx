@@ -177,6 +177,13 @@ export function areCellPropsEqual<TData, TValue>(
     return false
   }
 
+  if (
+    prevProps.cell.column.columnDef.cell !== nextProps.cell.column.columnDef.cell ||
+    prevProps.cell.column.columnDef.meta !== nextProps.cell.column.columnDef.meta
+  ) {
+    return false
+  }
+
   // Check if cell size changed
   if (prevProps.cell.column.getSize() !== nextProps.cell.column.getSize()) {
     return false

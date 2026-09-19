@@ -1,4 +1,9 @@
-import type { QueryResultRow, TableDataColumn, TableSortRule } from '@dbdesk/shared/types'
+import type {
+  ConstraintInfo,
+  QueryResultRow,
+  TableDataColumn,
+  TableSortRule
+} from '@dbdesk/shared/types'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import {
@@ -6,16 +11,64 @@ import {
   getCellVariant,
   getSelectionColumnId
 } from '@renderer/features/data-table/lib/data-table'
+import {
+  getForeignKeyNavigation,
+  isForeignKeyActivationKey,
+  type ForeignKeyNavigation
+} from '@renderer/features/data-table/lib/foreign-key-navigation'
 import { cn } from '@renderer/shared/lib/utils'
 import { ColumnDef } from '@tanstack/react-table'
-import { ChevronDown, ChevronUp, Key, Link } from 'lucide-react'
+import { ChevronDown, ChevronUp, ExternalLink, Key, Link } from 'lucide-react'
 
 const DEFAULT_COLUMN_WIDTH = 240
 const DEFAULT_MIN_COLUMN_WIDTH = 120
 
+type GetColumnsOptions = {
+  constraints?: ConstraintInfo[]
+  onForeignKeyOpen?: (navigation: ForeignKeyNavigation) => void
+  onSortChange?: (sortRules: TableSortRule[] | undefined) => void
+}
+
+type DataTableMeta = {
+  sortRules?: TableSortRule[]
+  onCellFocus?: (rowIndex: number, columnId: string) => void
+}
+
+type ForeignKeyLinkProps = {
+  label: string
+  value: string
+  onFocus: () => void
+  onOpen: () => void
+}
+
+function ForeignKeyLink({ label, value, onFocus, onOpen }: ForeignKeyLinkProps) {
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <span className="min-w-0 flex-1 truncate">{value}</span>
+      <button
+        type="button"
+        data-foreign-key-navigation
+        className="shrink-0 rounded-sm p-0.5 text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={label}
+        onFocus={onFocus}
+        onClick={(event) => {
+          event.stopPropagation()
+          onOpen()
+        }}
+        onDoubleClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (isForeignKeyActivationKey(event.key)) event.stopPropagation()
+        }}
+      >
+        <ExternalLink className="size-3.5" aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
 export const getColumns = (
   columns: TableDataColumn[],
-  onSortChange?: (sortRules: TableSortRule[] | undefined) => void
+  { constraints, onForeignKeyOpen, onSortChange }: GetColumnsOptions = {}
 ): ColumnDef<QueryResultRow>[] => {
   return [
     {
@@ -65,11 +118,7 @@ export const getColumns = (
       id: column.name,
       accessorKey: column.name,
       header: ({ table }) => {
-        const meta = table.options.meta as
-          | {
-              sortRules?: TableSortRule[]
-            }
-          | undefined
+        const meta = table.options.meta as DataTableMeta | undefined
 
         const sortRules = meta?.sortRules
         const currentRule = sortRules?.find((rule) => rule.column === column.name)
@@ -160,10 +209,24 @@ export const getColumns = (
           </div>
         )
       },
-      cell: ({ getValue }) => {
+      cell: ({ getValue, row, table }) => {
         const value = getValue()
         const formattedValue = formatCellValue(value, column.dataType)
         const isNull = value === null
+        const navigation = getForeignKeyNavigation(column, constraints, value)
+        const meta = table.options.meta as DataTableMeta | undefined
+
+        if (navigation && onForeignKeyOpen) {
+          return (
+            <ForeignKeyLink
+              label={`Preview ${navigation.referencedSchema}.${navigation.referencedTable} where ${navigation.referencedColumn} equals ${formattedValue}`}
+              value={formattedValue}
+              onFocus={() => meta?.onCellFocus?.(row.index, column.name)}
+              onOpen={() => onForeignKeyOpen(navigation)}
+            />
+          )
+        }
+
         return (
           <span className={cn('truncate', isNull && 'text-muted-foreground')}>
             {formattedValue}
