@@ -5,7 +5,7 @@ export async function requestSignIn(): Promise<void> {
 }
 
 /**
- * Sign out: server-side invalidation + clear safeStorage + clear renderer store + navigate to auth.
+ * Sign out: server-side invalidation + clear safeStorage + clear renderer store.
  * Note: Returns a promise that resolves after logout, but navigation happens asynchronously.
  * The caller should handle navigation if needed.
  */
