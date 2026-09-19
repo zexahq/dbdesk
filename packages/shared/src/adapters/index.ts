@@ -1,5 +1,6 @@
 export {
   PostgresAdapter,
+  assertSingleRowUpdated,
   buildPostgresSslConfig,
   buildPostgresToolEnv,
   getPostgresSslConnectionModes,
@@ -15,14 +16,14 @@ export {
 } from './queries'
 export { parsePostgresArray, quoteIdentifier, buildWhereClause, normalizeIsValue } from './utils'
 export {
-  isSelectableQuery,
-  isReadOnlyQuery,
-  normalizeQuery,
+  getInitialStatementKeyword,
   hasAdditionalStatements,
+  isReadOnlyQuery,
+  isSelectableQuery,
+  normalizeQuery,
+  skipBlockComment,
   skipDollarQuotedString,
   skipLineComment,
-  skipBlockComment,
-  skipQuotedString,
   skipParenthesizedSection,
-  getInitialStatementKeyword
+  skipQuotedString
 } from './sql-parser'

@@ -40,6 +40,16 @@ import { expandHomePath, SSHTunnel } from './ssh-tunnel'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
+export function assertSingleRowUpdated(updatedRowCount: number): void {
+  if (updatedRowCount !== 1) {
+    throw new Error(
+      updatedRowCount === 0
+        ? 'The row no longer exists or its primary key changed. Refresh the result and try again.'
+        : `Expected to update one row, but updated ${updatedRowCount}.`
+    )
+  }
+}
+
 export const getPostgresSslConnectionModes = (
   mode: PostgreSQLSslMode = 'disable'
 ): PostgreSQLSslMode[] =>
@@ -578,10 +588,12 @@ export class PostgresAdapter implements SQLAdapter {
 
       const result = await client.query(query, params)
 
+      assertSingleRowUpdated(result.rowCount ?? 0)
+
       await client.query('COMMIT')
 
       return {
-        updatedRowCount: result.rowCount ?? 0
+        updatedRowCount: 1
       }
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {})

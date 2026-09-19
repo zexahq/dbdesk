@@ -1,4 +1,9 @@
-import type { QueryBatchResult, QueryResult, SQLConnectionProfile } from '@dbdesk/shared/types'
+import type {
+  QueryBatchResult,
+  QueryResult,
+  QueryResultRow,
+  SQLConnectionProfile
+} from '@dbdesk/shared/types'
 import { SaveQueryDialog } from '@renderer/components/dialogs/save-query-dialog'
 import { DangerousQueryDialog } from '@renderer/features/sql-workspace/components/dialogs/dangerous-query-dialog'
 import SqlEditor from '@renderer/features/editor/components/sql-editor'
@@ -122,19 +127,30 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
     ? Math.min(Math.max(activeTab.activeResultIndex ?? 0, 0), batchResultCount - 1)
     : 0
   const activeBatchResult = activeTab.batchResults?.[safeActiveResultIndex]
+  const activePinnedResult = activeTab.pinnedResults.find(
+    (result) => result.id === activeTab.activePinnedResultId
+  )
+  const currentLiveResult = activeBatchResult?.result ?? activeTab.queryResults
+  const currentLiveQuery = activeBatchResult?.query ?? activeTab.lastExecutedQuery
+  const visibleResult = activePinnedResult?.result ?? currentLiveResult
+  const visibleExecutionTime =
+    visibleResult?.executionTime ??
+    (activePinnedResult ? undefined : activeBatchResult?.executionTime)
   const batchResultLabel =
-    activeBatchResult && batchResultCount > 0
+    activePinnedResult?.name ??
+    (activeBatchResult && batchResultCount > 0
       ? [
           getQueryTabLabel(activeBatchResult.query),
           `(${safeActiveResultIndex + 1} of ${batchResultCount})`
         ].join(' ')
-      : undefined
+      : undefined)
 
   const updateSingleQueryResult = (query: string, result: QueryResult) => {
     updateQueryTab(activeTab.id, {
       queryResults: result,
       batchResults: undefined,
       activeResultIndex: 0,
+      activePinnedResultId: undefined,
       lastExecutedQuery: query,
       limit: result.limit ?? activeTab.limit,
       offset: result.offset ?? activeTab.offset,
@@ -147,6 +163,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
       queryResults: undefined,
       batchResults: results,
       activeResultIndex: 0,
+      activePinnedResultId: undefined,
       lastExecutedQuery: undefined,
       limit,
       offset,
@@ -159,6 +176,7 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
       queryResults: undefined,
       batchResults: undefined,
       activeResultIndex: 0,
+      activePinnedResultId: undefined,
       lastExecutedQuery: undefined,
       totalRowCount: undefined
     })
@@ -267,6 +285,52 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
     }
   }
 
+  const handlePinResult = () => {
+    if (!currentLiveResult || !currentLiveQuery) return
+
+    const id = crypto.randomUUID()
+    updateQueryTab(activeTab.id, {
+      pinnedResults: [
+        ...activeTab.pinnedResults,
+        {
+          id,
+          name: getQueryTabLabel(currentLiveQuery),
+          query: currentLiveQuery,
+          result: structuredClone(currentLiveResult),
+          createdAt: Date.now()
+        }
+      ],
+      activePinnedResultId: id
+    })
+  }
+
+  const handleUnpinResult = (id: string) => {
+    updateQueryTab(activeTab.id, {
+      pinnedResults: activeTab.pinnedResults.filter((result) => result.id !== id),
+      activePinnedResultId:
+        activeTab.activePinnedResultId === id ? undefined : activeTab.activePinnedResultId
+    })
+  }
+
+  const handleResultRowsChange = (rows: QueryResultRow[]) => {
+    if (activeTab.batchResults && activeBatchResult?.result) {
+      updateQueryTab(activeTab.id, {
+        batchResults: activeTab.batchResults.map((batchResult, index) =>
+          index === safeActiveResultIndex && batchResult.result
+            ? { ...batchResult, result: { ...batchResult.result, rows } }
+            : batchResult
+        )
+      })
+      return
+    }
+
+    if (activeTab.queryResults) {
+      updateQueryTab(activeTab.id, {
+        queryResults: { ...activeTab.queryResults, rows }
+      })
+    }
+  }
+
   return (
     <>
       <ResizablePanelGroup direction="vertical" className="flex-1">
@@ -284,9 +348,14 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
         <ResizableHandle />
         <ResizablePanel defaultSize={50} minSize={30}>
           <QueryResults
+            connectionId={profile.id}
+            tabId={activeTab.id}
+            currentQuery={currentLiveQuery}
             queryResults={activeTab.queryResults}
             batchResults={activeTab.batchResults}
             activeResultIndex={activeTab.activeResultIndex}
+            pinnedResults={activeTab.pinnedResults}
+            activePinnedResultId={activeTab.activePinnedResultId}
             isLoading={isExecuting}
             error={executionError}
             onRun={handleRunQuery}
@@ -294,35 +363,33 @@ export function QueryView({ profile, tabId }: QueryViewProps) {
               const result = activeTab.batchResults?.[index]?.result
               updateQueryTab(activeTab.id, {
                 activeResultIndex: index,
+                activePinnedResultId: undefined,
                 limit: result?.limit ?? activeTab.limit,
                 offset: result?.offset ?? 0
               })
             }}
+            onPinnedResultSelect={(id) =>
+              updateQueryTab(activeTab.id, { activePinnedResultId: id })
+            }
+            onPinResult={handlePinResult}
+            onUnpinResult={handleUnpinResult}
+            onResultRowsChange={handleResultRowsChange}
             onCancel={handleCancelQuery}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {(activeTab.queryResults || activeBatchResult) && (
+      {visibleResult && (
         <QueryBottombar
           resultLabel={batchResultLabel}
-          totalRows={
-            activeBatchResult?.result
-              ? (activeBatchResult.result.totalRowCount ?? activeBatchResult.result.rowCount)
-              : activeTab.queryResults
-                ? (activeTab.totalRowCount ?? activeTab.queryResults.rowCount)
-                : 0
-          }
-          executionTime={
-            activeBatchResult?.result?.executionTime ??
-            activeBatchResult?.executionTime ??
-            activeTab.queryResults?.executionTime
-          }
+          totalRows={visibleResult.totalRowCount ?? visibleResult.rowCount}
+          executionTime={visibleExecutionTime}
           limit={activeTab.limit}
           offset={activeTab.offset}
           isPaginationEnabled={
-            activeBatchResult?.result?.totalRowCount !== undefined ||
-            activeTab.totalRowCount !== undefined
+            !activePinnedResult &&
+            (activeBatchResult?.result?.totalRowCount !== undefined ||
+              activeTab.totalRowCount !== undefined)
           }
           onLimitChange={async (limit) => {
             if (activeTab.batchResults) {

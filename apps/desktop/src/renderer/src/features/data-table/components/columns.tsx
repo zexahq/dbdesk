@@ -1,7 +1,11 @@
 import type { QueryResultRow, TableDataColumn, TableSortRule } from '@dbdesk/shared/types'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { formatCellValue, getCellVariant } from '@renderer/features/data-table/lib/data-table'
+import {
+  formatCellValue,
+  getCellVariant,
+  getSelectionColumnId
+} from '@renderer/features/data-table/lib/data-table'
 import { cn } from '@renderer/shared/lib/utils'
 import { ColumnDef } from '@tanstack/react-table'
 import { ChevronDown, ChevronUp, Key, Link } from 'lucide-react'
@@ -15,7 +19,7 @@ export const getColumns = (
 ): ColumnDef<QueryResultRow>[] => {
   return [
     {
-      id: 'select',
+      id: getSelectionColumnId(columns.map((column) => column.name)),
       header: ({ table }) => (
         <Checkbox
           checked={
@@ -54,7 +58,8 @@ export const getColumns = (
       size: 32,
       enableSorting: false,
       enableHiding: false,
-      enableResizing: false
+      enableResizing: false,
+      meta: { isSelectionColumn: true }
     },
     ...columns.map((column) => ({
       id: column.name,
@@ -126,30 +131,32 @@ export const getColumns = (
                 <span className="text-xs text-muted-foreground font-normal">{column.dataType}</span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleSortClick}
-              className={cn(
-                'inline-flex items-center justify-center rounded-sm p-0.5 cursor-pointer',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                direction
-                  ? 'text-foreground font-bold'
-                  : 'text-muted-foreground/40 hover:text-foreground/60'
-              )}
-              aria-label={
-                direction === 'ASC'
-                  ? `Sort by ${column.name} ascending`
-                  : direction === 'DESC'
-                    ? `Sort by ${column.name} descending`
-                    : `Sort by ${column.name}`
-              }
-            >
-              {direction === 'DESC' ? (
-                <ChevronDown className="size-4" />
-              ) : (
-                <ChevronUp className="size-4" />
-              )}
-            </button>
+            {onSortChange ? (
+              <button
+                type="button"
+                onClick={handleSortClick}
+                className={cn(
+                  'inline-flex items-center justify-center rounded-sm p-0.5 cursor-pointer',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  direction
+                    ? 'text-foreground font-bold'
+                    : 'text-muted-foreground/40 hover:text-foreground/60'
+                )}
+                aria-label={
+                  direction === 'ASC'
+                    ? `Sort by ${column.name} ascending`
+                    : direction === 'DESC'
+                      ? `Sort by ${column.name} descending`
+                      : `Sort by ${column.name}`
+                }
+              >
+                {direction === 'DESC' ? (
+                  <ChevronDown className="size-4" />
+                ) : (
+                  <ChevronUp className="size-4" />
+                )}
+              </button>
+            ) : null}
           </div>
         )
       },
